@@ -5,6 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [neb "0.1.0-SNAPSHOT"]]
+  :source-paths ["src/clj"]
+  :java-source-paths ["src/java"]
   :main ^:skip-aot morpheus.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
