@@ -8,7 +8,7 @@
 
 (defn shutdown []
   (println "Shuting down...")
-  (models/save-models))
+  (neb/stop-server))
 
 (defn -main
   "Main Entrance"

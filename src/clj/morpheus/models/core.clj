@@ -6,19 +6,17 @@
             [cluster-connector.distributed-store.core :as ds]
             [neb.core :as neb]
             [neb.schema :as neb-schema])
-  (:import (org.shisoft.neb.io reader writer type_lengths)))
+  (:import (org.shisoft.neb.io reader writer type_lengths)
+           (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
 
 (dl/deflock models-init)
 (def schema-file "configures/neb-schemas.edn")
 
 (defn init-models []
-  (neb-schema/load-schemas-file schema-file)
   (dl/locking
     models-init
     (when (ds/is-first-node?)
-      (neb/add-schema :relations [[:sid :int] [:list-cid :cid]])
-      (neb/add-schema :cid-list  [[:cid-array]]))))
-
-(defn save-models []
-  (neb-schema/save-schemas schema-file)
-  (println "Models saved"))
+      (try
+        (neb/add-schema :relations [[:sid :int] [:list-cid :cid]])
+        (neb/add-schema :cid-list  [[:cid-array]])
+        (catch SchemaAlreadyExistsException _)))))
