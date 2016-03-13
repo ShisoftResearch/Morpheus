@@ -1,7 +1,7 @@
 (ns morpheus.models.vertex.base
   (:require [morpheus.utils :refer :all]))
 
-(def vertex-schema-fields
+(def vertex-relation-fields
   [[:inbounds     [:ARRAY :relations]]
    [:outbounds    [:ARRAY :relations]]
    [:neighbours   [:ARRAY :relations]]])

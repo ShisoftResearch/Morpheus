@@ -25,12 +25,6 @@
   (delete-edge [])
   (base-schema []))
 
-#_(defn new-edge-schema [edge-name edge-props relationship & [fields]]
-  (let [neb-schema-name (str "edge-" (name edge-name))
-        edge-props (merge edge-props
-                          {:rel relationship})
-        neb-schema-id (neb/add-schema neb-schema-name neb-fields)]
-    (patom/swap
-      schemas 'clojure.core/assoc neb-schema-id
-      {:id neb-schema-id
-       :name vname})))
+(defn new-edge-group [group-name group-props]
+  (let [{:keys [fields dynamic-fields?]} group-props]
+    ))

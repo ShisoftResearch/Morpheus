@@ -1,23 +1,17 @@
 (ns morpheus.models.vertex.core
   (:require [morpheus.utils :refer :all]
-            [morpheus.models.base :refer [schemas]]
+            [morpheus.models.base :refer [add-schema gen-id]]
             [morpheus.models.vertex.defined]
             [morpheus.models.vertex.dynamic]
             [morpheus.models.vertex.base :as vb]
-            [neb.core :as neb]
-            [cluster-connector.distributed-store.atom :as dsatom]))
+            [morpheus.models.core :as core]
+            [neb.core :as neb]))
 
-(defn new-vertex-group [group group-props]
+(defn new-vertex-group [group-name group-props]
   (let [{:keys [fields dynamic-fields?]} group-props
         fields (if dynamic-fields? vb/dynamic-veterx-schema-fields (or fields []))
-        neb-schema-name (str "veterx-" (name group))
-        neb-fields (concat vb/vertex-schema-fields fields)
-        neb-schema-id (neb/add-schema neb-schema-name neb-fields)]
-    (dsatom/swap
-      schemas assoc neb-schema-id
-      (merge group-props
-             {:id neb-schema-id
-              :name group}))))
+        fields (concat vb/vertex-relation-fields fields)]
+    (core/add-schema :v group-name fields group-props)))
 
 (defn fetch-group-props [group] (get @schemas group))
 
