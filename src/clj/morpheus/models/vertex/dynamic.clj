@@ -2,8 +2,11 @@
   (:require [morpheus.utils :refer :all]
             [morpheus.models.vertex.base :refer :all]))
 
+(def dynamic-veterx-schema-fields
+  [[:*data* :obj]])
+
 (defmethods
-  true vp
+  :dynamic vp
   (get-veterx
     [id]
     )
@@ -15,4 +18,9 @@
     )
   (update-in-veterx
     [id fnc & params]
-    ))
+    )
+  (cell-fields
+    [fields]
+    (concat
+      vertex-relation-fields fields
+      dynamic-veterx-schema-fields)))

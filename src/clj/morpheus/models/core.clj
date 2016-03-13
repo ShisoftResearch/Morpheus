@@ -1,7 +1,5 @@
 (ns morpheus.models.core
-  (:require [morpheus.models.vertex.core  :as v]
-            [morpheus.models.edge.core    :as e]
-            [morpheus.models.base :refer [schema-sname-exists?]]
+  (:require [morpheus.models.base :refer [schema-sname-exists?]]
             [cluster-connector.distributed-store.lock :as dl]
             [cluster-connector.distributed-store.core :as ds]
             [cluster-connector.remote-function-invocation.core :as rfi]

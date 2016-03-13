@@ -3,7 +3,7 @@
             [morpheus.models.vertex.base :refer :all]))
 
 (defmethods
-  false vp
+  :defined vp
   (get-veterx
     [id]
     )
@@ -15,4 +15,5 @@
     )
   (update-in-veterx
     [id fnc & params]
-    ))
+    )
+  (cell-fields [fields] (concat vertex-relation-fields fields)))

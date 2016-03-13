@@ -6,12 +6,10 @@
    [:outbounds    [:ARRAY :relations]]
    [:neighbours   [:ARRAY :relations]]])
 
-(def dynamic-veterx-schema-fields
-  [[:data :obj]])
-
 (defmulties
-  :dynamic-fields?
+  :type
   (get-veterx [id])
   (reset-veterx [id val])
   (new-veterx [data])
-  (update-in-veterx [id fnc & params]))
+  (update-in-veterx [id fnc & params])
+  (cell-fields [fields]))

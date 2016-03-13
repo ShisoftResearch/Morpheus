@@ -6,25 +6,14 @@
             [morpheus.models.edge.simple]
             [morpheus.models.edge.defined]
             [morpheus.models.edge.dynamic]
+            [morpheus.models.edge.base :as vb]
             [morpheus.models.base :refer [schemas]]
-            [neb.core :as neb]))
-
-(defmulties
-  :type
-  (neighbours [])
-  (inboundds [])
-  (outbounds [])
-  (neighbours [relationship])
-  (inboundds [relationship])
-  (outbounds [relationship]))
-
-(defmulties
-  :body
-  (get-edge [])
-  (update-edge [new-edge])
-  (delete-edge [])
-  (base-schema []))
+            [neb.core :as neb]
+            [morpheus.models.core :as core]))
 
 (defn new-edge-group [group-name group-props]
-  (let [{:keys [fields dynamic-fields?]} group-props]
-    ))
+  (let [{:keys [fields]} group-props
+        require-schema?  (vb/require-schema? group-props)
+        base-schema      (vb/edge-base-schema group-props)
+        fields (when require-schema? (vb/edge-schema base-schema fields))]
+    (core/add-schema :e group-name fields group-props)))

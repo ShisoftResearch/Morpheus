@@ -8,9 +8,8 @@
             [neb.core :as neb]))
 
 (defn new-vertex-group [group-name group-props]
-  (let [{:keys [fields dynamic-fields?]} group-props
-        fields (if dynamic-fields? vb/dynamic-veterx-schema-fields (or fields []))
-        fields (concat vb/vertex-relation-fields fields)]
+  (let [{:keys [fields]} group-props
+        fields (vb/cell-fields group-props fields)]
     (core/add-schema :v group-name fields group-props)))
 
 (defn fetch-group-props [group] (get @schemas group))

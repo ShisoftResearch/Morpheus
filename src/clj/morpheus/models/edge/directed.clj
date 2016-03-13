@@ -1,5 +1,11 @@
-(ns morpheus.models.edge.directed)
+(ns morpheus.models.edge.directed
+  (:require [morpheus.models.edge.base :refer :all]
+            [morpheus.utils :refer :all]))
 
 (def schema-fields
   [[:inbound  :cid]
    [:outbound :cid]])
+
+(defmethods
+  :directed
+  (edge-base-schema [] schema-fields))
