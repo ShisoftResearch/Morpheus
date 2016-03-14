@@ -12,7 +12,7 @@
         fields (vb/cell-fields group-props fields)]
     (core/add-schema :v group-name fields group-props)))
 
-(defn fetch-group-props [group] (get @schemas group))
+(defn fetch-group-props [group] (core/get-schema :v group))
 
 (defmacro wrap-base-ops [op]
   ;TODO This can be better for performance by avoid using apply

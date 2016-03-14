@@ -7,5 +7,5 @@
    [:outbound :cid]])
 
 (defmethods
-  :directed
+  :directed ep
   (edge-base-schema [] schema-fields))

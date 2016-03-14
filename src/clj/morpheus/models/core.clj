@@ -22,10 +22,13 @@
 
 (dl/deflock schemas-lock)
 
+(defn get-schema-name [stype group-name]
+  (str (name stype) "-" (name group-name)))
+
 (defn add-schema [stype group-name fields meta]
   (dl/locking
-    schema-lock
-    (let [schema-name (str (name stype) "-" (name group-name))]
+    schemas-lock
+    (let [schema-name (get-schema-name stype group-name)]
       (if (schema-sname-exists? schema-name)
         (throw (SchemaAlreadyExistsException.))
         (let [neb-schema-id (when fields (neb/add-schema schema-name fields))
@@ -35,3 +38,7 @@
           (rfi/condinated-invoke-with-selection
             ['morpheus.models.base/gen-id nil]
             ['morpheus.models.base/add-schema [schema-name neb-schema-id '<> meta]] max))))))
+
+(defn get-schema [stype group-name]
+  (let [schema-name (get-schema-name stype group-name)]
+    (neb/get-schema-by-name schema-name)))

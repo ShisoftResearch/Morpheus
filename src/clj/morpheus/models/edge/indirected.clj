@@ -7,5 +7,5 @@
    [:edge2  :cid]])
 
 (defmethods
-  :indirected
+  :indirected ep
   (edge-base-schema [] schema-fields))

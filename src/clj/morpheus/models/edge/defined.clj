@@ -3,7 +3,7 @@
             [morpheus.models.edge.base :refer :all]))
 
 (defmethods
-  :defined
+  :defined ep
   (require-schema? [] true)
   (edge-schema
     [base-schema fields]

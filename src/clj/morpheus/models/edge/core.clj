@@ -7,7 +7,6 @@
             [morpheus.models.edge.defined]
             [morpheus.models.edge.dynamic]
             [morpheus.models.edge.base :as vb]
-            [morpheus.models.base :refer [schemas]]
             [neb.core :as neb]
             [morpheus.models.core :as core]))
 

@@ -7,7 +7,7 @@
    [:outbound :cid-array]])
 
 (defmethods
-  :hyper
+  :hyper ep
   (require-schema? [] true)
   (edge-base-schema [] schema-fields)
   (edge-schema

@@ -1,4 +1,5 @@
-(ns morpheus.models.edge.base)
+(ns morpheus.models.edge.base
+  (:require [morpheus.utils :refer :all]))
 
 (defmulties
   :type

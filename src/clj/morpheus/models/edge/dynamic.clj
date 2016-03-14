@@ -6,7 +6,7 @@
   [[:*data* :obj]])
 
 (defmethods
-  :dynamic
+  :dynamic ep
   (require-schema? [] true)
   (edge-schema
     [base-schema fields]
