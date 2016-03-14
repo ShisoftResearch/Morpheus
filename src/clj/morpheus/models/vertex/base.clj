@@ -7,7 +7,7 @@
    [:neighbours   [:ARRAY :relations]]])
 
 (defmulties
-  :type
+  :body
   (get-veterx [id])
   (reset-veterx [id val])
   (new-veterx [data])
