@@ -10,6 +10,9 @@
 (defn schema-by-id [^Integer id]
   (.getById schema-store id))
 
+(defn schema-by-neb-id [^Integer id]
+  (.nebId2schema schema-store id))
+
 (defn schema-id-by-sname [sname]
   (.sname2Id schema-store sname))
 

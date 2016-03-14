@@ -34,7 +34,7 @@
         (throw (SchemaAlreadyExistsException.))
         (let [neb-schema-id (when fields (neb/add-schema schema-name (vec fields)))
               meta (merge meta {:name group-name
-                                :neb-id neb-schema-id
+                                :neb-sid neb-schema-id
                                 :stype stype})]
           (rfi/condinated-invoke-with-selection
             ['morpheus.models.base/gen-id nil]

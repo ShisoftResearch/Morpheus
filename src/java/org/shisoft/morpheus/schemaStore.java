@@ -1,5 +1,6 @@
 package org.shisoft.morpheus;
 
+import clojure.lang.Obj;
 import net.openhft.koloboke.collect.map.hash.*;
 
 /**
@@ -8,7 +9,7 @@ import net.openhft.koloboke.collect.map.hash.*;
 public class schemaStore {
     HashIntObjMap schemaIdMap = HashIntObjMaps.newMutableMap();
     HashObjIntMap snameIdMap = HashObjIntMaps.newMutableMap();
-    HashIntIntMap nebIdschemaMap = HashIntIntMaps.newMutableMap();
+    HashIntObjMap nebIdschemaMap = HashIntObjMaps.newMutableMap();
 
     public HashIntObjMap getSchemaIdMap() {
         return schemaIdMap;
@@ -17,7 +18,7 @@ public class schemaStore {
     public int put (int id, int nebSchemaId, Object sname, Object schema){
         this.schemaIdMap.put(id, schema);
         this.snameIdMap.put(sname, id);
-        this.nebIdschemaMap.put(nebSchemaId, id);
+        this.nebIdschemaMap.put(nebSchemaId, schema);
         return id;
     }
 
@@ -35,7 +36,7 @@ public class schemaStore {
         return snameIdMap.getInt(sname);
     }
 
-    public int nebId2schemaId (int nebId) {
+    public Object nebId2schema (int nebId) {
         return this.nebIdschemaMap.get(nebId);
     }
 
