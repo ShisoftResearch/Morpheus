@@ -6,19 +6,22 @@
             [cluster-connector.utils.for-debug :refer [$]])
   (:gen-class))
 
-(defn shutdown []
+(defn shutdown-server []
   (println "Shuting down...")
   (neb/stop-server))
+
+(defn start-server []
+  (neb/start-server (read-string (slurp "configures/neb.edn")))
+  (println "Initialize Models...")
+  (models/init-models))
 
 (defn -main
   "Main Entrance"
   [& args]
   (println "Morpueus, General Purpose Graph Engine")
   (println "(C) 2016 Shisoft Research")
-  (neb/start-server (read-string (slurp "configures/neb.edn")))
-  (println "Initialize Models...")
-  (models/init-models)
+  (start-server)
   (.addShutdownHook
     (Runtime/getRuntime)
-    (Thread. shutdown))
+    (Thread. shutdown-server))
   (println "Server started"))

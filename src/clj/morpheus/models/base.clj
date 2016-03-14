@@ -19,6 +19,9 @@
 (defn schema-sname-exists? [sname]
   (.snameExists schema-store sname))
 
+(defn clear-schema []
+  (.clear schema-store))
+
 (defn gen-id []
   (locking schema-store
     (let [existed-ids (sort (keys (.getSchemaIdMap schema-store)))

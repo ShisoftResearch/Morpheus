@@ -5,19 +5,20 @@
             [morpheus.models.vertex.dynamic]
             [morpheus.models.vertex.base :as vb]
             [morpheus.models.core :as core]
-            [neb.core :as neb]))
+            [neb.core :as neb]
+            [cluster-connector.utils.for-debug :refer [$]]))
 
 (defn new-vertex-group [group-name group-props]
   (let [{:keys [fields]} group-props
         fields (vb/cell-fields group-props fields)]
     (core/add-schema :v group-name fields group-props)))
 
-(defn fetch-group-props [group] (core/get-schema :v group))
+(defn veterx-group-props [group] (core/get-schema :v group))
 
 (defmacro wrap-base-ops [op]
   ;TODO This can be better for performance by avoid using apply
   `(defn ~op [group# & args#]
-     (let [props# (fetch-group-props group#)]
+     (let [props# (veterx-group-props group#)]
        (apply ~(symbol "morpheus.models.vertex.base" (name op)) props# args#))))
 
 (wrap-base-ops get-veterx)
