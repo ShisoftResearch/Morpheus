@@ -1,6 +1,6 @@
 (ns morpheus.models.vertex.core
   (:require [morpheus.utils :refer :all]
-            [morpheus.models.base :refer [add-schema gen-id]]
+            [morpheus.models.base :refer [add-schema gen-schema-id]]
             [morpheus.models.vertex.defined]
             [morpheus.models.vertex.dynamic]
             [morpheus.models.vertex.base :as vb]
@@ -34,7 +34,7 @@
 
 (defn get-veterx-by-key [group key]
   (let [vp (veterx-group-props group)
-        id (vb/cell-id-by-key vp key)]
+        id (mb/cell-id-by-key :v vp key)]
     (get-veterx-by-id id)))
 
 (defn new-vertex [group data]

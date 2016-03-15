@@ -16,7 +16,7 @@
     [data]
     (let [{:keys [neb-sid]} vp]
       (neb/new-cell-by-ids
-        (cell-id-by-data vp data) neb-sid data)))
+        (mb/cell-id-by-data :v vp data) neb-sid data)))
   (update-in-veterx
     [id fnc & params]
     )

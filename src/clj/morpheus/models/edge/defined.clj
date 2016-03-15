@@ -4,7 +4,7 @@
 
 (defmethods
   :defined ep
-  (require-schema? [] true)
+  (require-edge-cell? [] true)
   (edge-schema
     [base-schema fields]
     (concat base-schema fields)))

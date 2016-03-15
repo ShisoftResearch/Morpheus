@@ -8,4 +8,6 @@
 
 (defmethods
   :indirected ep
-  (edge-base-schema [] schema-fields))
+  (edge-base-schema [] schema-fields)
+  (v1-vertex-field [] :neighbours)
+  (v2-vertex-field [] :neighbours))

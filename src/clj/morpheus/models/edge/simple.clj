@@ -4,6 +4,6 @@
 
 (defmethods
   :simple ep
-  (require-schema? [] false)
+  (require-edge-cell? [] false)
   (edge-base-schema [] nil)
   (edge-schema [base-schema fields] nil))

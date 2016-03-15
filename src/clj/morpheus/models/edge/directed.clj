@@ -8,4 +8,6 @@
 
 (defmethods
   :directed ep
-  (edge-base-schema [] schema-fields))
+  (edge-base-schema [] schema-fields)
+  (v1-vertex-field [] :inbounds)
+  (v2-vertex-field [] :outbounds))

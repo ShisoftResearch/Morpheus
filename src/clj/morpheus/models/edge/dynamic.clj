@@ -7,7 +7,7 @@
 
 (defmethods
   :dynamic ep
-  (require-schema? [] true)
+  (require-edge-cell? [] true)
   (edge-schema
     [base-schema fields]
     (concat base-schema fields dynamic-edge-schema-fields)))

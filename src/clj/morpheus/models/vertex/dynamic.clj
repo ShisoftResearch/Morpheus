@@ -1,7 +1,8 @@
 (ns morpheus.models.vertex.dynamic
   (:require [morpheus.utils :refer :all]
             [morpheus.models.vertex.base :refer :all]
-            [neb.core :as neb]))
+            [neb.core :as neb]
+            [morpheus.models.base :as mb]))
 
 (def dynamic-veterx-schema-fields
   [[:*data* :obj]])
@@ -21,7 +22,7 @@
           defined-map (select-keys data defined-fields)
           dynamic-map (apply dissoc data defined-fields)]
       (neb/new-cell-by-ids
-        (cell-id-by-data vp data) neb-sid
+        (mb/cell-id-by-data :v vp data) neb-sid
         (assoc defined-map :*data* dynamic-map))))
   (update-in-veterx
     [id fnc & params]
