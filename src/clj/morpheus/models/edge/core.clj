@@ -28,11 +28,14 @@
          type-body-sticker] ((juxt eb/v1-vertex-field
                                    eb/v2-vertex-field
                                    eb/type-stick-body) edge-schema)
-        require-edge-cell? (eb/require-edge-cell? edge-schema)]
+        require-edge-cell? (eb/require-edge-cell? edge-schema)
+        edge-cell-vertex-fields (eb/edge-cell-vertex-fields edge-schema v1-id v2-id)]
     (when type-body-sticker (assert (= type-body-sticker (:body edge-schema))
                                     (str type-body-sticker " cannot with body type " (:body edge-schema))))
-    (let [edge-cell-id (when require-edge-cell? (apply eb/create-edge-cell v1-id v2-id args))]
-      (neb/update-cell* v1 'eb/record-edge-on-vertex
+    (let [edge-cell-id (when require-edge-cell? (apply eb/create-edge-cell
+                                                       edge-schema
+                                                       edge-cell-vertex-fields args))]
+      (neb/update-cell* v1-id 'morpheus.models.edge.base/record-edge-on-vertex
                         edge-schema-id v1-v-field (or edge-cell-id v2-id))
-      (neb/update-cell* v2 'eb/record-edge-on-vertex
+      (neb/update-cell* v2-id 'morpheus.models.edge.base/record-edge-on-vertex
                         edge-schema-id v2-v-field (or edge-cell-id v1-id)))))

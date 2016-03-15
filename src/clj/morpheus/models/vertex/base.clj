@@ -3,9 +3,9 @@
             [neb.core :as neb]))
 
 (def vertex-relation-fields
-  [[:inbounds     [:ARRAY :relations]]
-   [:outbounds    [:ARRAY :relations]]
-   [:neighbours   [:ARRAY :relations]]])
+  [[:*inbounds*     [:ARRAY :relations]]
+   [:*outbounds*    [:ARRAY :relations]]
+   [:*neighbours*   [:ARRAY :relations]]])
 
 (defmulties
   :body
