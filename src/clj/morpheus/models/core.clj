@@ -1,5 +1,5 @@
 (ns morpheus.models.core
-  (:require [morpheus.models.base :refer [schema-sname-exists? schema-by-sname init-base-models]]
+  (:require [morpheus.models.base :refer [schema-id-by-sname schema-sname-exists? schema-by-sname init-base-models]]
             [cluster-connector.distributed-store.lock :as dl]
             [cluster-connector.distributed-store.core :as ds]
             [cluster-connector.remote-function-invocation.core :as rfi]
@@ -36,3 +36,6 @@
 (defn get-schema [stype group-name]
   (let [schema-name (get-schema-name stype group-name)]
     (schema-by-sname schema-name)))
+
+(defn get-schema-id [stype group-name]
+  (schema-id-by-sname (get-schema-name stype group-name)))

@@ -50,26 +50,27 @@
                                       directions [directions]))
                                   [:*inbounds* :*outbounds* :*neighbours*]))
         edge-groups (when edge-groups
-                      (into {}
+                      (into #{}
                             (map
-                              (fn [group]
-                                [(mb/schema-id-by-sname group) group])
+                              (partial core/get-schema-id :e)
                               (if (vector? edge-groups)
                                 edge-groups [edge-groups]))))
         cid-lists (select-keys vertex direction-fields)
-        cid-lists (flatten (map
-                             (fn [[direction dir-cid-list]]
-                               (when (direction-fields direction)
-                                 (map
-                                   (fn [{:keys [sid list-cid]}]
-                                     (when (or (nil? edge-groups)
-                                               (get edge-groups sid))
-                                       (assoc (select-keys (neb/read-cell* list-cid)
-                                                           [:cid-array])
-                                         :direction direction
-                                         :group-props (mb/schema-by-id sid))))
-                                   dir-cid-list)))
-                             cid-lists))]
+        cid-lists (->> (map
+                         (fn [[direction dir-cid-list]]
+                           (when (direction-fields direction)
+                             (map
+                               (fn [{:keys [sid list-cid]}]
+                                 (when (or (nil? edge-groups)
+                                           (edge-groups sid))
+                                   (assoc (select-keys (neb/read-cell* list-cid)
+                                                       [:cid-array])
+                                     :direction direction
+                                     :group-props (mb/schema-by-id sid))))
+                               dir-cid-list)))
+                         cid-lists)
+                       (flatten)
+                       (filter identity))]
     (map
       (fn [{:keys [group-props] :as cid-list}]
         (let [vertex-fields (eb/vertex-fields group-props)]
