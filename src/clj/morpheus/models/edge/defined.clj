@@ -15,5 +15,8 @@
     (let [{:keys [neb-sid]} ep]
       (neb/new-cell-by-ids
         (mb/cell-id-by-data :e ep data) neb-sid
-        (merge data vertex-fields)))))
+        (merge data vertex-fields))))
+  (edges-from-cid-array
+    [{:keys [cid-array] :as cid-list} & _]
+    (map neb/read-cell* cid-array)))
 

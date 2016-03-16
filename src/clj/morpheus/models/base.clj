@@ -2,7 +2,8 @@
   (:require [cluster-connector.distributed-store.atom :as da]
             [neb.core :as neb]
             [cluster-connector.distributed-store.core :as ds]
-            [cluster-connector.distributed-store.lock :as dl])
+            [cluster-connector.distributed-store.lock :as dl]
+            [cluster-connector.utils.for-debug :refer [$ spy]])
   (:import (org.shisoft.morpheus schemaStore)
            (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
 
@@ -10,7 +11,9 @@
 (def cid-list-schema-id (atom nil))
 
 (defn add-schema [sname neb-id id meta]
-  (.put schema-store id neb-id sname (assoc meta :id id)))
+  (.put schema-store id
+        (when neb-id (int neb-id))
+        sname (assoc meta :id id)))
 
 (defn schema-by-id [^Integer id]
   (.getById schema-store id))

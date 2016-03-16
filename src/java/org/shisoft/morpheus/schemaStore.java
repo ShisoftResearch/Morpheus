@@ -15,10 +15,12 @@ public class schemaStore {
         return schemaIdMap;
     }
 
-    public int put (int id, int nebSchemaId, Object sname, Object schema){
+    public int put (int id, Integer nebSchemaId, Object sname, Object schema){
         this.schemaIdMap.put(id, schema);
         this.snameIdMap.put(sname, id);
-        this.nebIdschemaMap.put(nebSchemaId, schema);
+        if (nebSchemaId != null) {
+            this.nebIdschemaMap.put((int) nebSchemaId, schema);
+        }
         return id;
     }
 

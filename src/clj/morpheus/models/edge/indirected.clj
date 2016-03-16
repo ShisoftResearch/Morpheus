@@ -15,4 +15,5 @@
   (edge-cell-vertex-fields
     [v1 v2]
     {:*edge1* v1
-     :*edge2* v2}))
+     :*edge2* v2})
+  (vertex-fields [] #{:*edge1* :*edge2*}))

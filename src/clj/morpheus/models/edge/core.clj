@@ -7,9 +7,12 @@
             [morpheus.models.edge.defined]
             [morpheus.models.edge.dynamic]
             [morpheus.models.edge.base :as eb]
+            [morpheus.models.vertex.core :as v]
             [neb.core :as neb]
             [morpheus.models.core :as core]
-            [cluster-connector.utils.for-debug :refer [$ spy]]))
+            [cluster-connector.utils.for-debug :refer [$ spy]]
+            [neb.utils :refer [map-on-vals]]
+            [morpheus.models.base :as mb]))
 
 (defn new-edge-group [group-name group-props]
   (let [{:keys [fields]} group-props
@@ -39,3 +42,50 @@
                         edge-schema-id v1-v-field (or edge-cell-id v2-id))
       (neb/update-cell* v2-id 'morpheus.models.edge.base/record-edge-on-vertex
                         edge-schema-id v2-v-field (or edge-cell-id v1-id)))))
+
+(defn neighbours [vertex & {:keys [directions edge-groups]}]
+  (let [vertex-id (:*id* vertex)
+        direction-fields (set (or (when directions
+                                    (if (vector? directions)
+                                      directions [directions]))
+                                  [:*inbounds* :*outbounds* :*neighbours*]))
+        edge-groups (when edge-groups
+                      (into {}
+                            (map
+                              (fn [group]
+                                [(mb/schema-id-by-sname group) group])
+                              (if (vector? edge-groups)
+                                edge-groups [edge-groups]))))
+        cid-lists (select-keys vertex direction-fields)
+        cid-lists (flatten (map
+                             (fn [[direction dir-cid-list]]
+                               (when (direction-fields direction)
+                                 (map
+                                   (fn [{:keys [sid list-cid]}]
+                                     (when (or (nil? edge-groups)
+                                               (get edge-groups sid))
+                                       (assoc (select-keys (neb/read-cell* list-cid)
+                                                           [:cid-array])
+                                         :direction direction
+                                         :group-props (mb/schema-by-id sid))))
+                                   dir-cid-list)))
+                             cid-lists))]
+    (map
+      (fn [{:keys [group-props] :as cid-list}]
+        (let [vertex-fields (eb/vertex-fields group-props)]
+          (merge
+            {:edges
+             (map
+               (fn [edge]
+                 (let [pure-edge (dissoc edge :*schema* :*hash*)]
+                   (into {} (map
+                              (fn [[k v]]
+                                [k (if (vertex-fields k)
+                                     (delay
+                                       (v/get-veterx-by-id v))
+                                     v)])
+                              pure-edge))))
+               (eb/edges-from-cid-array group-props cid-list vertex-id))}
+            (select-keys group-props [:name :type])
+            (select-keys cid-list [:direction]))))
+      cid-lists)))

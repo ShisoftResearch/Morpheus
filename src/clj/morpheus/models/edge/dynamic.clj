@@ -22,4 +22,12 @@
           dynamic-map (apply dissoc data defined-fields)]
       (neb/new-cell-by-ids
         (mb/cell-id-by-data :e ep data) neb-sid
-        (assoc defined-map :*data* dynamic-map)))))
+        (assoc defined-map :*data* dynamic-map))))
+  (edges-from-cid-array
+    [{:keys [cid-array] :as cid-list} & _]
+    (map
+      (fn [edge-cid]
+        (let [{:keys [*data*] :as edge} (neb/read-cell* edge-cid)]
+          (merge (dissoc edge :*data*)
+                 *data*)))
+      cid-array)))

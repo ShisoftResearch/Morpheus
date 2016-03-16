@@ -13,7 +13,11 @@
   `(do (remove-server-files)
        (fact "Start Server"
              (start-server) => anything)
-       ~@body
-       (fact "Stop Server"
-             (shutdown-server) => anything)
-       (remove-server-files)))
+       (try
+         ~@body
+         (catch Exception ex#
+           (clojure.stacktrace/print-cause-trace ex#))
+         (finally
+           (fact "Stop Server"
+                 (shutdown-server) => anything)
+           (remove-server-files)))))

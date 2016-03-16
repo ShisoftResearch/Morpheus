@@ -3,8 +3,8 @@
             [morpheus.utils :refer :all]))
 
 (def schema-fields
-  [[:*inbound*  :cid-array]
-   [:*outbound* :cid-array]])
+  [[:*start*  :cid-array]
+   [:*end* :cid-array]])
 
 (defmethods
   :hyper ep
@@ -18,5 +18,9 @@
   (type-stick-body [] true)
   (edge-cell-vertex-fields
     [v1 v2]
-    {:*inbound* v1
-     :*outbound* v2}))
+    {:*start* v1
+     :*end* v2})
+  (edges-from-cid-array
+    [cid-array]
+    )
+  (vertex-fields [] #{:*start* :*end*}))

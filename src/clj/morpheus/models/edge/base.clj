@@ -6,17 +6,12 @@
 
 (defmulties
   :type
-  (neighbours [])
-  (inboundds [])
-  (outbounds [])
-  (neighbours [relationship])
-  (inboundds [relationship])
-  (outbounds [relationship])
   (edge-base-schema [])
   (v1-vertex-field [])
   (v2-vertex-field [])
   (type-stick-body [])
-  (edge-cell-vertex-fields [v1 v2]))
+  (edge-cell-vertex-fields [v1 v2])
+  (vertex-fields []))
 
 (defmulties
   :body
@@ -26,7 +21,8 @@
   (base-schema [])
   (require-edge-cell? [])
   (edge-schema [base-schema fields])
-  (create-edge-cell [vertex-fields & args]))
+  (create-edge-cell [vertex-fields & args])
+  (edges-from-cid-array [cid-list & [start-vertex]]))
 
 (defn conj-into-list-cell [list-cell cell-id]
   (update list-cell :cid-array conj cell-id))
