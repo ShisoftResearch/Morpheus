@@ -4,13 +4,16 @@
             [neb.core :as neb]
             [cluster-connector.utils.for-debug :refer [spy $]]))
 
+(def schema-fields
+  [[:*start*  :cid]
+   [:*end*  :cid]])
+
 (defmulties
   :type
   (edge-base-schema [])
   (v1-vertex-field [])
   (v2-vertex-field [])
   (type-stick-body [])
-  (edge-cell-vertex-fields [v1 v2])
   (vertex-fields []))
 
 (defmulties
@@ -23,6 +26,12 @@
   (edge-schema [base-schema fields])
   (create-edge-cell [vertex-fields & args])
   (edges-from-cid-array [cid-list & [start-vertex]]))
+
+(defn edge-cell-vertex-fields [v1 v2]
+  {:*start* v1
+   :*end* v2})
+
+(def vertex-fields #{:*start* :*end*})
 
 (defn conj-into-list-cell [list-cell cell-id]
   (update list-cell :cid-array conj cell-id))

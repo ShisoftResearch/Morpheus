@@ -47,3 +47,5 @@
 
 (defn reset-vertex [vertex value]
   (reset-vertex-by-vp (:*vp* vertex) (:*id* vertex) value))
+
+(defn delete-vertex [])

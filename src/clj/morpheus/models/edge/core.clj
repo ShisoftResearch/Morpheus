@@ -32,7 +32,7 @@
                                    eb/v2-vertex-field
                                    eb/type-stick-body) edge-schema)
         require-edge-cell? (eb/require-edge-cell? edge-schema)
-        edge-cell-vertex-fields (eb/edge-cell-vertex-fields edge-schema v1-id v2-id)]
+        edge-cell-vertex-fields (eb/edge-cell-vertex-fields v1-id v2-id)]
     (when type-body-sticker (assert (= type-body-sticker (:body edge-schema))
                                     (str type-body-sticker " cannot with body type " (:body edge-schema))))
     (let [edge-cell-id (when require-edge-cell? (apply eb/create-edge-cell
@@ -41,7 +41,10 @@
       (neb/update-cell* v1-id 'morpheus.models.edge.base/record-edge-on-vertex
                         edge-schema-id v1-v-field (or edge-cell-id v2-id))
       (neb/update-cell* v2-id 'morpheus.models.edge.base/record-edge-on-vertex
-                        edge-schema-id v2-v-field (or edge-cell-id v1-id)))))
+                        edge-schema-id v2-v-field (or edge-cell-id v1-id))
+      (merge edge-cell-vertex-fields
+             {:*id* edge-cell-id
+              :*ep* edge-schema}))))
 
 (defn neighbours [vertex & {:keys [directions relationships]}]
   (let [vertex-id (:*id* vertex)
@@ -73,19 +76,12 @@
                        (filter identity))]
     (->> (map
            (fn [{:keys [group-props] :as cid-list}]
-             (let [vertex-fields (eb/vertex-fields group-props)]
-               (map
-                 (fn [edge]
-                   (let [pure-edge (dissoc edge :*schema* :*hash*)]
-                     (->> (into {} (map
-                                     (fn [[k v]]
-                                       [k (if (vertex-fields k)
-                                            (delay
-                                              (v/get-veterx-by-id v))
-                                            v)])
-                                     pure-edge))
-                          (merge (select-keys group-props [:name :type])
-                                 (select-keys cid-list [:direction])))))
-                 (eb/edges-from-cid-array group-props cid-list vertex-id))))
+             (map
+               (fn [edge]
+                 (let [pure-edge (dissoc edge :*schema* :*hash*)]
+                   (->> pure-edge
+                        (merge {:*ep* group-props}
+                               (select-keys cid-list [:direction])))))
+               (eb/edges-from-cid-array group-props cid-list vertex-id)))
            cid-lists)
          (flatten))))

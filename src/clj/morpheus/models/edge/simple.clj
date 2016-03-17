@@ -4,8 +4,8 @@
             [cluster-connector.utils.for-debug :refer [spy $]]))
 
 (def vertex-direction-mapper
-  {:*neighbours* {:start-kw :*edge1*
-                  :end-kw   :*edge2*}
+  {:*neighbours* {:start-kw :*start*
+                  :end-kw   :*end*}
    :*outbounds*  {:start-kw :*start*
                   :end-kw   :*end*}
    :*inbounds*  {:start-kw :*end*

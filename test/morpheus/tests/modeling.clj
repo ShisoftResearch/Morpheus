@@ -36,20 +36,20 @@
                 jeanette-adair-bradshaw (get-vertex-by-key :people "Jeanette Adair Bradshaw")]
             (create-edge morgan-freeman :acted-in batman-begins {:as "Lucius Fox"}) => anything
             (create-edge morgan-freeman :acted-in dark-knight {:as "Lucius Fox"}) => anything
-            (create-edge morgan-freeman :acted-in oblivion {:as "Malcolm Beech"}) => anything
-            (create-edge morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
+            ($ create-edge morgan-freeman :acted-in oblivion {:as "Malcolm Beech"}) => anything
+            ($ create-edge morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
     (fact "Read Edges"
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
                 batman-begins  (get-vertex-by-key :movie "Batman Begins")]
-            (neighbours morgan-freeman) => (contains [(contains {:name :spouse, :type :indirected, :direction :*neighbours*})
-                                                      (contains {:name :acted-in, :type :directed, :direction :*outbounds*})]
+            (neighbours morgan-freeman) => (contains [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :direction :*neighbours*})
+                                                      (contains {:*ep* (contains {:name :acted-in, :type :directed}), :direction :*outbounds*})]
                                                      :gaps-ok :in-any-order)
             (neighbours morgan-freeman) => #(= 4 (count %))
-            (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:name :acted-in, :type :directed, :direction :*outbounds*})
-                                                                           (contains {:name :acted-in, :type :directed, :direction :*outbounds*})
-                                                                           (contains {:name :acted-in, :type :directed, :direction :*outbounds*})])
-            (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:name :spouse, :type :indirected, :direction :*neighbours*})])
-            (neighbours batman-begins) => (just [(contains {:name :acted-in :type :directed :direction :*inbounds*})])))
+            (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:*ep* (contains {:name :acted-in, :type :directed}) :direction :*outbounds*})
+                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}), :direction :*outbounds*})
+                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}), :direction :*outbounds*})])
+            (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :direction :*neighbours*})])
+            (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :direction :*inbounds*})])))
     (fact "Update Defined Vertex"
           (update-vertex (get-vertex-by-key :movie "Oblivion")
                          'clojure.core/assoc :year 2013) => anything)
