@@ -38,7 +38,14 @@
             (create-edge morgan-freeman :acted-in oblivion {:as "Malcolm Beech"}) => anything
             (create-edge morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
     (fact "Read Edges"
-          (let [morgan-freeman (get-veterx-by-key :people "Morgan Freeman")]
-            ($ neighbours morgan-freeman) => anything
-            ($ neighbours morgan-freeman :directions :*outbounds*) => anything
-            ($ neighbours morgan-freeman :edge-groups :spouse) => anything))))
+          (let [morgan-freeman (get-veterx-by-key :people "Morgan Freeman")
+                batman-begins  (get-veterx-by-key :movie "Batman Begins")]
+            (neighbours morgan-freeman) => (contains [(contains {:name :spouse, :type :indirected, :direction :*neighbours*})
+                                                      (contains {:name :acted-in, :type :directed, :direction :*outbounds*})]
+                                                     :gaps-ok :in-any-order)
+            (neighbours morgan-freeman) => #(= 4 (count %))
+            (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:name :acted-in, :type :directed, :direction :*outbounds*})
+                                                                           (contains {:name :acted-in, :type :directed, :direction :*outbounds*})
+                                                                           (contains {:name :acted-in, :type :directed, :direction :*outbounds*})])
+            (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:name :spouse, :type :indirected, :direction :*neighbours*})])
+            (neighbours batman-begins) => (just [(contains {:name :acted-in :type :directed :direction :*inbounds*})])))))

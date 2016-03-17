@@ -43,18 +43,18 @@
       (neb/update-cell* v2-id 'morpheus.models.edge.base/record-edge-on-vertex
                         edge-schema-id v2-v-field (or edge-cell-id v1-id)))))
 
-(defn neighbours [vertex & {:keys [directions edge-groups]}]
+(defn neighbours [vertex & {:keys [directions relationships]}]
   (let [vertex-id (:*id* vertex)
         direction-fields (set (or (when directions
                                     (if (vector? directions)
                                       directions [directions]))
                                   [:*inbounds* :*outbounds* :*neighbours*]))
-        edge-groups (when edge-groups
+        edge-groups (when relationships
                       (into #{}
                             (map
                               (partial core/get-schema-id :e)
-                              (if (vector? edge-groups)
-                                edge-groups [edge-groups]))))
+                              (if (vector? relationships)
+                                relationships [relationships]))))
         cid-lists (select-keys vertex direction-fields)
         cid-lists (->> (map
                          (fn [[direction dir-cid-list]]
