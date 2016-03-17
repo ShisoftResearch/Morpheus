@@ -9,7 +9,7 @@
 
 (defmulties
   :body
-  (assumble-vertex [neb-cell])
+  (assemble-vertex [neb-cell])
   (reset-vertex [id val])
   (new-vertex [data])
   (update-vertex [id func-sym params])

@@ -21,7 +21,7 @@
         neb-sid  (:*schema* neb-cell)
         morph-schema (mb/schema-by-neb-id neb-sid)]
     (assert (= :v (:stype morph-schema)) "This cell is not a veterx")
-    (vb/assumble-vertex morph-schema neb-cell)))
+    (vb/assemble-vertex morph-schema neb-cell)))
 
 (defn get-vertex-by-key [group key]
   (let [vp (veterx-group-props group)

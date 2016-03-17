@@ -7,7 +7,7 @@
 
 (defmethods
   :defined vp
-  (assumble-vertex
+  (assemble-vertex
     [neb-cell]
     (merge {:*vp* vp} neb-cell))
   (reset-vertex

@@ -3,7 +3,9 @@
             [morpheus.models.vertex.base :refer :all]
             [morpheus.models.base :as mb]
             [neb.core :as neb]
-            [cluster-connector.remote-function-invocation.core :refer [compiled-cache]]))
+            [neb.cell :as neb-cell]
+            [cluster-connector.remote-function-invocation.core :refer [compiled-cache]]
+            [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 (def dynamic-veterx-schema-fields
   [[:*data* :obj]])
@@ -17,13 +19,14 @@
 (defn update-vertex* [neb-cell func-sym params]
   (let [neb-sid (:*schema* neb-cell)
         vp (mb/schema-by-neb-id neb-sid)
-        vertex (assumble-vertex vp neb-cell)]
+        vertex (assemble-vertex vp neb-cell)]
     (->> (apply (compiled-cache func-sym) vertex params)
+         (#(apply dissoc % :*vp* neb-cell/internal-cell-fields))
          (preproc-for-write neb-sid))))
 
 (defmethods
   :dynamic vp
-  (assumble-vertex
+  (assemble-vertex
     [neb-cell]
     (merge {:*vp* vp} (dissoc neb-cell :*data*) (:*data* neb-cell)))
   (reset-vertex
@@ -37,9 +40,11 @@
         (preproc-for-write neb-sid data))))
   (update-vertex
     [id func-sym params]
-    (neb/update-cell*
-      id 'morpheus.models.vertex.dynamic/update-vertex*
-      func-sym params))
+    (assemble-vertex
+      vp
+      (neb/update-cell*
+        id 'morpheus.models.vertex.dynamic/update-vertex*
+        func-sym params)))
   (cell-fields
     [fields]
     (concat
