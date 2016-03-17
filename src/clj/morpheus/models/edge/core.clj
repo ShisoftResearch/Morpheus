@@ -71,22 +71,21 @@
                          cid-lists)
                        (flatten)
                        (filter identity))]
-    (map
-      (fn [{:keys [group-props] :as cid-list}]
-        (let [vertex-fields (eb/vertex-fields group-props)]
-          (merge
-            {:edges
-             (map
-               (fn [edge]
-                 (let [pure-edge (dissoc edge :*schema* :*hash*)]
-                   (into {} (map
-                              (fn [[k v]]
-                                [k (if (vertex-fields k)
-                                     (delay
-                                       (v/get-veterx-by-id v))
-                                     v)])
-                              pure-edge))))
-               (eb/edges-from-cid-array group-props cid-list vertex-id))}
-            (select-keys group-props [:name :type])
-            (select-keys cid-list [:direction]))))
-      cid-lists)))
+    (->> (map
+           (fn [{:keys [group-props] :as cid-list}]
+             (let [vertex-fields (eb/vertex-fields group-props)]
+               (map
+                 (fn [edge]
+                   (let [pure-edge (dissoc edge :*schema* :*hash*)]
+                     (->> (into {} (map
+                                     (fn [[k v]]
+                                       [k (if (vertex-fields k)
+                                            (delay
+                                              (v/get-veterx-by-id v))
+                                            v)])
+                                     pure-edge))
+                          (merge (select-keys group-props [:name :type])
+                                 (select-keys cid-list [:direction])))))
+                 (eb/edges-from-cid-array group-props cid-list vertex-id))))
+           cid-lists)
+         (flatten))))

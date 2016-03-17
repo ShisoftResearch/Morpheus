@@ -41,4 +41,4 @@
           (let [morgan-freeman (get-veterx-by-key :people "Morgan Freeman")]
             ($ neighbours morgan-freeman) => anything
             ($ neighbours morgan-freeman :directions :*outbounds*) => anything
-            ($ neighbours morgan-freeman :edge-groups :acted-in) => anything))))
+            ($ neighbours morgan-freeman :edge-groups :spouse) => anything))))
