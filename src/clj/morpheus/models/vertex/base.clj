@@ -9,8 +9,8 @@
 
 (defmulties
   :body
-  (assumble-veterx [neb-cell])
-  (reset-veterx [id val])
-  (new-veterx [data])
-  (update-in-veterx [id fnc & params])
+  (assumble-vertex [neb-cell])
+  (reset-vertex [id val])
+  (new-vertex [data])
+  (update-vertex [id func-sym & params])
   (cell-fields [fields]))

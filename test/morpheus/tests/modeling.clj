@@ -24,22 +24,22 @@
           (new-vertex :movie {:name "Oblivion"              :year 2013}) => anything
           (new-vertex :people {:name "Jeanette Adair Bradshaw"}) => anything)
     (fact "Check Veterxs"
-          (get-veterx-by-key :people "Morgan Freeman") => (contains {:name "Morgan Freeman" :age 78})
-          (get-veterx-by-key :movie "Batman Begins")  => (contains {:name "Batman Begins"  :year 2005})
-          (get-veterx-by-key :movie "Oblivion") => (contains {:name "Oblivion" :year 2013}))
+          (get-vertex-by-key :people "Morgan Freeman") => (contains {:name "Morgan Freeman" :age 78})
+          (get-vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins"  :year 2005})
+          (get-vertex-by-key :movie "Oblivion") => (contains {:name "Oblivion" :year 2013}))
     (fact "Create Edges"
-          (let [morgan-freeman (get-veterx-by-key :people "Morgan Freeman")
-                batman-begins  (get-veterx-by-key :movie "Batman Begins")
-                dark-knight    (get-veterx-by-key :movie "The Dark Knight")
-                oblivion       (get-veterx-by-key :movie "Oblivion")
-                jeanette-adair-bradshaw (get-veterx-by-key :people "Jeanette Adair Bradshaw")]
+          (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
+                batman-begins  (get-vertex-by-key :movie "Batman Begins")
+                dark-knight    (get-vertex-by-key :movie "The Dark Knight")
+                oblivion       (get-vertex-by-key :movie "Oblivion")
+                jeanette-adair-bradshaw (get-vertex-by-key :people "Jeanette Adair Bradshaw")]
             (create-edge morgan-freeman :acted-in batman-begins {:as "Lucius Fox"}) => anything
             (create-edge morgan-freeman :acted-in dark-knight {:as "Lucius Fox"}) => anything
             (create-edge morgan-freeman :acted-in oblivion {:as "Malcolm Beech"}) => anything
             (create-edge morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
     (fact "Read Edges"
-          (let [morgan-freeman (get-veterx-by-key :people "Morgan Freeman")
-                batman-begins  (get-veterx-by-key :movie "Batman Begins")]
+          (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
+                batman-begins  (get-vertex-by-key :movie "Batman Begins")]
             (neighbours morgan-freeman) => (contains [(contains {:name :spouse, :type :indirected, :direction :*neighbours*})
                                                       (contains {:name :acted-in, :type :directed, :direction :*outbounds*})]
                                                      :gaps-ok :in-any-order)
@@ -48,4 +48,6 @@
                                                                            (contains {:name :acted-in, :type :directed, :direction :*outbounds*})
                                                                            (contains {:name :acted-in, :type :directed, :direction :*outbounds*})])
             (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:name :spouse, :type :indirected, :direction :*neighbours*})])
-            (neighbours batman-begins) => (just [(contains {:name :acted-in :type :directed :direction :*inbounds*})])))))
+            (neighbours batman-begins) => (just [(contains {:name :acted-in :type :directed :direction :*inbounds*})])))
+    (fact "Update Vertex"
+          )))

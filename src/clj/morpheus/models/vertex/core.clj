@@ -22,7 +22,7 @@
      (let [props# (veterx-group-props group#)]
        (apply ~(symbol "morpheus.models.vertex.base" (name op)) props# args#))))
 
-(wrap-base-ops reset-veterx)
+(wrap-base-ops reset-vertex)
 (wrap-base-ops update-in-veterx)
 
 (defn get-veterx-by-id [id]
@@ -30,12 +30,15 @@
         neb-sid  (:*schema* neb-cell)
         morph-schema (mb/schema-by-neb-id neb-sid)]
     (assert (= :v (:stype morph-schema)) "This cell is not a veterx")
-    (vb/assumble-veterx morph-schema neb-cell)))
+    (vb/assumble-vertex morph-schema neb-cell)))
 
-(defn get-veterx-by-key [group key]
+(defn get-vertex-by-key [group key]
   (let [vp (veterx-group-props group)
         id (mb/cell-id-by-key :v vp key)]
     (get-veterx-by-id id)))
 
 (defn new-vertex [group data]
-  (vb/new-veterx (veterx-group-props group) data))
+  (vb/new-vertex (veterx-group-props group) data))
+
+(defn update-vertex [vertex fn-sym & params]
+  )
