@@ -37,3 +37,13 @@
 (defn update-vertex [vertex fn-sym & params]
   (apply update-vertex-by-vp
          (:*vp* vertex) (:*id* vertex) fn-sym params))
+
+(defn- reset-vertex-cell-map [vertex value]
+  (merge value
+         (select-keys vertex vb/vertex-relation-field-keys)))
+
+(defn reset-vertex-by-vp [vp id value]
+  (update-vertex-by-vp vp id 'morpheus.models.vertex.core/reset-vertex-cell-map value))
+
+(defn reset-vertex [vertex value]
+  (reset-vertex-by-vp (:*vp* vertex) (:*id* vertex) value))

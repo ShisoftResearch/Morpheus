@@ -11,7 +11,8 @@
     (fact "Create Veterx Schema"
           (new-vertex-group :movie {:body :defined :key-field :name
                                     :fields [[:name :text]
-                                             [:year :short]]}) => anything
+                                             [:year :short]
+                                             [:directed-by :obj]]}) => anything
           (new-vertex-group :people {:body :dynamic :key-field :name}) => anything)
     (fact "Create Edge Schema"
           (new-edge-group :acted-in {:type :directed :body :dynamic}) => anything
@@ -58,4 +59,9 @@
           (update-vertex (get-vertex-by-key :people "Morgan Freeman")
                          'clojure.core/assoc :said "Every time I show up and explain something, I earn a freckle.") => anything)
     (fact "Check Updated Dynamic Vertex"
-          (get-vertex-by-key :people "Morgan Freeman") => (contains {:said "Every time I show up and explain something, I earn a freckle."}))))
+          (get-vertex-by-key :people "Morgan Freeman") => (contains {:said "Every time I show up and explain something, I earn a freckle."})
+          (neighbours (get-vertex-by-key :people "Morgan Freeman")) => #(= 4 (count %)))
+    (fact "Reset Vertex"
+          (reset-vertex (get-vertex-by-key :movie "Batman Begins") {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}) => anything
+          (neighbours (get-vertex-by-key :movie "Batman Begins")) => #(= 1 (count %))
+          (get-vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}))))

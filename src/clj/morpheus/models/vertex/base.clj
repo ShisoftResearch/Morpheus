@@ -7,10 +7,12 @@
    [:*outbounds*    [:ARRAY :relations]]
    [:*neighbours*   [:ARRAY :relations]]])
 
+(def vertex-relation-field-keys
+  (map first vertex-relation-fields))
+
 (defmulties
   :body
   (assemble-vertex [neb-cell])
-  (reset-vertex [id val])
   (new-vertex [data])
   (update-vertex [id func-sym params])
   (cell-fields [fields]))

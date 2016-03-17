@@ -29,9 +29,6 @@
   (assemble-vertex
     [neb-cell]
     (merge {:*vp* vp} (dissoc neb-cell :*data*) (:*data* neb-cell)))
-  (reset-vertex
-    [id val]
-    )
   (new-vertex
     [data]
     (let [{:keys [neb-sid]} vp]
