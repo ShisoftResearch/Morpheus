@@ -16,15 +16,6 @@
 
 (defn veterx-group-props [group] (core/get-schema :v group))
 
-(defmacro wrap-base-ops [op]
-  ;TODO This can be better for performance by avoid using apply
-  `(defn ~op [group# & args#]
-     (let [props# (veterx-group-props group#)]
-       (apply ~(symbol "morpheus.models.vertex.base" (name op)) props# args#))))
-
-(wrap-base-ops reset-vertex)
-(wrap-base-ops update-in-veterx)
-
 (defn get-veterx-by-id [id]
   (let [neb-cell (neb/read-cell* id)
         neb-sid  (:*schema* neb-cell)
@@ -40,5 +31,9 @@
 (defn new-vertex [group data]
   (vb/new-vertex (veterx-group-props group) data))
 
+(defn update-vertex-by-vp [vp id fn-sym & params]
+  (vb/update-vertex vp id fn-sym params))
+
 (defn update-vertex [vertex fn-sym & params]
-  )
+  (apply update-vertex-by-vp
+         (:*vp* vertex) (:*id* vertex) fn-sym params))

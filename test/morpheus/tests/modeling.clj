@@ -21,12 +21,12 @@
           (new-vertex :movie {:name "Batman Begins"         :year 2005}) => anything
           (new-vertex :movie {:name "The Dark Knight"       :year 2008}) => anything
           (new-vertex :movie {:name "The Dark Knight Rises" :year 2012}) => anything
-          (new-vertex :movie {:name "Oblivion"              :year 2013}) => anything
+          (new-vertex :movie {:name "Oblivion"              :year 2010}) => anything
           (new-vertex :people {:name "Jeanette Adair Bradshaw"}) => anything)
     (fact "Check Veterxs"
           (get-vertex-by-key :people "Morgan Freeman") => (contains {:name "Morgan Freeman" :age 78})
           (get-vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins"  :year 2005})
-          (get-vertex-by-key :movie "Oblivion") => (contains {:name "Oblivion" :year 2013}))
+          (get-vertex-by-key :movie "Oblivion") => (contains {:name "Oblivion" :year 2010}))
     (fact "Create Edges"
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
                 batman-begins  (get-vertex-by-key :movie "Batman Begins")
@@ -49,5 +49,13 @@
                                                                            (contains {:name :acted-in, :type :directed, :direction :*outbounds*})])
             (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:name :spouse, :type :indirected, :direction :*neighbours*})])
             (neighbours batman-begins) => (just [(contains {:name :acted-in :type :directed :direction :*inbounds*})])))
-    (fact "Update Vertex"
-          )))
+    (fact "Update Defined Vertex"
+          (update-vertex (get-vertex-by-key :movie "Oblivion")
+                         'clojure.core/assoc :year 2013) => anything)
+    (fact "Check Updated Defined Vertex"
+          (get-vertex-by-key :movie "Oblivion") => (contains {:name "Oblivion" :year 2013}))
+    (fact "Update Dynamic Vertex"
+          (update-vertex (get-vertex-by-key :people "Morgan Freeman")
+                         'clojure.core/assoc :said "Every time I show up and explain something, I earn a freckle.") => anything)
+    (fact "Check Updated Dynamic Vertex"
+          (get-vertex-by-key :people "Morgan Freeman") => (contains {:said "Every time I show up and explain something, I earn a freckle."}))))

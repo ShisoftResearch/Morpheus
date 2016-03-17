@@ -36,7 +36,7 @@
         (mb/cell-id-by-data :v vp data) neb-sid
         (preproc-for-write neb-sid data))))
   (update-vertex
-    [id func-sym & params]
+    [id func-sym params]
     (neb/update-cell*
       id 'morpheus.models.vertex.dynamic/update-vertex*
       func-sym params))

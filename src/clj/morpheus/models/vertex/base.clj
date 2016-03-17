@@ -12,5 +12,5 @@
   (assumble-vertex [neb-cell])
   (reset-vertex [id val])
   (new-vertex [data])
-  (update-vertex [id func-sym & params])
+  (update-vertex [id func-sym params])
   (cell-fields [fields]))
