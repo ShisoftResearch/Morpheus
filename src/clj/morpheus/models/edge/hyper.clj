@@ -13,4 +13,5 @@
   (type-stick-body [] true)
   (edges-from-cid-array
     [cid-array]
-    ))
+    )
+  (delete-edge-cell [edge start end]))

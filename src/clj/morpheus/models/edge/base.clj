@@ -2,7 +2,9 @@
   (:require [morpheus.utils :refer :all]
             [morpheus.models.base :as mb]
             [neb.core :as neb]
-            [cluster-connector.utils.for-debug :refer [spy $]]))
+            [neb.cell :as neb-cell]
+            [cluster-connector.utils.for-debug :refer [spy $]]
+            [morpheus.models.core :as core]))
 
 (def schema-fields
   [[:*start*  :cid]
@@ -14,7 +16,8 @@
   (v1-vertex-field [])
   (v2-vertex-field [])
   (type-stick-body [])
-  (vertex-fields []))
+  (vertex-fields [])
+  (delete-edge-cell [edge start end]))
 
 (defmulties
   :body
@@ -48,4 +51,27 @@
     (neb/update-cell* list-cell-id 'morpheus.models.edge.base/conj-into-list-cell cell-id)
     (if-not cid-list-row
       (update vertex field conj {:sid edge-schema-id :list-cid list-cell-id})
+      vertex)))
+
+(defn rm-ve-list-item* [{:keys [cid-array] :as list-cell} target-cid]
+  (assert ((set cid-array) target-cid) "target does not in the list")
+  (update list-cell :cid-array #(remove-first (fn [x] (= target-cid x)) %)))
+
+(defn rm-ve-list-item [list-cell target-cid]
+  (let [{:keys [cid-array *hash*] :as proced-cell} (rm-ve-list-item* list-cell target-cid)]
+    (if (empty? cid-array)
+      (do (neb-cell/delete-cell neb-cell/*cell-trunk* *hash*) true)
+      (do (neb-cell/replace-cell* neb-cell/*cell-trunk* *hash* proced-cell) false))))
+
+(defn rm-ve-relation [vertex direction es-id target-cid]
+  (let [cid-list-cell-id (->> (get vertex direction)
+                              (filter (fn [m] (= es-id (:sid m))))
+                              (first) (:list-cid))
+        empty-relation? (neb/write-lock-exec*
+                          cid-list-cell-id
+                          'morpheus.models.edge.base/rm-ve-list-item
+                          target-cid)]
+    (if empty-relation?
+      (update vertex direction
+              (fn [coll] (remove #(= cid-list-cell-id (:list-cid %)) coll)))
       vertex)))

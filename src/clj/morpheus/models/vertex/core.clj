@@ -14,22 +14,25 @@
         fields (vb/cell-fields group-props fields)]
     (core/add-schema :v group-name fields group-props)))
 
-(defn veterx-group-props [group] (core/get-schema :v group))
+(def veterx-group-props vb/veterx-group-props)
 
 (defn get-veterx-by-id [id]
-  (let [neb-cell (neb/read-cell* id)
-        neb-sid  (:*schema* neb-cell)
-        morph-schema (mb/schema-by-neb-id neb-sid)]
-    (assert (= :v (:stype morph-schema)) "This cell is not a veterx")
-    (vb/assemble-vertex morph-schema neb-cell)))
+  (when-let [neb-cell (neb/read-cell* id)]
+    (let [neb-sid  (:*schema* neb-cell)
+          morph-schema (mb/schema-by-neb-id neb-sid)]
+      (assert (= :v (:stype morph-schema)) "This cell is not a veterx")
+      (vb/assemble-vertex morph-schema neb-cell))))
 
 (defn get-vertex-by-key [group key]
-  (let [vp (veterx-group-props group)
+  (let [vp (vb/veterx-group-props group)
         id (mb/cell-id-by-key :v vp key)]
     (get-veterx-by-id id)))
 
+(defn reload-vertex [vertex]
+  (get-veterx-by-id (:*id* vertex)))
+
 (defn new-vertex [group data]
-  (vb/new-vertex (veterx-group-props group) data))
+  (vb/new-vertex (vb/veterx-group-props group) data))
 
 (defn update-vertex-by-vp [vp id fn-sym & params]
   (vb/update-vertex vp id fn-sym params))
@@ -38,14 +41,14 @@
   (apply update-vertex-by-vp
          (:*vp* vertex) (:*id* vertex) fn-sym params))
 
-(defn- reset-vertex-cell-map [vertex value]
-  (merge value
-         (select-keys vertex vb/vertex-relation-field-keys)))
-
 (defn reset-vertex-by-vp [vp id value]
-  (update-vertex-by-vp vp id 'morpheus.models.vertex.core/reset-vertex-cell-map value))
+  (update-vertex-by-vp vp id 'morpheus.models.vertex.base/reset-vertex-cell-map value))
 
 (defn reset-vertex [vertex value]
   (reset-vertex-by-vp (:*vp* vertex) (:*id* vertex) value))
 
-(defn delete-vertex [])
+(defn delete-vertex-by-id [id]
+  (neb/write-lock-exec* id 'morpheus.models.vertex.base/delete-vertex*))
+
+(defn delete-vertex [vertex]
+  (delete-vertex-by-id (:*id* vertex)))

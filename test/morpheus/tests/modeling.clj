@@ -36,20 +36,20 @@
                 jeanette-adair-bradshaw (get-vertex-by-key :people "Jeanette Adair Bradshaw")]
             (create-edge morgan-freeman :acted-in batman-begins {:as "Lucius Fox"}) => anything
             (create-edge morgan-freeman :acted-in dark-knight {:as "Lucius Fox"}) => anything
-            ($ create-edge morgan-freeman :acted-in oblivion {:as "Malcolm Beech"}) => anything
-            ($ create-edge morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
+            (create-edge morgan-freeman :acted-in oblivion {:as "Malcolm Beech"}) => anything
+            (create-edge morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
     (fact "Read Edges"
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
                 batman-begins  (get-vertex-by-key :movie "Batman Begins")]
-            (neighbours morgan-freeman) => (contains [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :direction :*neighbours*})
-                                                      (contains {:*ep* (contains {:name :acted-in, :type :directed}), :direction :*outbounds*})]
+            (neighbours morgan-freeman) => (contains [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :*direction* :*neighbours*})
+                                                      (contains {:*ep* (contains {:name :acted-in, :type :directed}), :*direction* :*outbounds*})]
                                                      :gaps-ok :in-any-order)
             (neighbours morgan-freeman) => #(= 4 (count %))
-            (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:*ep* (contains {:name :acted-in, :type :directed}) :direction :*outbounds*})
-                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}), :direction :*outbounds*})
-                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}), :direction :*outbounds*})])
-            (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :direction :*neighbours*})])
-            (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :direction :*inbounds*})])))
+            (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})
+                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
+                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})])
+            (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})])
+            (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :*direction* :*inbounds*})])))
     (fact "Update Defined Vertex"
           (update-vertex (get-vertex-by-key :movie "Oblivion")
                          'clojure.core/assoc :year 2013) => anything)
@@ -64,4 +64,12 @@
     (fact "Reset Vertex"
           (reset-vertex (get-vertex-by-key :movie "Batman Begins") {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}) => anything
           (neighbours (get-vertex-by-key :movie "Batman Begins")) => #(= 1 (count %))
-          (get-vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}))))
+          (get-vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}))
+    (fact "Delete Vertex"
+          (delete-vertex (get-vertex-by-key :people "Jeanette Adair Bradshaw")) => anything
+          (delete-vertex (get-vertex-by-key :movie "Oblivion")) => anything)
+    (fact "Check Deleted Vertex"
+          (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")]
+            (get-vertex-by-key :people "Jeanette Adair Bradshaw") => nil?
+            (get-vertex-by-key :movie "Oblivion") => nil?
+            (neighbours morgan-freeman) => #(= 2 (count %))))))

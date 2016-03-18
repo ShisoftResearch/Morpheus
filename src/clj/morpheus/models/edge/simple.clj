@@ -17,8 +17,8 @@
   (edge-base-schema [] nil)
   (edge-schema [base-schema fields] nil)
   (edges-from-cid-array
-    [{:keys [cid-array direction] :as cid-list} & [start-vertex]]
-    (let [{:keys [start-kw end-kw]} (vertex-direction-mapper direction)]
+    [{:keys [cid-array *direction*] :as cid-list} & [start-vertex]]
+    (let [{:keys [start-kw end-kw]} (get vertex-direction-mapper *direction*)]
       (map
         (fn [vertex-cid]
           (hash-map

@@ -29,3 +29,12 @@
         `(defmethod ~name# ~dispatch-val ~(vec (concat [head-symbol] args#))
            ~@mbody#))
       body)))
+
+(defn remove-first [pred coll]
+  (loop [checked []
+         remains coll]
+    (if (or (pred (first remains))
+            (empty? remains))
+      (concat (rest remains) checked)
+      (recur (conj checked (first remains))
+             (rest remains)))))

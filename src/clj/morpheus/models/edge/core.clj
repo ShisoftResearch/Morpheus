@@ -7,7 +7,6 @@
             [morpheus.models.edge.defined]
             [morpheus.models.edge.dynamic]
             [morpheus.models.edge.base :as eb]
-            [morpheus.models.vertex.core :as v]
             [neb.core :as neb]
             [morpheus.models.core :as core]
             [cluster-connector.utils.for-debug :refer [$ spy]]
@@ -68,20 +67,20 @@
                                            (edge-groups sid))
                                    (assoc (select-keys (neb/read-cell* list-cid)
                                                        [:cid-array])
-                                     :direction direction
-                                     :group-props (mb/schema-by-id sid))))
+                                     :*direction* direction
+                                     :*group-props* (mb/schema-by-id sid))))
                                dir-cid-list)))
                          cid-lists)
                        (flatten)
                        (filter identity))]
     (->> (map
-           (fn [{:keys [group-props] :as cid-list}]
+           (fn [{:keys [*group-props*] :as cid-list}]
              (map
                (fn [edge]
                  (let [pure-edge (dissoc edge :*schema* :*hash*)]
                    (->> pure-edge
-                        (merge {:*ep* group-props}
-                               (select-keys cid-list [:direction])))))
-               (eb/edges-from-cid-array group-props cid-list vertex-id)))
+                        (merge {:*ep* *group-props*}
+                               (select-keys cid-list [:*direction*])))))
+               (eb/edges-from-cid-array *group-props* cid-list vertex-id)))
            cid-lists)
          (flatten))))
