@@ -30,7 +30,7 @@
   "It should been called from write-lock-exec in neb"
   (let [v-id (:*id* vertex)]
     (doseq [{:keys [*ep* *direction* *start* *end* *id*] :as neighbour} (e/neighbours vertex)]
-      (let [[es-type es-id] ((juxt :type :id) *ep*)
+      (let [es-id (:id *ep*)
             target-id (or *id* v-id)
             remote-direction (case *direction*
                                :*inbounds* :*outbounds*

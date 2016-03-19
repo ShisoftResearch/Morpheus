@@ -85,4 +85,17 @@
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")]
             (get-vertex-by-key :people "Jeanette Adair Bradshaw") => nil?
             (get-vertex-by-key :movie "Oblivion") => nil?
-            (neighbours morgan-freeman) => #(= 3 (count %))))))
+            (neighbours morgan-freeman) => #(= 3 (count %))))
+    (fact "Add Deleted Vertex For Following Tests"
+          (new-vertex :people {:name "Jeanette Adair Bradshaw"}) => anything
+          (create-edge
+            (get-vertex-by-key :people "Morgan Freeman") :spouse
+            (get-vertex-by-key :people "Jeanette Adair Bradshaw")) => anything
+          (neighbours (get-vertex-by-key :people "Morgan Freeman")) => #(= 4 (count %)))
+    (fact "Delete Edge"
+          (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
+                rand-acted-movie (first (neighbours morgan-freeman :relationships :acted-in))
+                mf-spouse-edge (first (neighbours morgan-freeman :relationships :spouse))]
+            (delete-edge rand-acted-movie) => anything
+            (delete-edge mf-spouse-edge) => anything
+            (neighbours (reload-vertex morgan-freeman)) => #(= 2 (count %))))))

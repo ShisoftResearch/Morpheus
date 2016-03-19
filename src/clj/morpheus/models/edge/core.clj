@@ -85,3 +85,14 @@
   (let [{:keys [*id* *ep*]} edge]
     (assert *id* "Cannot update this edge because there is no cell id for it.")
     (eb/update-edge *ep* *id* func-sym params)))
+
+(defn delete-edge [edge]
+  (let [{:keys [*ep* *start* *end* *id*]} edge
+        es-id (:id *ep*)
+        [v1-field v2-field] ((juxt eb/v1-vertex-field eb/v2-vertex-field) *ep*)]
+    (assert (or *start* *end*) "Edge missing important info to delete")
+    (neb/update-cell* *start* 'morpheus.models.edge.base/rm-ve-relation
+                      v1-field es-id (or *id* *end*))
+    (neb/update-cell* *end* 'morpheus.models.edge.base/rm-ve-relation
+                      v2-field es-id (or *id* *start*))
+    (when *id* (eb/delete-edge-cell *ep* edge *start* *end*))))

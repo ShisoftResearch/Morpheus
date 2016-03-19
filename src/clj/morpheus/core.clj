@@ -20,7 +20,6 @@
 (defn -main
   "Main Entrance"
   [& args]
-  (==)
   (println "Morpueus, General Purpose Graph Engine")
   (println "(C) 2016 Shisoft Research")
   (start-server)
