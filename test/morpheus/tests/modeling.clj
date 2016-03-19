@@ -47,11 +47,13 @@
                                                       (contains {:*ep* (contains {:name :acted-in, :type :directed}), :*direction* :*outbounds*})]
                                                      :gaps-ok :in-any-order)
             (neighbours morgan-freeman) => #(= 5 (count %))
+            (degree morgan-freeman) => 5
             (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})])
             (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})])
+            (degree morgan-freeman :relationships :spouse) => 1
             (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :*direction* :*inbounds*})])))
     (fact "Update Defined Vertex"
           (update-vertex (get-vertex-by-key :movie "Oblivion")
@@ -63,10 +65,10 @@
                          'clojure.core/assoc :said "Every time I show up and explain something, I earn a freckle.") => anything)
     (fact "Check Updated Dynamic Vertex"
           (get-vertex-by-key :people "Morgan Freeman") => (contains {:said "Every time I show up and explain something, I earn a freckle."})
-          (neighbours (get-vertex-by-key :people "Morgan Freeman")) => #(= 5 (count %)))
+          (degree (get-vertex-by-key :people "Morgan Freeman")) => 5)
     (fact "Reset Vertex"
           (reset-vertex (get-vertex-by-key :movie "Batman Begins") {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}) => anything
-          (neighbours (get-vertex-by-key :movie "Batman Begins")) => #(= 1 (count %))
+          (degree (get-vertex-by-key :movie "Batman Begins")) => 1
           (get-vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}))
     (fact "Update Edges"
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
@@ -85,13 +87,13 @@
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")]
             (get-vertex-by-key :people "Jeanette Adair Bradshaw") => nil?
             (get-vertex-by-key :movie "Oblivion") => nil?
-            (neighbours morgan-freeman) => #(= 3 (count %))))
+            (degree morgan-freeman) => 3))
     (fact "Add Deleted Vertex For Following Tests"
           (new-vertex :people {:name "Jeanette Adair Bradshaw"}) => anything
           (create-edge
             (get-vertex-by-key :people "Morgan Freeman") :spouse
             (get-vertex-by-key :people "Jeanette Adair Bradshaw")) => anything
-          (neighbours (get-vertex-by-key :people "Morgan Freeman")) => #(= 4 (count %)))
+          (degree (get-vertex-by-key :people "Morgan Freeman")) => 4)
     (fact "Delete Edge"
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
                 rand-acted-movie (first (neighbours morgan-freeman :relationships :acted-in))

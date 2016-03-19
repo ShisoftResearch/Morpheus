@@ -45,9 +45,8 @@
              {:*id* edge-cell-id
               :*ep* edge-schema}))))
 
-(defn neighbours [vertex & {:keys [directions relationships]}]
-  (let [vertex-id (:*id* vertex)
-        direction-fields (set (or (when directions
+(defn vertex-cid-lists [vertex & {:keys [directions relationships]}]
+  (let [direction-fields (set (or (when directions
                                     (if (vector? directions)
                                       directions [directions]))
                                   [:*inbounds* :*outbounds* :*neighbours*]))
@@ -57,22 +56,26 @@
                               (partial core/get-schema-id :e)
                               (if (vector? relationships)
                                 relationships [relationships]))))
-        cid-lists (select-keys vertex direction-fields)
-        cid-lists (->> (map
-                         (fn [[direction dir-cid-list]]
-                           (when (direction-fields direction)
-                             (map
-                               (fn [{:keys [sid list-cid]}]
-                                 (when (or (nil? edge-groups)
-                                           (edge-groups sid))
-                                   (assoc (select-keys (neb/read-cell* list-cid)
-                                                       [:cid-array])
-                                     :*direction* direction
-                                     :*group-props* (mb/schema-by-id sid))))
-                               dir-cid-list)))
-                         cid-lists)
-                       (flatten)
-                       (filter identity))]
+        cid-lists (select-keys vertex direction-fields)]
+    (->> (map
+           (fn [[direction dir-cid-list]]
+             (when (direction-fields direction)
+               (map
+                 (fn [{:keys [sid list-cid]}]
+                   (when (or (nil? edge-groups)
+                             (edge-groups sid))
+                     (assoc (select-keys (neb/read-cell* list-cid)
+                                         [:cid-array])
+                       :*direction* direction
+                       :*group-props* (mb/schema-by-id sid))))
+                 dir-cid-list)))
+           cid-lists)
+         (flatten)
+         (filter identity))))
+
+(defn neighbours [vertex & params]
+  (let [vertex-id (:*id* vertex)
+        cid-lists (apply vertex-cid-lists vertex params)]
     (->> (map
            (fn [{:keys [*group-props* *direction*] :as cid-list}]
              (map
@@ -80,6 +83,10 @@
                (eb/edges-from-cid-array *group-props* cid-list vertex-id)))
            cid-lists)
          (flatten))))
+
+(defn degree [vertex & params]
+  (let [cid-lists (apply vertex-cid-lists vertex params)]
+    (reduce + (map (comp count :cid-array) cid-lists))))
 
 (defn update-edge [edge func-sym & params]
   (let [{:keys [*id* *ep*]} edge]
