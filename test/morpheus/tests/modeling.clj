@@ -6,7 +6,7 @@
             [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 (facts
-  "Creating Veterx and Edges"
+  "CRUD for Veterxies and Edges"
   (with-server
     (fact "Create Veterx Schema"
           (new-vertex-group :movie {:body :defined :key-field :name
@@ -33,10 +33,12 @@
                 batman-begins  (get-vertex-by-key :movie "Batman Begins")
                 dark-knight    (get-vertex-by-key :movie "The Dark Knight")
                 oblivion       (get-vertex-by-key :movie "Oblivion")
+                dark-knight-rises (get-vertex-by-key :name "The Dark Knight Rises")
                 jeanette-adair-bradshaw (get-vertex-by-key :people "Jeanette Adair Bradshaw")]
             (create-edge morgan-freeman :acted-in batman-begins {:as "Lucius Fox"}) => anything
             (create-edge morgan-freeman :acted-in dark-knight {:as "Lucius Fox"}) => anything
             (create-edge morgan-freeman :acted-in oblivion {:as "Malcolm Beech"}) => anything
+            (create-edge morgan-freeman :acted-in dark-knight-rises {:as "Lucius Fox"}) => anything
             (create-edge morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
     (fact "Read Edges"
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
@@ -44,8 +46,9 @@
             (neighbours morgan-freeman) => (contains [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :*direction* :*neighbours*})
                                                       (contains {:*ep* (contains {:name :acted-in, :type :directed}), :*direction* :*outbounds*})]
                                                      :gaps-ok :in-any-order)
-            (neighbours morgan-freeman) => #(= 4 (count %))
+            (neighbours morgan-freeman) => #(= 5 (count %))
             (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})
+                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})])
             (neighbours morgan-freeman :relationships :spouse) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})])
@@ -60,7 +63,7 @@
                          'clojure.core/assoc :said "Every time I show up and explain something, I earn a freckle.") => anything)
     (fact "Check Updated Dynamic Vertex"
           (get-vertex-by-key :people "Morgan Freeman") => (contains {:said "Every time I show up and explain something, I earn a freckle."})
-          (neighbours (get-vertex-by-key :people "Morgan Freeman")) => #(= 4 (count %)))
+          (neighbours (get-vertex-by-key :people "Morgan Freeman")) => #(= 5 (count %)))
     (fact "Reset Vertex"
           (reset-vertex (get-vertex-by-key :movie "Batman Begins") {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}) => anything
           (neighbours (get-vertex-by-key :movie "Batman Begins")) => #(= 1 (count %))
@@ -72,4 +75,4 @@
           (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")]
             (get-vertex-by-key :people "Jeanette Adair Bradshaw") => nil?
             (get-vertex-by-key :movie "Oblivion") => nil?
-            (neighbours morgan-freeman) => #(= 2 (count %))))))
+            (neighbours morgan-freeman) => #(= 3 (count %))))))
