@@ -23,20 +23,21 @@
 (defn edge-group-props [group] (core/get-schema :e group))
 
 (defn create-edge [v1 group v2 & args]
-  (let [[v1-id v2-id] (map :*id* [v1 v2])
+  (let [v1-id (:*id* v1)
+        v2-id (:*id* v2)
         edge-schema (edge-group-props group)
         edge-schema-id (:id edge-schema)
-        [v1-v-field v2-v-field
-         type-body-sticker] ((juxt eb/v1-vertex-field
-                                   eb/v2-vertex-field
-                                   eb/type-stick-body) edge-schema)
+        v1-v-field (eb/v1-vertex-field edge-schema)
+        v2-v-field (eb/v2-vertex-field edge-schema)
+        type-body-sticker (eb/type-stick-body edge-schema)
         require-edge-cell? (eb/require-edge-cell? edge-schema)
         edge-cell-vertex-fields (eb/edge-cell-vertex-fields v1-id v2-id)]
     (when type-body-sticker (assert (= type-body-sticker (:body edge-schema))
                                     (str type-body-sticker " cannot with body type " (:body edge-schema))))
-    (let [edge-cell-id (when require-edge-cell? (apply eb/create-edge-cell
-                                                       edge-schema
-                                                       edge-cell-vertex-fields args))]
+    (let [edge-cell-id (when require-edge-cell?
+                         (apply eb/create-edge-cell
+                                edge-schema
+                                edge-cell-vertex-fields args))]
       (neb/update-cell* v1-id 'morpheus.models.edge.base/record-edge-on-vertex
                         edge-schema-id v1-v-field (or edge-cell-id v2-id))
       (neb/update-cell* v2-id 'morpheus.models.edge.base/record-edge-on-vertex
@@ -53,7 +54,7 @@
         edge-groups (when relationships
                       (into #{}
                             (map
-                              (partial core/get-schema-id :e)
+                              (fn [x] (core/get-schema-id :e x))
                               (if (vector? relationships)
                                 relationships [relationships]))))
         cid-lists (select-keys vertex direction-fields)]
@@ -79,7 +80,7 @@
     (->> (map
            (fn [{:keys [*group-props* *direction*] :as cid-list}]
              (map
-               (partial eb/format-edge-cells *group-props* *direction*)
+               (fn [x] (eb/format-edge-cells *group-props* *direction* x))
                (eb/edges-from-cid-array *group-props* cid-list vertex-id)))
            cid-lists)
          (flatten))))
