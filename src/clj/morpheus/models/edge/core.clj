@@ -74,13 +74,14 @@
                        (flatten)
                        (filter identity))]
     (->> (map
-           (fn [{:keys [*group-props*] :as cid-list}]
+           (fn [{:keys [*group-props* *direction*] :as cid-list}]
              (map
-               (fn [edge]
-                 (let [pure-edge (dissoc edge :*schema* :*hash*)]
-                   (->> pure-edge
-                        (merge {:*ep* *group-props*}
-                               (select-keys cid-list [:*direction*])))))
+               (partial eb/format-edge-cells *group-props* *direction*)
                (eb/edges-from-cid-array *group-props* cid-list vertex-id)))
            cid-lists)
          (flatten))))
+
+(defn update-edge [edge func-sym & params]
+  (let [{:keys [*id* *ep*]} edge]
+    (assert *id* "Cannot update this edge because there is no cell id for it.")
+    (eb/update-edge *ep* *id* func-sym params)))

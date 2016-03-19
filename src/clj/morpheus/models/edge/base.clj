@@ -21,8 +21,7 @@
 
 (defmulties
   :body
-  (get-edge [])
-  (update-edge [new-edge])
+  (update-edge [id func-sym params])
   (delete-edge [])
   (base-schema [])
   (require-edge-cell? [])
@@ -75,3 +74,9 @@
       (update vertex direction
               (fn [coll] (remove #(= cid-list-cell-id (:list-cid %)) coll)))
       vertex)))
+
+(defn format-edge-cells [group-props direction edge]
+  (let [pure-edge (dissoc edge :*schema* :*hash*)]
+    (->> pure-edge
+         (merge {:*ep* group-props
+                 :*direction* direction}))))

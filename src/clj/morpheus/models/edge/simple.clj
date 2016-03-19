@@ -24,4 +24,5 @@
           (hash-map
             start-kw start-vertex
             end-kw   vertex-cid))
-        cid-array))))
+        cid-array)))
+  (update-edge [id func-sym params] (throw (UnsupportedOperationException. "Simple edges cannot been updated"))))

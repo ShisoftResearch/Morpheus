@@ -3,10 +3,14 @@
             [morpheus.models.edge.base :refer :all]
             [neb.core :as neb]
             [morpheus.models.base :as mb]
+            [morpheus.models.dynamic :as md]
             [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 (def dynamic-edge-schema-fields
   [[:*data* :obj]])
+
+(defn update-edge* [neb-cell func-sym params]
+  (md/update-dynamic-cell :*ep* neb-cell func-sym params))
 
 (defmethods
   :dynamic ep
@@ -25,9 +29,11 @@
         (assoc defined-map :*data* dynamic-map))))
   (edges-from-cid-array
     [{:keys [cid-array] :as cid-list} & _]
-    (map
-      (fn [edge-cid]
-        (let [{:keys [*data*] :as edge} (neb/read-cell* edge-cid)]
-          (merge (dissoc edge :*data*)
-                 *data*)))
-      cid-array)))
+    (map (comp md/assemble-dynamic-outcome neb/read-cell*) cid-array))
+  (update-edge
+    [id func-sym params]
+    (format-edge-cells
+      ep nil
+      (neb/update-cell*
+        id 'morpheus.models.edge.dynamic/update-edge*
+        func-sym params))))

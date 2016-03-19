@@ -6,6 +6,8 @@
             [cluster-connector.utils.for-debug :refer [$]])
   (:gen-class))
 
+(set! *warn-on-reflection* true)
+
 (defn shutdown-server []
   (println "Shuting down...")
   (neb/stop-server))
@@ -18,6 +20,7 @@
 (defn -main
   "Main Entrance"
   [& args]
+  (==)
   (println "Morpueus, General Purpose Graph Engine")
   (println "(C) 2016 Shisoft Research")
   (start-server)

@@ -48,10 +48,10 @@
   (let [{:keys [neb-sid name]} vp]
     (neb/cell-id-by-key (str (name st) "-" (str neb-sid) "-" (str name) "-" (str key)))))
 
-(defn cell-id-by-data [st vp data]
-  (let [{:keys [key-field]} vp]
+(defn cell-id-by-data [st props data]
+  (let [{:keys [key-field]} props]
     (if key-field
-      (cell-id-by-key st vp (get data key-field))
+      (cell-id-by-key st props (get data key-field))
       (neb/rand-cell-id))))
 
 (dl/deflock models-init)

@@ -14,4 +14,7 @@
   (edges-from-cid-array
     [cid-array]
     )
-  (delete-edge-cell [edge start end]))
+  (delete-edge-cell [edge start end])
+  (update-edge
+    [id func-sym params]
+    ))

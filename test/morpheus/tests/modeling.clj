@@ -68,6 +68,16 @@
           (reset-vertex (get-vertex-by-key :movie "Batman Begins") {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}) => anything
           (neighbours (get-vertex-by-key :movie "Batman Begins")) => #(= 1 (count %))
           (get-vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}))
+    (fact "Update Edges"
+          (let [morgan-freeman (get-vertex-by-key :people "Morgan Freeman")
+                mf-spouse-edge (first (neighbours morgan-freeman :relationships :spouse))
+                rand-acted-movie (first (neighbours morgan-freeman :relationships :acted-in))]
+            mf-spouse-edge => map?
+            (update-edge mf-spouse-edge :a :b) => (throws AssertionError)
+            rand-acted-movie => map?
+            (update-edge rand-acted-movie 'clojure.core/assoc :actor-name "Morgan Freeman") => anything))
+    (fact "Check Edge Updated"
+          (first (neighbours (get-vertex-by-key :people "Morgan Freeman") :relationships :acted-in)) => (contains {:actor-name "Morgan Freeman"}))
     (fact "Delete Vertex"
           (delete-vertex (get-vertex-by-key :people "Jeanette Adair Bradshaw")) => anything
           (delete-vertex (get-vertex-by-key :movie "Oblivion")) => anything)
