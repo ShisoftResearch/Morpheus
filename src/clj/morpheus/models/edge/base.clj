@@ -53,7 +53,7 @@
       vertex)))
 
 (defn rm-ve-list-item* [{:keys [cid-array] :as list-cell} target-cid]
-  (assert ((set cid-array) target-cid) "target does not in the list")
+  ;(assert ((set cid-array) target-cid) "target does not in the list")
   (update list-cell :cid-array #(remove-first (fn [x] (= target-cid x)) %)))
 
 (defn rm-ve-list-item [list-cell target-cid]

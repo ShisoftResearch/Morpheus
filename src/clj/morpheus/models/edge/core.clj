@@ -97,7 +97,7 @@
   (let [{:keys [*ep* *start* *end* *id*]} edge
         es-id (:id *ep*)
         [v1-field v2-field] ((juxt eb/v1-vertex-field eb/v2-vertex-field) *ep*)]
-    (assert (or *start* *end*) "Edge missing important info to delete")
+    (assert (and *start* *end*) (do (spy edge) "Edge missing important info to delete"))
     (neb/update-cell* *start* 'morpheus.models.edge.base/rm-ve-relation
                       v1-field es-id (or *id* *end*))
     (neb/update-cell* *end* 'morpheus.models.edge.base/rm-ve-relation
