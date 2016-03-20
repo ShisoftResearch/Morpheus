@@ -77,6 +77,6 @@
 
 (defn format-edge-cells [group-props direction edge]
   (let [pure-edge (dissoc edge :*schema* :*hash*)]
-    (->> pure-edge
-         (merge {:*ep* group-props
-                 :*direction* direction}))))
+    (merge pure-edge
+           {:*ep* group-props
+            :*direction* direction})))

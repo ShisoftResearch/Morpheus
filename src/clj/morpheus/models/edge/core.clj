@@ -65,10 +65,9 @@
                  (fn [{:keys [sid list-cid]}]
                    (when (or (nil? edge-groups)
                              (edge-groups sid))
-                     (assoc (select-keys (neb/read-cell* list-cid)
-                                         [:cid-array])
-                       :*direction* direction
-                       :*group-props* (mb/schema-by-id sid))))
+                     {:cid-array (:cid-array (neb/read-cell* list-cid))
+                      :*direction* direction
+                      :*group-props* (mb/schema-by-id sid)}))
                  dir-cid-list)))
            cid-lists)
          (flatten)

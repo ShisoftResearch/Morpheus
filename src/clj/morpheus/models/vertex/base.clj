@@ -4,7 +4,8 @@
             [morpheus.models.core :as core]
             [morpheus.models.edge.core :as e]
             [morpheus.models.edge.base :as eb]
-            [cluster-connector.utils.for-debug :refer [spy $ ]]))
+            [cluster-connector.utils.for-debug :refer [spy $]]
+            [neb.cell :as neb-cell]))
 
 (def vertex-relation-fields
   [[:*inbounds*     [:ARRAY :relations]]
@@ -28,7 +29,9 @@
 
 (defn delete-vertex* [vertex]
   "It should been called from write-lock-exec in neb"
-  (let [v-id (:*id* vertex)]
+  (let [v-id (:*id* vertex)
+        v-hash (:*hash* vertex)
+        v-trunk neb-cell/*cell-trunk*]
     (doseq [{:keys [*ep* *direction* *start* *end* *id*] :as neighbour} (e/neighbours vertex)]
       (let [es-id (:id *ep*)
             target-id (or *id* v-id)
@@ -36,8 +39,9 @@
                                :*inbounds* :*outbounds*
                                :*outbounds* :*inbounds*
                                :*neighbours* :*neighbours*)
-            remote-vertex-id (if (= *start* target-id) *end* *start*)]
+            remote-vertex-id (if (or (= *start* target-id)
+                                     (= *start* v-id)) *end* *start*)]
         (neb/update-cell* remote-vertex-id 'morpheus.models.edge.base/rm-ve-relation
                           remote-direction es-id target-id)
         (when *id* (eb/delete-edge-cell *ep* neighbour *start* *end*))))
-    (neb/delete-cell* v-id)))
+    (neb-cell/delete-cell v-trunk v-hash)))

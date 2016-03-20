@@ -100,4 +100,9 @@
                 mf-spouse-edge (first (neighbours morgan-freeman :relationships :spouse))]
             (delete-edge rand-acted-movie) => anything
             (delete-edge mf-spouse-edge) => anything
-            (neighbours (reload-vertex morgan-freeman)) => #(= 2 (count %))))))
+            (degree (reload-vertex morgan-freeman)) => 2))
+    (fact "Timing"
+          (let [mf (spy (get-vertex-by-key :people "Morgan Freeman"))]
+            (degree mf) => 2
+            (spy (neighbours mf))
+            (spy (delete-vertex mf)) => anything))))
