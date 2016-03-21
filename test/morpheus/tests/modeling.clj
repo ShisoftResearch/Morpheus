@@ -52,8 +52,8 @@
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
                                                                            (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})])
-            (neighbours morgan-freeman :types :spouse) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})])
-            (degree morgan-freeman :types :spouse) => 1
+            (neighbours morgan-freeman {:types :spouse}) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})])
+            (degree morgan-freeman {:types :spouse} {:types :acted-in}) => 5
             (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :*direction* :*inbounds*})])))
     (fact "Update Defined Vertex"
           (update-vertex! (vertex-by-key :movie "Oblivion")
