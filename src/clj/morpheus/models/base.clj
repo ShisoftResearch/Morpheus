@@ -3,7 +3,8 @@
             [neb.core :as neb]
             [cluster-connector.distributed-store.core :as ds]
             [cluster-connector.distributed-store.lock :as dl]
-            [cluster-connector.utils.for-debug :refer [$ spy]])
+            [cluster-connector.utils.for-debug :refer [$ spy]]
+            [neb.cell :as neb-cell])
   (:import (org.shisoft.morpheus schemaStore)
            (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
 
@@ -65,3 +66,11 @@
         (neb/add-schema :cid-list  [[:cid-array :cid-array]])
         (catch SchemaAlreadyExistsException _))))
   (reset! cid-list-schema-id (neb/schema-id-by-sname :cid-list)))
+
+(defn try-invoke-local-neb-cell [loc-func rem-func cell & args]
+  (let [*hash* (:*hash* cell)
+        trunk neb-cell/*cell-trunk*
+        *id* (:*id* cell)]
+    (if (and *hash* trunk)
+      (apply loc-func trunk *hash* args)
+      (apply rem-func *id* args))))

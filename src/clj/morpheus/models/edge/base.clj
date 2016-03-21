@@ -3,6 +3,7 @@
             [morpheus.models.base :as mb]
             [neb.core :as neb]
             [neb.cell :as neb-cell]
+            [neb.trunk-store :as neb-ts]
             [cluster-connector.utils.for-debug :refer [spy $]]
             [morpheus.models.core :as core]))
 
@@ -57,13 +58,12 @@
   (update list-cell :cid-array #(remove-first (fn [x] (= target-cid x)) %)))
 
 (defn rm-ve-list-item [list-cell target-cid]
-  (let [{:keys [cid-array *hash*] :as proced-cell} (rm-ve-list-item* list-cell target-cid)
-        trunk neb-cell/*cell-trunk*]
-    (if trunk
-      (if (empty? cid-array)
-        (do (neb-cell/delete-cell trunk *hash*) true)
-        (do (neb-cell/replace-cell* trunk *hash* proced-cell) false))
-      (println "WARNING: trunk missing"))))
+  (let [{:keys [cid-array] :as proced-cell} (rm-ve-list-item* list-cell target-cid)]
+    (if (empty? cid-array)
+      (do (mb/try-invoke-local-neb-cell
+            neb-cell/delete-cell neb-ts/delete-cell list-cell) true)
+      (do (mb/try-invoke-local-neb-cell
+            neb-cell/replace-cell* neb-ts/replace-cell list-cell proced-cell) false))))
 
 (defn rm-ve-relation [vertex direction es-id target-cid]
   (let [cid-list-cell-id (->> (get vertex direction)

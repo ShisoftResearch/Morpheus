@@ -6,7 +6,7 @@
 (defmacro on-error-resume-next [& body]
   `(do ~@(map
            (fn [l]
-             `(try ~l (catch Exception ex#
+             `(try ~l (catch Throwable ex#
                         (println ex#))))
            body)))
 
@@ -88,9 +88,10 @@
                 oblivion       (get-vertex-by-key :movie "Oblivion")
                 dark-knight-rises (get-vertex-by-key :name "The Dark Knight Rises")
                 jeanette-adair-bradshaw (get-vertex-by-key :people "Jeanette Adair Bradshaw")]
-            (when morgan-freeman (delete-vertex morgan-freeman))
-            (when batman-begins (delete-vertex batman-begins))
-            (when dark-knight (delete-vertex dark-knight))
-            (when oblivion (delete-vertex oblivion))
-            (when dark-knight-rises (delete-vertex dark-knight-rises))
-            (when jeanette-adair-bradshaw (delete-vertex jeanette-adair-bradshaw)))))))
+            (on-error-resume-next
+              (when morgan-freeman (delete-vertex morgan-freeman))
+              (when batman-begins (delete-vertex batman-begins))
+              (when dark-knight (delete-vertex dark-knight))
+              (when oblivion (delete-vertex oblivion))
+              (when dark-knight-rises (delete-vertex dark-knight-rises))
+              (when jeanette-adair-bradshaw (delete-vertex jeanette-adair-bradshaw))))))))
