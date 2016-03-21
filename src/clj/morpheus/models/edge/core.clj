@@ -13,7 +13,7 @@
             [neb.utils :refer [map-on-vals]]
             [morpheus.models.base :as mb]))
 
-(defn new-edge-group [group-name group-props]
+(defn new-edge-group! [group-name group-props]
   (let [{:keys [fields]} group-props
         require-edge-cell?  (eb/require-edge-cell? group-props)
         base-schema      (eb/edge-base-schema group-props)
@@ -22,7 +22,7 @@
 
 (defn edge-group-props [group] (core/get-schema :e group))
 
-(defn create-edge [v1 group v2 & args]
+(defn link! [v1 group v2 & args]
   (let [v1-id (:*id* v1)
         v2-id (:*id* v2)
         edge-schema (edge-group-props group)
@@ -46,7 +46,7 @@
              {:*id* edge-cell-id
               :*ep* edge-schema}))))
 
-(defn vertex-cid-lists [vertex & {:keys [directions relationships]}]
+(defn- vertex-cid-lists [vertex & {:keys [directions relationships]}]
   (let [direction-fields (set (or (when directions
                                     (if (vector? directions)
                                       directions [directions]))
@@ -89,12 +89,16 @@
   (let [cid-lists (apply vertex-cid-lists vertex params)]
     (reduce + (map (comp count :cid-array) cid-lists))))
 
-(defn update-edge [edge func-sym & params]
+(defn relationships [vertex-1 vertex-2 & params]
+  (let [neighbours (apply neighbours vertex-1 params)]
+    ))
+
+(defn update-edge! [edge func-sym & params]
   (let [{:keys [*id* *ep*]} edge]
     (assert *id* "Cannot update this edge because there is no cell id for it.")
     (eb/update-edge *ep* *id* func-sym params)))
 
-(defn delete-edge [edge]
+(defn unlink! [edge]
   (let [{:keys [*ep* *start* *end* *id*]} edge
         es-id (:id *ep*)
         v1-field (eb/v1-vertex-field *ep*)

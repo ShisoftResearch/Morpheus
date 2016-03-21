@@ -57,8 +57,7 @@
   ;(assert ((set cid-array) target-cid) "target does not in the list")
   (update list-cell :cid-array #(remove-first (fn [x] (= target-cid x)) %)))
 
-(defn rm-ve-list-item [list-cell target-cid]
-  (let [{:keys [cid-array] :as proced-cell} (rm-ve-list-item* list-cell target-cid)]
+(defn rm-ve-list-item [list-cell target-cid]  (let [{:keys [cid-array] :as proced-cell} (rm-ve-list-item* list-cell target-cid)]
     (if (empty? cid-array)
       (do (mb/try-invoke-local-neb-cell
             neb-cell/delete-cell neb-ts/delete-cell list-cell) true)
@@ -69,10 +68,11 @@
   (let [cid-list-cell-id (->> (get vertex direction)
                               (filter (fn [m] (= es-id (:sid m))))
                               (first) (:list-cid))
-        empty-relation? (neb/write-lock-exec*
-                          cid-list-cell-id
-                          'morpheus.models.edge.base/rm-ve-list-item
-                          target-cid)]
+        empty-relation? (when cid-list-cell-id
+                          (neb/write-lock-exec*
+                            cid-list-cell-id
+                            'morpheus.models.edge.base/rm-ve-list-item
+                            target-cid))]
     (if empty-relation?
       (update vertex direction
               (fn [coll] (remove #(= cid-list-cell-id (:list-cid %)) coll)))

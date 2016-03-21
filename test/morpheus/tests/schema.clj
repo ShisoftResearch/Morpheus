@@ -11,14 +11,14 @@
   "Schemas"
   (with-server
     (fact "Add Dynamic Veterx Schema"
-          (new-vertex-group :test-dynamic-veterx {:body :dynamic}) => anything)
+          (new-vertex-group! :test-dynamic-veterx {:body :dynamic}) => anything)
     (fact "Get Dynamic Veterx Schema"
           (veterx-group-props :test-dynamic-veterx) => (contains {:stype :v, :name :test-dynamic-veterx}))
     (fact "Add Defined Veterx Schema"
-          (new-vertex-group :test-defined-veterx {:body :defined :fields [[:id :int]]}) => anything)
+          (new-vertex-group! :test-defined-veterx {:body :defined :fields [[:id :int]]}) => anything)
     (fact "Get Defined Veterx Schema"
           (veterx-group-props :test-defined-veterx) => (contains {:stype :v, :name :test-defined-veterx}))
     (fact "Add Dynamic Edge Schema"
-          (new-edge-group :text-e-dy {:type :directed :body :dynamic}) => anything)
+          (new-edge-group! :text-e-dy {:type :directed :body :dynamic}) => anything)
     (fact "Get Dynamic Edge Schema"
           (edge-group-props :text-e-dy) => (contains {:stype :e :type :directed :body :dynamic :name :text-e-dy}))))

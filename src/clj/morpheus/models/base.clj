@@ -73,4 +73,5 @@
         *id* (:*id* cell)]
     (if (and *hash* trunk)
       (apply loc-func trunk *hash* args)
-      (apply rem-func *id* args))))
+      (do (assert *id*)
+          (apply rem-func *id* args)))))
