@@ -71,7 +71,6 @@
                                   (update :types regular-types)
                                   (update :directions regular-directions)))
                       params))
-        direction-fields (->> params (mapcat :directions) (set))
         expand-params (flatten (map (fn [{:keys [directions types]}]
                                         (map
                                           (fn [d]
@@ -81,6 +80,7 @@
                                           directions))
                                       params))
         params-grouped (group-by :d expand-params)
+        direction-fields (->> params-grouped (keys) (set))
         direction-types (map-on-vals
                           (fn [ps]
                             (let [t (set (map :t ps))]
