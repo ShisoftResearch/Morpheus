@@ -47,10 +47,11 @@
               :*ep* edge-schema}))))
 
 (defn- vertex-cid-lists [vertex & params]
-  (let [params (cond
-                 (coll? (first params))
+  (let [seqed-params (seq params)
+        params (cond
+                 (or (nil? seqed-params) (coll? (first params)))
                  params
-                 (seq params)
+                 seqed-params
                  [(apply hash-map params)]
                  :else params)
         all-dir-fields #{:*inbounds* :*outbounds* :*neighbours*}
@@ -120,7 +121,7 @@
 (defn relationships [vertex-1 vertex-2 & params]
   (let [neighbours (apply neighbours vertex-1 params)
         v2-id (:*id* vertex-2)]
-    (filter (fn [{:keys [*start* *end*]}] (or (= v2-id *start*) (= v2-id *end*))) neighbours)))
+    (seq (filter (fn [{:keys [*start* *end*]}] (or (= v2-id *end*) (= v2-id *start*))) neighbours))))
 
 (defn update-edge! [edge func-sym & params]
   (let [{:keys [*id* *ep*]} edge]

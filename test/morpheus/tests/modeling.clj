@@ -42,7 +42,8 @@
             (link! morgan-freeman :spouse jeanette-adair-bradshaw) => anything))
     (fact "Read Edges"
           (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")
-                batman-begins  (vertex-by-key :movie "Batman Begins")]
+                batman-begins  (vertex-by-key :movie "Batman Begins")
+                oblivion       (vertex-by-key :movie "Oblivion")]
             (neighbours morgan-freeman) => (contains [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :*direction* :*neighbours*})
                                                       (contains {:*ep* (contains {:name :acted-in, :type :directed}), :*direction* :*outbounds*})]
                                                      :gaps-ok :in-any-order)
@@ -55,7 +56,8 @@
             (neighbours morgan-freeman {:types :spouse}) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})])
             (degree morgan-freeman {:types :spouse} {:types :acted-in}) => 5
             (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :*direction* :*inbounds*})])
-            (relationships morgan-freeman batman-begins) => (just (contains {:*direction* :*outbounds* :as "Lucius Fox"}))))
+            (relationships morgan-freeman batman-begins) => (just (contains {:*direction* :*outbounds* :as "Lucius Fox"}))
+            (relationships batman-begins oblivion) => nil))
     (fact "Update Defined Vertex"
           (update-vertex! (vertex-by-key :movie "Oblivion")
                           'clojure.core/assoc :year 2013) => anything)
