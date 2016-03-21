@@ -46,25 +46,53 @@
              {:*id* edge-cell-id
               :*ep* edge-schema}))))
 
-(defn- vertex-cid-lists [vertex & {:keys [directions relationships]}]
-  (let [direction-fields (set (or (when directions
-                                    (if (vector? directions)
-                                      directions [directions]))
-                                  [:*inbounds* :*outbounds* :*neighbours*]))
-        edge-groups (when relationships
-                      (into #{}
-                            (map
-                              (fn [x] (core/get-schema-id :e x))
-                              (if (vector? relationships)
-                                relationships [relationships]))))
+(defn- vertex-cid-lists [vertex & params]
+  (let [params (cond
+                 (coll? (first params))
+                 params
+                 (seq params)
+                 [(apply hash-map params)]
+                 :else params)
+        all-dir-fields #{:*inbounds* :*outbounds* :*neighbours*}
+        regular-directions (fn [directions]
+                             (or (when directions
+                                   (if (vector? directions)
+                                     directions [directions]))
+                                 all-dir-fields))
+        regular-types (fn [types]
+                        (when types
+                          (into #{} (map (fn [x] (core/get-schema-id :e x))
+                                         (if (vector? types)
+                                           types [types])))))
+        params (if-not (seq params)
+                 (map (fn [d] {:directions [d]}) all-dir-fields)
+                 (map (fn [m] (-> m
+                                  (update :types regular-types)
+                                  (update :directions regular-directions)))
+                      params))
+        direction-fields (->> params (mapcat :directions) (set))
+        expand-params (flatten (map (fn [{:keys [directions types]}]
+                                        (map
+                                          (fn [d]
+                                            (if (seq types)
+                                              (map (fn [t] {:d d :t (or t :Nil)}) types)
+                                              {:d d :t :Nil}))
+                                          directions))
+                                      params))
+        params-grouped (group-by :d expand-params)
+        direction-types (map-on-vals
+                          (fn [ps]
+                            (let [t (set (map :t ps))]
+                              (when-not (t :Nil) t)))
+                          params-grouped)
         cid-lists (select-keys vertex direction-fields)]
     (->> (map
            (fn [[direction dir-cid-list]]
-             (when (direction-fields direction)
+             (let [types (get direction-types direction)]
                (map
                  (fn [{:keys [sid list-cid]}]
-                   (when (or (nil? edge-groups)
-                             (edge-groups sid))
+                   (when (or (nil? types)
+                             (types sid))
                      {:cid-array (:cid-array (neb/read-cell* list-cid))
                       :*direction* direction
                       :*group-props* (mb/schema-by-id sid)}))

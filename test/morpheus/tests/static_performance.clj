@@ -47,8 +47,8 @@
             (neighbours morgan-freeman)
             (degree morgan-freeman)
             (neighbours morgan-freeman :directions :*outbounds*)
-            (neighbours morgan-freeman :relationships :spouse)
-            (degree morgan-freeman :relationships :spouse)
+            (neighbours morgan-freeman :types :spouse)
+            (degree morgan-freeman :types :spouse)
             (neighbours batman-begins))
         (update-vertex! (vertex-by-key :movie "Oblivion")
                           'clojure.core/assoc :year 2013)
@@ -61,10 +61,10 @@
         (degree (vertex-by-key :movie "Batman Begins"))
         (vertex-by-key :movie "Batman Begins")
         (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")
-                mf-spouse-edge (first (neighbours morgan-freeman :relationships :spouse))
-                rand-acted-movie (first (neighbours morgan-freeman :relationships :acted-in))]
+                mf-spouse-edge (first (neighbours morgan-freeman :types :spouse))
+                rand-acted-movie (first (neighbours morgan-freeman :types :acted-in))]
             (update-edge! rand-acted-movie 'clojure.core/assoc :actor-name "Morgan Freeman"))
-        (neighbours (vertex-by-key :people "Morgan Freeman") :relationships :acted-in)
+        (neighbours (vertex-by-key :people "Morgan Freeman") :types :acted-in)
         (delete-vertex! (vertex-by-key :people "Jeanette Adair Bradshaw"))
         (delete-vertex! (vertex-by-key :movie "Oblivion"))
         (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")]
@@ -77,8 +77,8 @@
             (vertex-by-key :people "Jeanette Adair Bradshaw"))
         (degree (vertex-by-key :people "Morgan Freeman"))
         (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")
-                rand-acted-movie (first (neighbours morgan-freeman :relationships :acted-in))
-                mf-spouse-edge (first (neighbours morgan-freeman :relationships :spouse))]
+                rand-acted-movie (first (neighbours morgan-freeman :types :acted-in))
+                mf-spouse-edge (first (neighbours morgan-freeman :types :spouse))]
             (unlink! rand-acted-movie)
             (unlink! mf-spouse-edge)
             (degree (reload-vertex morgan-freeman)))
