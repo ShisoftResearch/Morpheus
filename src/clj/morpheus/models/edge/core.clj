@@ -79,10 +79,11 @@
     (->> (map
            (fn [{:keys [*group-props* *direction*] :as cid-list}]
              (map
-               (fn [x] (eb/format-edge-cells *group-props* *direction* x))
+               (fn [x] (when x (eb/format-edge-cells *group-props* *direction* x)))
                (eb/edges-from-cid-array *group-props* cid-list vertex-id)))
            cid-lists)
-         (flatten))))
+         (flatten)
+         (filter identity))))
 
 (defn degree [vertex & params]
   (let [cid-lists (apply vertex-cid-lists vertex params)]
@@ -96,7 +97,8 @@
 (defn delete-edge [edge]
   (let [{:keys [*ep* *start* *end* *id*]} edge
         es-id (:id *ep*)
-        [v1-field v2-field] ((juxt eb/v1-vertex-field eb/v2-vertex-field) *ep*)]
+        v1-field (eb/v1-vertex-field *ep*)
+        v2-field (eb/v2-vertex-field *ep*)]
     (assert (and *start* *end*) (do (spy edge) "Edge missing important info to delete"))
     (neb/update-cell* *start* 'morpheus.models.edge.base/rm-ve-relation
                       v1-field es-id (or *id* *end*))

@@ -57,10 +57,13 @@
   (update list-cell :cid-array #(remove-first (fn [x] (= target-cid x)) %)))
 
 (defn rm-ve-list-item [list-cell target-cid]
-  (let [{:keys [cid-array *hash*] :as proced-cell} (rm-ve-list-item* list-cell target-cid)]
-    (if (empty? cid-array)
-      (do (neb-cell/delete-cell neb-cell/*cell-trunk* *hash*) true)
-      (do (neb-cell/replace-cell* neb-cell/*cell-trunk* *hash* proced-cell) false))))
+  (let [{:keys [cid-array *hash*] :as proced-cell} (rm-ve-list-item* list-cell target-cid)
+        trunk neb-cell/*cell-trunk*]
+    (if trunk
+      (if (empty? cid-array)
+        (do (neb-cell/delete-cell trunk *hash*) true)
+        (do (neb-cell/replace-cell* trunk *hash* proced-cell) false))
+      (println "WARNING: trunk missing"))))
 
 (defn rm-ve-relation [vertex direction es-id target-cid]
   (let [cid-list-cell-id (->> (get vertex direction)
