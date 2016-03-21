@@ -118,8 +118,9 @@
     (reduce + (map (comp count :cid-array) cid-lists))))
 
 (defn relationships [vertex-1 vertex-2 & params]
-  (let [neighbours (apply neighbours vertex-1 params)]
-    ))
+  (let [neighbours (apply neighbours vertex-1 params)
+        v2-id (:*id* vertex-2)]
+    (filter (fn [{:keys [*start* *end*]}] (or (= v2-id *start*) (= v2-id *end*))) neighbours)))
 
 (defn update-edge! [edge func-sym & params]
   (let [{:keys [*id* *ep*]} edge]
