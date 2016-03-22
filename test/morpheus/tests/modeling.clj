@@ -57,7 +57,10 @@
             (degree morgan-freeman {:types :spouse} {:types :acted-in}) => 5
             (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :*direction* :*inbounds*})])
             (relationships morgan-freeman batman-begins) => (just (contains {:*direction* :*outbounds* :as "Lucius Fox"}))
-            (relationships batman-begins oblivion) => nil))
+            (relationships batman-begins oblivion) => nil
+            (linked? morgan-freeman batman-begins) => truthy
+            (linked? morgan-freeman batman-begins :directions :*outbounds*) => truthy
+            (linked? morgan-freeman batman-begins :directions :*inbounds*) => falsey))
     (fact "Update Defined Vertex"
           (update-vertex! (vertex-by-key :movie "Oblivion")
                           'clojure.core/assoc :year 2013) => anything)

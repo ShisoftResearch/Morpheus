@@ -67,9 +67,9 @@
                                            types [types])))))
         params (if-not (seq params)
                  (map (fn [d] {:directions [d]}) all-dir-fields)
-                 (map (fn [m] (-> m
-                                  (update :types regular-types)
-                                  (update :directions regular-directions)))
+                 (map (fn [{:keys [type types direction directions]}]
+                        {:types (regular-types (or type types))
+                         :directions (regular-directions (or direction directions))})
                       params))
         expand-params (flatten (map (fn [{:keys [directions types]}]
                                         (map
@@ -118,10 +118,24 @@
   (let [cid-lists (apply vertex-cid-lists vertex params)]
     (reduce + (map (comp count :cid-array) cid-lists))))
 
+(def opposite-direction-mapper
+  {:*outbounds* #{:*end*}
+   :*inbounds* #{:*start*}
+   :*neighbours* #{:*start* :*end*}})
+
 (defn relationships [vertex-1 vertex-2 & params]
   (let [neighbours (apply neighbours vertex-1 params)
         v2-id (:*id* vertex-2)]
-    (seq (filter (fn [{:keys [*start* *end*]}] (or (= v2-id *end*) (= v2-id *start*))) neighbours))))
+    (seq (filter (fn [{:keys [*direction*] :as edge}]
+                   ((set (vals (select-keys edge (get opposite-direction-mapper *direction*)))) v2-id)) neighbours))))
+
+(defn linked? [vertex-1 vertex-2 & params]
+  (boolean (apply relationships vertex-1 vertex-2 params)))
+
+(defn linked-degree [vertex-1 vertex-2 & params]
+  (count (apply relationships vertex-1 vertex-2 params)))
+
+
 
 (defn update-edge! [edge func-sym & params]
   (let [{:keys [*id* *ep*]} edge]
