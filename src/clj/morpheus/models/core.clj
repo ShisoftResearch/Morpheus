@@ -6,8 +6,7 @@
             [cluster-connector.utils.for-debug :refer [$ spy]]
             [neb.core :as neb]
             [neb.schema :as neb-schema])
-  (:import (org.shisoft.neb.io reader writer type_lengths)
-           (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
+  (:import (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
 
 (def schema-file "configures/neb-schemas.edn")
 

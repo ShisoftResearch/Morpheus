@@ -2,7 +2,7 @@
   (:require [morpheus.models.vertex.core :as veterx]
             [morpheus.models.edge.core :as edge]
             [morpheus.models.core :as models]
-            [neb.core :as neb]
+            [neb.server :as nserver]
             [cluster-connector.utils.for-debug :refer [$]])
   (:gen-class))
 
@@ -10,10 +10,10 @@
 
 (defn shutdown-server []
   (println "Shuting down...")
-  (neb/stop-server))
+  (nserver/stop-server))
 
 (defn start-server []
-  (neb/start-server (read-string (slurp "configures/neb.edn")))
+  (nserver/start-server (read-string (slurp "configures/neb.edn")))
   (println "Initialize Models...")
   (models/init-models))
 
