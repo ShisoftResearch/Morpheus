@@ -100,3 +100,6 @@ crashlytics-build.properties
 
 #Testing configurations
 /configures
+
+#Testing data
+/data

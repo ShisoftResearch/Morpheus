@@ -12,10 +12,13 @@
   (println "Shuting down...")
   (nserver/stop-server))
 
-(defn start-server []
-  (nserver/start-server (read-string (slurp "configures/neb.edn")))
+(defn start-server* [configs]
+  (nserver/start-server configs)
   (println "Initialize Models...")
   (models/init-models))
+
+(defn start-server []
+  (start-server* (read-string (slurp "configures/neb.edn"))))
 
 (defn -main
   "Main Entrance"

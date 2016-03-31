@@ -1,7 +1,7 @@
 (ns morpheus.tests.server
   (:require [midje.sweet :refer :all]
             [morpheus.models.base :refer [clear-schema]]
-            [morpheus.core :refer [start-server shutdown-server]]
+            [morpheus.core :refer [start-server* shutdown-server]]
             )
   (:import (java.io File)))
 
@@ -12,7 +12,12 @@
 (defmacro with-server [& body]
   `(do (remove-server-files)
        (fact "Start Server"
-             (start-server) => anything)
+             (start-server* {:server-name :morpheus
+                             :port 5124
+                             :zk  "10.0.1.104:2181"
+                             :trunks-size "3gb"
+                             :memory-size "12gb"
+                             :schema-file "configures/neb-schemas.edn"}) => anything)
        (try
          ~@body
          (catch Exception ex#
