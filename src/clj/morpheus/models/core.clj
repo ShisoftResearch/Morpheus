@@ -18,7 +18,7 @@
 (defn get-schema-name [stype group-name]
   (str (name stype) "-" (name group-name)))
 
-(defn add-schema [stype group-name fields meta]
+(defn add-model-schema [stype group-name fields meta]
   (dl/locking
     morph-schemas-lock
     (let [schema-name (get-schema-name stype group-name)]
@@ -31,6 +31,9 @@
           (rfi/condinated-invoke-with-selection
             ['morpheus.models.base/gen-schema-id nil]
             ['morpheus.models.base/add-schema [schema-name neb-schema-id '<> meta]] max))))))
+
+(defn add-schema [schema-name fields]
+  (neb/add-schema schema-name fields))
 
 (defn get-schema [stype group-name]
   (let [schema-name (get-schema-name stype group-name)]

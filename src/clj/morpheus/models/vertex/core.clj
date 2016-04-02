@@ -12,7 +12,7 @@
 (defn new-vertex-group! [group-name group-props]
   (let [{:keys [fields]} group-props
         fields (vb/cell-fields group-props fields)]
-    (core/add-schema :v group-name fields group-props)))
+    (core/add-model-schema :v group-name fields group-props)))
 
 (def veterx-group-props vb/veterx-group-props)
 

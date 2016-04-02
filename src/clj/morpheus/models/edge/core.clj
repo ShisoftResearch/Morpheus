@@ -18,7 +18,7 @@
         require-edge-cell?  (eb/require-edge-cell? group-props)
         base-schema      (eb/edge-base-schema group-props)
         fields (when require-edge-cell? (eb/edge-schema group-props base-schema fields))]
-    (core/add-schema :e group-name fields group-props)))
+    (core/add-model-schema :e group-name fields group-props)))
 
 (defn edge-group-props [group] (core/get-schema :e group))
 
