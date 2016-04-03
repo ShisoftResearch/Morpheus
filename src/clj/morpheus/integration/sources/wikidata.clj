@@ -130,7 +130,9 @@
         (try
           (let [{:keys [labels descriptions aliases claims type datatype id]} (json/parse-string line true)
                 [label desc alias] (map (fn [lang-strs-map]
-                                          (let [ls (get lang-strs-map lang)]
+                                          (let [ls (get lang-strs-map lang)
+                                                rand-s (-> lang-strs-map first second)
+                                                ls (if ls ls rand-s)]
                                             (cond
                                               (string? ls) ls
                                               (string? (:value ls)) (:value ls)
@@ -161,7 +163,7 @@
                 type (from-entity-type type)
                 datatype (encode-type datatype)]
             (new-vertex! :wikidata-record {:id id :label label :description desc :type type :data-type datatype :alias alias :props props})
-            (println label)
+            (println label))
           (catch Exception ex
             (clojure.stacktrace/print-cause-trace ex)))))))
 
