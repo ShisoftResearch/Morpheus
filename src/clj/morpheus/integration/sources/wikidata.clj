@@ -2,24 +2,25 @@
   (:require [morpheus.models.vertex.core :refer :all]
             [morpheus.models.edge.core :refer :all]
             [morpheus.models.core :refer [add-schema]]
+            [morpheus.core :refer [start-server* shutdown-server]]
             [cheshire.core :as json]
-            [clj-time :as time]
-            [clj-time.format :as time-format])
+            [neb.core :as neb]
+            [cluster-connector.utils.for-debug :refer [$ spy]])
   (:import (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
 
 (defn from-calendar-code [c]
-  (case c
-    "Q1985727" 0
-    "Q1985786" 1
-    c))
+  (byte (case c
+          "Q1985727" 0
+          "Q1985786" 1
+          c)))
 
 (defn parse-entity-url [url]
   (when (and url (.startsWith url "http://www.wikidata.org/entity/"))
     (last (.split url "/"))))
 
-(defn read-data [data-type data-value]
+(defn read-data [data-value data-type]
   (case (clojure.string/lower-case data-type)
-    "string" data-type
+    "string" data-value
     "wikibase-entityid" (let [{:keys [entity-type numeric-id]} data-value]
                           (str (case entity-type
                                  "item" "Q"
@@ -30,25 +31,43 @@
                         [latitude longitude precision parsed-globe])
     "time" (let [{:keys [time timezone precision calendarmodel]} data-value
                  calendar-code (parse-entity-url calendarmodel)
-                 calendar (from-calendar-code calendar-code)]
+                 calendar (from-calendar-code calendar-code)
+                 time ()]
              [time timezone precision calendar])
-    (throw (Exception. (str "unknown type" data-type)))))
+    "monolingualtext" (let [{:keys [text language]} data-value]
+                        text)
+    "quantity" (let [{:keys [amount lowerBound upperBound unit]} data-value
+                     [amount lowerBound upperBound] (map #(when % (read-string %))
+                                                         [amount lowerBound upperBound])
+                     unit (parse-entity-url unit)]
+                 (cond
+                   (and (not unit) (= amount lowerBound upperBound))
+                   amount
+                   (and unit (= amount lowerBound upperBound))
+                   [amount unit]
+                   :else
+                   [amount lowerBound upperBound unit]))
+    (throw (Exception. (str "unknown type: " data-type " with value: " data-value)))))
 
 (defn encode-type [t]
-  (get
-    {"commonsMedia" 0
-     "globe-coordinate" 1
-     "globecoordinate" 1
-     "monolingualtext" 2
-     "quantity" 3
-     "string" 4
-     "time" 5
-     "url" 6
-     "external-id" 7
-     "wikibase-item" 8
-     "wikibase-property" 9
-     "math" 10}
-    t))
+  (let [encoded-num (get
+                      {nil -1
+                       "commonsMedia" 0
+                       "globe-coordinate" 1
+                       "globecoordinate" 1
+                       "monolingualtext" 2
+                       "quantity" 3
+                       "string" 4
+                       "time" 5
+                       "url" 6
+                       "external-id" 7
+                       "wikibase-item" 8
+                       "wikibase-property" 9
+                       "math" 10}
+                      t)]
+    (if-not encoded-num
+      (throw (Exception. "unknown type for encode: " t))
+      (byte encoded-num))))
 
 (defn from-rank [r]
   (byte (case r
@@ -57,49 +76,104 @@
 
 (defn from-snak [s]
   (let [{:keys [snaktype datatype datavalue]} s
-        {:keys [value type]} datavalue
-        value-data (read-data type value)]
-    (assert (= snaktype "value") (str "Unknown snaktype: " s))
-    [(encode-type datatype) value-data]))
+        {:keys [value type]} datavalue]
+    (case snaktype
+      "value" {:datatype (encode-type datatype)
+               :value (read-data value type)}
+      "novalue" {:datatype (byte -1)
+                 :value nil}
+      "somevalue" {:datatype (encode-type datatype)
+                   :value nil}
+      (throw (Exception. (str "Unknown snaktype: " snaktype " " s))))))
+
+(defn from-entity-id [id]
+  (neb/cell-id-by-key id))
+
+(defn from-qualifier [[id qarr]]
+  {:prop (from-entity-id (name id))
+   :values (map from-snak qarr)})
+
+(defn from-reference [])
+
+(defn from-entity-type [t]
+  (byte (case t
+          nil -1
+          "item" 0
+          "property" 1
+          (throw (Exception. (str "Unknown entity type: " t))))))
 
 (defn import-entities [dump-path lang]
   (try
-    (add-schema :wikidata-reference [[:prop :text] [:type :byte] [:value :edn]])
-    (add-schema :wikidata-qualifier [[:prop :text] [:type :byte] [:value :edn]])
+    ;(add-schema :wikidata-reference [[:prop :cid] [:values [:ARRAY [[:type :byte] [:value :edn]]]]])
+    (add-schema :wikidata-qualifier [[:prop :cid] [:values [:ARRAY [[:datatype :byte] [:value :edn]]]]])
     (new-vertex-group!
       :wikidata-record
       {:body  :defined :key-field :id
-       :fields [[:id :text] [:label :text] [:description :text] [:type :byte]
+       :fields [[:id :text] [:label :text] [:description :text] [:type :byte] [:data-type :byte]
                 [:alias [:ARRAY :text]]
-                [:props [:ARRAY [[:prop :text] [:data-type :byte] [:rank :byte] [:value :edn]
+                [:props [:ARRAY [[:prop :cid] [:datatype :byte] [:rank :byte] [:value :edn]
                                  [:qualifiers [:ARRAY :wikidata-qualifier]]
-                                 [:references [:ARRAY :wikidata-reference]]]]]]})
+                                 ;[:references [:ARRAY :wikidata-reference]]
+                                 ]]]]})
     (new-edge-group!
       :wikidata-link
-      {:body :defined :key-field :id
-       :fields [[:prop :text]
+      {:body :defined :type :directed
+       :fields [[:prop :cid]
                 [:rank :byte]
                 [:qualifiers [:ARRAY :wikidata-qualifier]]
-                [:references [:ARRAY :wikidata-reference]]]})
+                ;[:references [:ARRAY :wikidata-reference]]
+                ]})
     (catch SchemaAlreadyExistsException _))
   (let [lang (keyword lang)]
     (with-open [rdr (clojure.java.io/reader dump-path)]
       (doseq [line (line-seq rdr)]
         (try
-          (let [{:keys [labels descriptions aliases claims type id]} (json/parse-string line true)
-                [label desc alias] (map lang [labels descriptions aliases])
+          (let [{:keys [labels descriptions aliases claims type datatype id]} (json/parse-string line true)
+                [label desc alias] (map (fn [lang-strs-map]
+                                          (let [ls (get lang-strs-map lang)]
+                                            (cond
+                                              (string? ls) ls
+                                              (string? (:value ls)) (:value ls)
+                                              (not (nil? ls)) ls
+                                              (nil? ls) "")))
+                                        [labels descriptions aliases])
+                alias (map :value alias)
                 props (->> claims
-                           (map (fn [[prop-id {:keys [mainsnak rank] :as claim}]]
-                                  (assert (= (:type claim) "statement") (str "claim type not a statement: " claim))
-                                  (let [data-type (get mainsnak :datatype)]
-                                    (when (and (not= "deprecated" rank)
-                                               (not (or (= "wikibase-item" data-type)
-                                                        (= "wikibase-property" data-type))))
-                                      {:prop prop-id
-                                       :data-type data-type
-                                       :rank (from-rank rank)
-                                       :value (from-snak mainsnak)}))))
-                           (filter identity))]
-            )
+                           (map
+                             (fn [[prop-id claim-arr]]
+                               (map
+                                 (fn [{:keys [mainsnak qualifiers rank references] :as claim}]
+                                   (assert (= (:type claim) "statement") (str "claim type not a statement: " claim))
+                                   (let [data-type (get mainsnak :datatype)]
+                                     (when (and (not= "deprecated" rank)
+                                                (not (or (= "wikibase-item" data-type)
+                                                         (= "wikibase-property" data-type))))
+                                       (merge (from-snak mainsnak)
+                                              {:prop (from-entity-id (name prop-id))
+                                               :rank (from-rank rank)
+                                               :qualifiers (map from-qualifier qualifiers)
+                                               ;:references (map from-reference references)
+                                               }))))
+                                 claim-arr)))
+                           (flatten)
+                           (filter identity)
+                           (doall))
+                type (from-entity-type type)
+                datatype (encode-type datatype)]
+            (new-vertex! :wikidata-record {:id id :label label :description desc :type type :data-type datatype :alias alias :props props})
+            (println label)
           (catch Exception ex
             (clojure.stacktrace/print-cause-trace ex)))))))
+
+(defn import-to-this-cluster []
+  (start-server* {:server-name :morpheus
+                  :port 5124
+                  :zk  "10.0.1.104:2181"
+                  :trunks-size "5gb"
+                  :memory-size "25gb"
+                  :schema-file "configures/neb-schemas.edn"
+                  :data-path   "data"
+                  :durability true
+                  :auto-backsync false
+                  :replication 2})
+  (import-entities "/home/shisoft/Downloads/wikidata-20160328-all.json" :en))

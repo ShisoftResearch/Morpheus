@@ -7,7 +7,8 @@
             [cluster-connector.utils.for-debug :refer [spy $]]
             [neb.cell :as neb-cell]
             [neb.trunk-store :as neb-ts]
-            [morpheus.models.base :as mb]))
+            [morpheus.models.base :as mb])
+  (:import (org.shisoft.morpheus.exceptions GroupNotFoundException)))
 
 (def vertex-relation-fields
   [[:*inbounds*     [:ARRAY :relations]]
@@ -24,7 +25,7 @@
   (update-vertex [id func-sym params])
   (cell-fields [fields]))
 
-(defn veterx-group-props [group] (core/get-schema :v group))
+(defn veterx-group-props [group] (or (core/get-schema :v group) (throw (GroupNotFoundException. (str group)))))
 
 (defn reset-vertex-cell-map [vertex value]
   (merge value (select-keys vertex vertex-relation-field-keys)))
