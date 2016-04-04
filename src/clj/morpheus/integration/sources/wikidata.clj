@@ -6,7 +6,10 @@
             [cheshire.core :as json]
             [neb.core :as neb]
             [cluster-connector.utils.for-debug :refer [$ spy]])
-  (:import (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
+  (:import (org.shisoft.neb.exceptions SchemaAlreadyExistsException)
+           (javax.xml.bind DatatypeConverter)))
+
+(set! *warn-on-reflection* true)
 
 (defn from-calendar-code [c]
   (byte (case c
@@ -14,7 +17,7 @@
           "Q1985786" 1
           c)))
 
-(defn parse-entity-url [url]
+(defn parse-entity-url [^String url]
   (when (and url (.startsWith url "http://www.wikidata.org/entity/"))
     (last (.split url "/"))))
 
@@ -29,10 +32,15 @@
     "globecoordinate" (let [{:keys [latitude longitude precision globe]} data-value
                             parsed-globe (parse-entity-url globe)]
                         [latitude longitude precision parsed-globe])
-    "time" (let [{:keys [time timezone precision calendarmodel]} data-value
+    "time" (let [{:keys [^String time timezone precision calendarmodel]} data-value
                  calendar-code (parse-entity-url calendarmodel)
                  calendar (from-calendar-code calendar-code)
-                 time ()]
+                 time (try (-> (DatatypeConverter/parseDateTime
+                                 (-> time
+                                     (.replace "+" "")
+                                     (.replace "-00" "-01")))
+                               (.getTimeInMillis))
+                           (catch Exception e))]
              [time timezone precision calendar])
     "monolingualtext" (let [{:keys [text language]} data-value]
                         text)
@@ -102,16 +110,16 @@
           "property" 1
           (throw (Exception. (str "Unknown entity type: " t))))))
 
-(defn import-entities [dump-path lang]
+(defn prepare-schemas []
   (try
-    ;(add-schema :wikidata-reference [[:prop :cid] [:values [:ARRAY [[:type :byte] [:value :edn]]]]])
-    (add-schema :wikidata-qualifier [[:prop :cid] [:values [:ARRAY [[:datatype :byte] [:value :edn]]]]])
+    ;(add-schema :wikidata-reference [[:prop :cid] [:values [:ARRAY [[:type :byte] [:value :obj]]]]])
+    (add-schema :wikidata-qualifier [[:prop :cid] [:values [:ARRAY [[:datatype :byte] [:value :obj]]]]])
     (new-vertex-group!
       :wikidata-record
       {:body  :defined :key-field :id
        :fields [[:id :text] [:label :text] [:description :text] [:type :byte] [:data-type :byte]
                 [:alias [:ARRAY :text]]
-                [:props [:ARRAY [[:prop :cid] [:datatype :byte] [:rank :byte] [:value :edn]
+                [:props [:ARRAY [[:prop :cid] [:datatype :byte] [:rank :byte] [:value :obj]
                                  [:qualifiers [:ARRAY :wikidata-qualifier]]
                                  ;[:references [:ARRAY :wikidata-reference]]
                                  ]]]]})
@@ -123,7 +131,9 @@
                 [:qualifiers [:ARRAY :wikidata-qualifier]]
                 ;[:references [:ARRAY :wikidata-reference]]
                 ]})
-    (catch SchemaAlreadyExistsException _))
+    (catch SchemaAlreadyExistsException _)))
+
+(defn import-entities [dump-path lang]
   (let [lang (keyword lang)]
     (with-open [rdr (clojure.java.io/reader dump-path)]
       (doseq [line (line-seq rdr)]
@@ -162,8 +172,7 @@
                            (doall))
                 type (from-entity-type type)
                 datatype (encode-type datatype)]
-            (new-vertex! :wikidata-record {:id id :label label :description desc :type type :data-type datatype :alias alias :props props})
-            (println label))
+            (new-vertex! :wikidata-record {:id id :label label :description desc :type type :data-type datatype :alias alias :props props}))
           (catch Exception ex
             (clojure.stacktrace/print-cause-trace ex)))))))
 
@@ -174,8 +183,9 @@
                   :trunks-size "5gb"
                   :memory-size "25gb"
                   :schema-file "configures/neb-schemas.edn"
-                  :data-path   "data"
+                  :data-path   "wikidata"
                   :durability true
-                  :auto-backsync false
+                  :auto-backsync true
                   :replication 2})
+  (prepare-schemas)
   (import-entities "/home/shisoft/Downloads/wikidata-20160328-all.json" :en))

@@ -20,5 +20,6 @@
              ;"-Dcom.sun.management.jmxremote.port=9876"
              ;"-Dcom.sun.management.jmxremote.authenticate=false"
              ;"-Dcom.sun.management.jmxremote.ssl=false"
-             "-Xmx4G"
-             "-XX:+UseParNewGC" "-XX:+UseConcMarkSweepGC" "-XX:+CMSParallelRemarkEnabled"])
+             "-Xmx6G"
+             ;"-XX:+UseParNewGC" "-XX:+UseConcMarkSweepGC" "-XX:+CMSParallelRemarkEnabled"
+             ])
