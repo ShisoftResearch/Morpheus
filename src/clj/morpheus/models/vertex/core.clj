@@ -23,10 +23,12 @@
       (assert (= :v (:stype morph-schema)) "This cell is not a veterx")
       (vb/assemble-vertex morph-schema neb-cell))))
 
+(defn vertex-id-by-key [group key]
+  (let [vp (vb/veterx-group-props group)]
+    (mb/cell-id-by-key :v vp key)))
+
 (defn vertex-by-key [group key]
-  (let [vp (vb/veterx-group-props group)
-        id (mb/cell-id-by-key :v vp key)]
-    (get-veterx-by-id id)))
+  (get-veterx-by-id (vertex-id-by-key group key)))
 
 (defn reload-vertex [vertex]
   (get-veterx-by-id (:*id* vertex)))
@@ -52,3 +54,10 @@
 
 (defn delete-vertex! [vertex]
   (delete-vertex-by-id (:*id* vertex)))
+
+(defn digest-vertex [id]
+  (when (neb/cell-exists?* id)
+    {:*id* id}))
+
+(defn digest-vertex-by-key [group key]
+  (digest-vertex (vertex-id-by-key group key)))

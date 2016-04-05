@@ -3,11 +3,13 @@
             [morpheus.models.edge.core :refer :all]
             [morpheus.models.core :refer [add-schema]]
             [morpheus.core :refer [start-server* shutdown-server]]
-            [cheshire.core :as json]
             [neb.core :as neb]
-            [cluster-connector.utils.for-debug :refer [$ spy]])
+            [cluster-connector.utils.for-debug :refer [$ spy]]
+            [cheshire.core :as json]
+            [com.climate.claypoole :as cp])
   (:import (org.shisoft.neb.exceptions SchemaAlreadyExistsException)
-           (javax.xml.bind DatatypeConverter)))
+           (javax.xml.bind DatatypeConverter)
+           (com.fasterxml.jackson.core JsonParseException)))
 
 (set! *warn-on-reflection* true)
 
@@ -95,7 +97,7 @@
       (throw (Exception. (str "Unknown snaktype: " snaktype " " s))))))
 
 (defn from-entity-id [id]
-  (neb/cell-id-by-key id))
+  (vertex-id-by-key :wikidata-record (name id)))
 
 (defn from-qualifier [[id qarr]]
   {:prop (from-entity-id (name id))
@@ -134,45 +136,86 @@
     (catch SchemaAlreadyExistsException _)))
 
 (defn import-entities [dump-path lang]
-  (let [lang (keyword lang)]
+  (println "Import Vertices")
+  (let [lang (keyword lang)
+        th-pool (cp/threadpool 56)]
     (with-open [rdr (clojure.java.io/reader dump-path)]
       (doseq [line (line-seq rdr)]
         (try
-          (let [{:keys [labels descriptions aliases claims type datatype id]} (json/parse-string line true)
-                [label desc alias] (map (fn [lang-strs-map]
-                                          (let [ls (get lang-strs-map lang)
-                                                rand-s (-> lang-strs-map first second)
-                                                ls (if ls ls rand-s)]
-                                            (cond
-                                              (string? ls) ls
-                                              (string? (:value ls)) (:value ls)
-                                              (not (nil? ls)) ls
-                                              (nil? ls) "")))
-                                        [labels descriptions aliases])
-                alias (map :value alias)
-                props (->> claims
-                           (map
-                             (fn [[prop-id claim-arr]]
+          (let [{:keys [labels descriptions aliases claims type datatype id]} (json/parse-string line true)]
+            (cp/future
+              th-pool
+              (let [[label desc alias] (map (fn [lang-strs-map]
+                                              (let [ls (get lang-strs-map lang)
+                                                    rand-s (-> lang-strs-map first second)
+                                                    ls (if ls ls rand-s)]
+                                                (cond
+                                                  (string? ls) ls
+                                                  (string? (:value ls)) (:value ls)
+                                                  (not (nil? ls)) ls
+                                                  (nil? ls) "")))
+                                            [labels descriptions aliases])
+                    alias (map :value alias)
+                    props (->> claims
                                (map
-                                 (fn [{:keys [mainsnak qualifiers rank references] :as claim}]
-                                   (assert (= (:type claim) "statement") (str "claim type not a statement: " claim))
-                                   (let [data-type (get mainsnak :datatype)]
-                                     (when (and (not= "deprecated" rank)
-                                                (not (or (= "wikibase-item" data-type)
-                                                         (= "wikibase-property" data-type))))
-                                       (merge (from-snak mainsnak)
-                                              {:prop (from-entity-id (name prop-id))
-                                               :rank (from-rank rank)
-                                               :qualifiers (map from-qualifier qualifiers)
-                                               ;:references (map from-reference references)
-                                               }))))
-                                 claim-arr)))
-                           (flatten)
-                           (filter identity)
-                           (doall))
-                type (from-entity-type type)
-                datatype (encode-type datatype)]
-            (new-vertex! :wikidata-record {:id id :label label :description desc :type type :data-type datatype :alias alias :props props}))
+                                 (fn [[prop-id claim-arr]]
+                                   (map
+                                     (fn [{:keys [mainsnak qualifiers rank references] :as claim}]
+                                       (assert (= (:type claim) "statement") (str "claim type not a statement: " claim))
+                                       (let [data-type (get mainsnak :datatype)]
+                                         (when (and (not= "deprecated" rank)
+                                                    (not (or (= "wikibase-item" data-type)
+                                                             (= "wikibase-property" data-type))))
+                                           (merge (from-snak mainsnak)
+                                                  {:prop (from-entity-id (name prop-id))
+                                                   :rank (from-rank rank)
+                                                   :qualifiers (map from-qualifier qualifiers)
+                                                   ;:references (map from-reference references)
+                                                   }))))
+                                     claim-arr)))
+                               (flatten)
+                               (filter identity)
+                               (doall))
+                    type (from-entity-type type)
+                    datatype (encode-type datatype)]
+                (new-vertex! :wikidata-record {:id id :label label :description desc :type type :data-type datatype :alias alias :props props}))))
+          (catch JsonParseException ex)
+          (catch Exception ex
+            (clojure.stacktrace/print-cause-trace ex)))))))
+
+(defn import-links [dump-path]
+  (println "Import Edges")
+  (with-open [rdr (clojure.java.io/reader dump-path)]
+    (let [th-pool (cp/threadpool 56)]
+      (doseq [line (line-seq rdr)]
+        (try
+          (let [{:keys [id claims]} (json/parse-string line true)]
+            (cp/future
+              th-pool
+              (try
+                (doseq [[prop-id claim-arr] claims]
+                  (doseq [{:keys [mainsnak qualifiers rank references] :as claim} claim-arr]
+                    (assert (= (:type claim) "statement") (str "claim type not a statement: " claim))
+                    (let [data-type (get mainsnak :datatype)]
+                      (when (and (not= "deprecated" rank)
+                                 (or (= "wikibase-item" data-type)
+                                     (= "wikibase-property" data-type)))
+                        (let [snak (from-snak mainsnak)
+                              {:keys [datatype value]} snak]
+                          (assert (or (= 8 datatype) (= 9 datatype)) (str "Data type cannot been accepted " snak))
+                          (let [remote-digest (digest-vertex (from-entity-id value))
+                                local-digest  (digest-vertex (from-entity-id id))]
+                            (if (and remote-digest local-digest)
+                              (link! local-digest :wikidata-link remote-digest
+                                     {:prop (from-entity-id (name prop-id))
+                                      :rank (from-rank rank)
+                                      :qualifiers (map from-qualifier qualifiers)})
+                              (println "Missing Vertex " local-digest " " remote-digest))))))
+                    claim-arr))
+                (catch Exception ex
+                  (clojure.stacktrace/print-cause-trace ex)))))
+          (catch JsonParseException ex
+            (clojure.stacktrace/print-cause-trace ex))
           (catch Exception ex
             (clojure.stacktrace/print-cause-trace ex)))))))
 
@@ -186,6 +229,9 @@
                   :data-path   "wikidata"
                   :durability true
                   :auto-backsync true
+                  ;:recover-backup-at-startup true
                   :replication 2})
-  (prepare-schemas)
-  (import-entities "/home/shisoft/Downloads/wikidata-20160328-all.json" :en))
+  (let [wikidata-path "wikidata-20160328-all.json"]
+    (prepare-schemas)
+    (import-entities wikidata-path :en)
+    (import-links wikidata-path)))
