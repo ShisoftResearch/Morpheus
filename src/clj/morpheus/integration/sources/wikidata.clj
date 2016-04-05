@@ -138,7 +138,7 @@
 (defn import-entities [dump-path lang]
   (println "Import Vertices")
   (let [lang (keyword lang)
-        th-pool (cp/threadpool 56)]
+        th-pool (cp/threadpool 28)]
     (with-open [rdr (clojure.java.io/reader dump-path)]
       (doseq [line (line-seq rdr)]
         (try
@@ -186,7 +186,7 @@
 (defn import-links [dump-path]
   (println "Import Edges")
   (with-open [rdr (clojure.java.io/reader dump-path)]
-    (let [th-pool (cp/threadpool 56)]
+    (let [th-pool (cp/threadpool 28)]
       (doseq [line (line-seq rdr)]
         (try
           (let [{:keys [id claims]} (json/parse-string line true)]
