@@ -4,7 +4,8 @@
             [morpheus.models.core :as models]
             [neb.server :as nserver]
             [cluster-connector.utils.for-debug :refer [$]])
-  (:gen-class))
+  (:gen-class)
+  (:import (clojure.lang IFn)))
 
 (set! *warn-on-reflection* true)
 
@@ -28,5 +29,5 @@
   (start-server)
   (.addShutdownHook
     (Runtime/getRuntime)
-    (Thread. shutdown-server))
+    (Thread. ^IFn shutdown-server))
   (println "Server started"))
