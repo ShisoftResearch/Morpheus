@@ -5,7 +5,8 @@
             [neb.cell :as neb-cell]
             [neb.trunk-store :as neb-ts]
             [cluster-connector.utils.for-debug :refer [spy $]]
-            [morpheus.models.core :as core]))
+            [morpheus.models.core :as core]
+            [com.climate.claypoole :as cp]))
 
 (def schema-fields
   [[:*start*  :cid]
@@ -39,17 +40,21 @@
 (defn conj-into-list-cell [list-cell cell-id]
   (update list-cell :cid-array conj cell-id))
 
-(defn record-edge-on-vertex [vertex edge-schema-id field cell-id & ]
-  (let [cid-lists (get vertex field)
-        cid-list-row (first (filter
-                              (fn [item]
-                                (= edge-schema-id (:sid item)))
-                              cid-lists))
-        list-cell-id (if cid-list-row
-                       (:list-cid cid-list-row)
-                       (neb/new-cell-by-ids (neb/rand-cell-id) @mb/cid-list-schema-id {:cid-array []}))]
-    (neb/update-cell* list-cell-id 'morpheus.models.edge.base/conj-into-list-cell cell-id)
-    (if-not cid-list-row
+(defn extract-edge-cid-list [cid-lists edge-schema-id]
+  (first (filter
+           (fn [item]
+             (= edge-schema-id (:sid item)))
+           cid-lists)))
+
+(defn extract-cell-list-id [vertex field edge-schema-id]
+  (let [cid-lists (get vertex field)]
+    (:list-cid (extract-edge-cid-list cid-lists edge-schema-id))))
+
+(defn record-edge-on-vertex [vertex edge-schema-id field & ]
+  (let [cid-list-row-id (extract-cell-list-id vertex field edge-schema-id)
+        list-cell-id (or cid-list-row-id
+                         (neb/new-cell-by-ids (neb/rand-cell-id) @mb/cid-list-schema-id {:cid-array []}))]
+    (if-not cid-list-row-id
       (update vertex field conj {:sid edge-schema-id :list-cid list-cell-id})
       vertex)))
 

@@ -23,7 +23,7 @@
     morph-schemas-lock
     (let [schema-name (get-schema-name stype group-name)]
       (if (schema-sname-exists? schema-name)
-        (throw (SchemaAlreadyExistsException.))
+        (throw (SchemaAlreadyExistsException. (str stype " - " group-name)))
         (let [neb-schema-id (when fields (neb/add-schema schema-name (vec fields)))
               meta (merge meta {:name group-name
                                 :neb-sid neb-schema-id

@@ -45,9 +45,18 @@
           (recur (rest e-ids)
                  (rest r-ids)))))))
 
-(defn cell-id-by-key [st vp key]
+(defn assemble-key [st vp key]
   (let [{:keys [neb-sid name]} vp]
-    (neb/cell-id-by-key (str (name st) "-" (str neb-sid) "-" (str name) "-" (str key)))))
+    (str st "-"
+         neb-sid "-"
+         (.hashCode (str name)) "-"
+         (.hashCode (str key)))))
+
+(defn cell-id-by-key [st vp key]
+  (neb/cell-id-by-key (assemble-key st vp key)))
+
+(defn cell-id-by-key* [st vp key]
+  (neb/cell-id-by-key* (assemble-key st vp key)))
 
 (defn cell-id-by-data [st props data]
   (let [{:keys [key-field]} props]
