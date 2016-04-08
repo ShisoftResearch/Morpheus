@@ -46,6 +46,8 @@
                                     edge-schema-id v2-e-field)
           v1-list-cell-row-id (eb/extract-cell-list-id v1-cell v1-e-field edge-schema-id)
           v2-list-cell-row-id (eb/extract-cell-list-id v2-cell v2-e-field edge-schema-id)]
+      (assert v1-list-cell-row-id)
+      (assert v2-list-cell-row-id)
       (neb/update-cell* v1-list-cell-row-id 'morpheus.models.edge.base/conj-into-list-cell v1-remote)
       (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/conj-into-list-cell v2-remote)
       (merge edge-cell-vertex-fields
