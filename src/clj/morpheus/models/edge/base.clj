@@ -40,6 +40,9 @@
 (defn conj-into-list-cell [list-cell cell-id]
   (update list-cell :cid-array conj cell-id))
 
+(defn concat-into-list-cell [list-cell cell-ids]
+  (update list-cell :cid-array concat cell-ids))
+
 (defn extract-edge-cid-list [cid-lists edge-schema-id]
   (first (filter
            (fn [item]

@@ -16,7 +16,8 @@
           (new-vertex-group! :people {:body :dynamic :key-field :name}) => anything)
     (fact "Create Edge Schema"
           (new-edge-group! :acted-in {:type :directed :body :dynamic}) => anything
-          (new-edge-group! :spouse {:type :indirected :body :simple}) => anything)
+          (new-edge-group! :spouse {:type :indirected :body :simple}) => anything
+          (new-edge-group! :related-with {:type :directed :body :simple}) => anything)
     (fact "New Veterxs"
           (new-vertex! :people {:name "Morgan Freeman"        :age 78}) => anything
           (new-vertex! :movie {:name "Batman Begins"         :year 2005}) => anything
@@ -110,4 +111,22 @@
                 mf-spouse-edge (first (neighbours morgan-freeman :types :spouse))]
             (unlink! rand-acted-movie) => anything
             (unlink! mf-spouse-edge) => anything
-            (degree (reload-vertex morgan-freeman)) => 2))))
+            (degree (reload-vertex morgan-freeman)) => 2))
+    (fact "Link group"
+          (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")
+                batman-begins  (vertex-by-key :movie "Batman Begins")
+                dark-knight    (vertex-by-key :movie "The Dark Knight")
+                oblivion       (vertex-by-key :movie "Oblivion")
+                dark-knight-rises (vertex-by-key :name "The Dark Knight Rises")
+                jeanette-adair-bradshaw (vertex-by-key :people "Jeanette Adair Bradshaw")]
+            (link-group! morgan-freeman
+                         :related-with
+                         batman-begins
+                         oblivion
+                         dark-knight
+                         dark-knight-rises
+                         jeanette-adair-bradshaw) => anything
+            (degree (reload-vertex morgan-freeman)) => 6
+            (degree (reload-vertex morgan-freeman) {:types :related-with}) => 4
+            (degree (reload-vertex morgan-freeman) {:types :related-with :directions :*outbounds*}) => 4
+            (degree (reload-vertex morgan-freeman) {:types :related-with :directions :*inbounds*}) => 0))))

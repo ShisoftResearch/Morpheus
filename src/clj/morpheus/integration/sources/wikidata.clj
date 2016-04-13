@@ -188,37 +188,43 @@
 (defn import-links [dump-path]
   (println "Import Edges")
   (with-open [rdr (clojure.java.io/reader dump-path)]
-    (let [th-pool (cp/threadpool 28)]
-      (doseq [line (line-seq rdr)]
+    (let [th-parse-pool (cp/threadpool 28)]
+      (cp/pdoseq
+        th-parse-pool [line (line-seq rdr)]
         (try
-          (let [{:keys [id claims]} (json/parse-string line true)]
-            (doseq [[prop-id claim-arr] claims]
-              (cp/pdoseq
-                th-pool [{:keys [mainsnak qualifiers rank references] :as claim} claim-arr]
-                (try
-                  (assert (= (:type claim) "statement") (str "claim type not a statement: " claim))
-                  (let [data-type (get mainsnak :datatype)]
-                    (when (and (not= "deprecated" rank)
-                               (or (= "wikibase-item" data-type)
-                                   (= "wikibase-property" data-type)))
-                      (let [snak (from-snak mainsnak)
-                            {:keys [datatype value]} snak]
-                        (when value
-                          (assert (or (= 8 datatype) (= 9 datatype)) (str "Data type cannot been accepted " snak))
-                          (let [remote-digest (digest-vertex (from-entity-id value))
-                                local-digest  (digest-vertex (from-entity-id id))]
-                            (if (and remote-digest local-digest)
-                              (link! local-digest :wikidata-link remote-digest
-                                     {:prop (from-entity-id (name prop-id))
-                                      :rank (from-rank rank)
-                                      :qualifiers (map from-qualifier qualifiers)})
-                              (println "Missing Vertex" local-digest remote-digest id value)))))))
-                  (catch Exception ex
-                    (clojure.stacktrace/print-cause-trace ex))))))
+          (let [{:keys [id claims]} (json/parse-string line true)
+                local-digest  (digest-vertex (from-entity-id id))
+                edges (->> claims
+                           (map
+                             (fn [[prop-id claim-arr]]
+                               (map
+                                 (fn [{:keys [mainsnak qualifiers rank references] :as claim}]
+                                   (let [data-type (get mainsnak :datatype)]
+                                     (when (and (= (:type claim) "statement")
+                                                (not= "deprecated" rank)
+                                                (or (= "wikibase-item" data-type)
+                                                    (= "wikibase-property" data-type)))
+                                       (let [snak (from-snak mainsnak)
+                                             {:keys [datatype value]} snak]
+                                         (when (and value (or (= 8 datatype) (= 9 datatype)))
+                                           (let [remote-digest (digest-vertex (from-entity-id value))]
+                                             (if remote-digest
+                                               (try
+                                                 [remote-digest
+                                                  {:prop (from-entity-id (name prop-id))
+                                                   :rank (from-rank rank)
+                                                   :qualifiers (map from-qualifier qualifiers)}]
+                                                 (catch Error tr
+                                                   (clojure.stacktrace/print-cause-trace tr)))
+                                               (println "Missing Vertex" local-digest remote-digest id value))))))))
+                                 claim-arr)))
+                           (flatten)
+                           (filter identity))]
+            (link-group! local-digest :wikidata-link edges))
           (catch JsonParseException _)
           (catch Exception ex
             (clojure.stacktrace/print-cause-trace ex))))
-      (cp/shutdown th-pool))))
+      (cp/shutdown th-parse-pool))))
 
 (defn import-to-this-cluster []
   (start-server* {:server-name :morpheus
