@@ -195,7 +195,7 @@
           (let [{:keys [id claims]} (json/parse-string line true)
                 local-digest  (digest-vertex (from-entity-id id))
                 edges (->> claims
-                           (map
+                           (mapcat
                              (fn [[prop-id claim-arr]]
                                (map
                                  (fn [{:keys [mainsnak qualifiers rank references] :as claim}]
@@ -218,9 +218,8 @@
                                                    (clojure.stacktrace/print-cause-trace tr)))
                                                (println "Missing Vertex" local-digest remote-digest id value))))))))
                                  claim-arr)))
-                           (flatten)
                            (filter identity))]
-            (link-group! local-digest :wikidata-link edges))
+            (apply link-group! local-digest :wikidata-link edges))
           (catch JsonParseException _)
           (catch Exception ex
             (clojure.stacktrace/print-cause-trace ex))))

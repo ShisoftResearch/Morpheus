@@ -16,8 +16,7 @@
           (new-vertex-group! :people {:body :dynamic :key-field :name}) => anything)
     (fact "Create Edge Schema"
           (new-edge-group! :acted-in {:type :directed :body :dynamic}) => anything
-          (new-edge-group! :spouse {:type :indirected :body :simple}) => anything
-          (new-edge-group! :related-with {:type :directed :body :simple}) => anything)
+          (new-edge-group! :spouse {:type :indirected :body :simple}) => anything)
     (fact "New Veterxs"
           (new-vertex! :people {:name "Morgan Freeman"        :age 78}) => anything
           (new-vertex! :movie {:name "Batman Begins"         :year 2005}) => anything
@@ -113,6 +112,9 @@
             (unlink! mf-spouse-edge) => anything
             (degree (reload-vertex morgan-freeman)) => 2))
     (fact "Link group"
+          (new-edge-group! :related-with {:type :directed :body :simple}) => anything
+          (new-edge-group! :related-with-2 {:type :directed :body :defined
+                                            :fields [[:num :int]]}) => anything
           (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")
                 batman-begins  (vertex-by-key :movie "Batman Begins")
                 dark-knight    (vertex-by-key :movie "The Dark Knight")
@@ -129,4 +131,14 @@
             (degree (reload-vertex morgan-freeman)) => 6
             (degree (reload-vertex morgan-freeman) {:types :related-with}) => 4
             (degree (reload-vertex morgan-freeman) {:types :related-with :directions :*outbounds*}) => 4
-            (degree (reload-vertex morgan-freeman) {:types :related-with :directions :*inbounds*}) => 0))))
+            (degree (reload-vertex morgan-freeman) {:types :related-with :directions :*inbounds*}) => 0
+            (link-group! morgan-freeman
+                         :related-with-2
+                         [batman-begins {:num 1}]
+                         [oblivion {:num 2}]
+                         [dark-knight {:num 3}]
+                         [dark-knight-rises {:num 4}]
+                         [jeanette-adair-bradshaw {:num 5}]) => anything
+            (degree (reload-vertex morgan-freeman)) => 10
+            (degree (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*}) => 4
+            (neighbours (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*})))))
