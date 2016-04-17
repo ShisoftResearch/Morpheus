@@ -81,6 +81,7 @@
                             v2-remote (or edge-cell-id v1-id)]
                         [v2-id v1-remote v2-remote])))
                (filter identity)
+               (doall)
                (group-by first))
           v1-remotes
           (->> (for [[v2-id v2-edges] edges-group]
@@ -91,7 +92,8 @@
                        v2-remotes (map #(% 2) v2-edges)]
                    (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/concat-into-list-cell v2-remotes)
                    v1-remotes))
-               (flatten))
+               (flatten)
+               (doall))
           v1-cell (neb/update-cell* v1-id 'morpheus.models.edge.base/record-edge-on-vertex
                                     edge-schema-id v1-e-field)
           v1-list-cell-row-id (eb/extract-cell-list-id v1-cell v1-e-field edge-schema-id)]

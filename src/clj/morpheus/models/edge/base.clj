@@ -6,7 +6,10 @@
             [neb.trunk-store :as neb-ts]
             [cluster-connector.utils.for-debug :refer [spy $]]
             [morpheus.models.core :as core]
-            [com.climate.claypoole :as cp]))
+            [com.climate.claypoole :as cp])
+  (:import (java.util UUID)
+           (org.shisoft.neb Trunk)
+           (org.shisoft.neb.io type_lengths)))
 
 (def schema-fields
   [[:*start*  :cid]
@@ -37,6 +40,11 @@
 
 (def vertex-fields #{:*start* :*end*})
 
+(def edge-list-max (dec (/ (Trunk/getMaxObjSize) type_lengths/cidLen)))
+
+(defn append-edge-to-linked-lists [id]
+  )
+
 (defn conj-into-list-cell [list-cell cell-id]
   (update list-cell :cid-array conj cell-id))
 
@@ -56,7 +64,9 @@
 (defn record-edge-on-vertex [vertex edge-schema-id field & ]
   (let [cid-list-row-id (extract-cell-list-id vertex field edge-schema-id)
         list-cell-id (or cid-list-row-id
-                         (neb/new-cell-by-ids (neb/rand-cell-id) @mb/cid-list-schema-id {:cid-array []}))]
+                         (neb/new-cell-by-ids
+                           (neb/rand-cell-id) @mb/cid-list-schema-id
+                           {:next-list (UUID. 0 0) :cid-array []}))]
     (if-not cid-list-row-id
       (update vertex field conj {:sid edge-schema-id :list-cid list-cell-id})
       vertex)))

@@ -72,7 +72,7 @@
     (when (ds/is-first-node?)
       (try
         (neb/add-schema :relations [[:sid :int] [:list-cid :cid]])
-        (neb/add-schema :cid-list  [[:cid-array :cid-array]])
+        (neb/add-schema :cid-list  [[:next-list :cid] [:cid-array :cid-array]])
         (catch SchemaAlreadyExistsException _))))
   (reset! cid-list-schema-id (neb/schema-id-by-sname :cid-list)))
 

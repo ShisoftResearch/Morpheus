@@ -214,7 +214,7 @@
                                                   {:prop (from-entity-id (name prop-id))
                                                    :rank (from-rank rank)
                                                    :qualifiers (map from-qualifier qualifiers)}]
-                                                 (catch Error tr
+                                                 (catch Throwable tr
                                                    (clojure.stacktrace/print-cause-trace tr)))
                                                (println "Missing Vertex" local-digest remote-digest id value))))))))
                                  claim-arr)))
@@ -229,8 +229,8 @@
   (start-server* {:server-name :morpheus
                   :port 5124
                   :zk  "10.0.1.104:2181"
-                  :trunks-size "5gb"
-                  :memory-size "25gb"
+                  :trunks-size "10gb"
+                  :memory-size "100gb"
                   ;:schema-file "configures/neb-schemas.edn"
                   :data-path   "wikidata"
                   :durability true
