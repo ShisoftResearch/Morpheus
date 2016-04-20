@@ -219,7 +219,7 @@
                                                (println "Missing Vertex" local-digest remote-digest id value))))))))
                                  claim-arr)))
                            (filter identity))]
-            (apply link-group! local-digest :wikidata-link edges))
+            (when local-digest (apply link-group! local-digest :wikidata-link edges)))
           (catch JsonParseException _)
           (catch Exception ex
             (clojure.stacktrace/print-cause-trace ex))))
@@ -229,8 +229,8 @@
   (start-server* {:server-name :morpheus
                   :port 5124
                   :zk  "10.0.1.104:2181"
-                  :trunks-size "10gb"
-                  :memory-size "100gb"
+                  :trunks-size "25gb"
+                  :memory-size "50gb"
                   ;:schema-file "configures/neb-schemas.edn"
                   :data-path   "wikidata"
                   :durability true

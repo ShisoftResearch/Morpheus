@@ -43,7 +43,8 @@
 (def edge-list-max (dec (/ (Trunk/getMaxObjSize) type_lengths/cidLen)))
 
 (defn append-edge-to-linked-lists [id]
-  )
+  (let [cid-to-check (atom id)]
+    ))
 
 (defn conj-into-list-cell [list-cell cell-id]
   (update list-cell :cid-array conj cell-id))
