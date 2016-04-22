@@ -90,7 +90,7 @@
                        v2-list-cell-row-id (eb/extract-cell-list-id v2-cell v2-e-field edge-schema-id)
                        v1-remotes (map second v2-edges)
                        v2-remotes (map #(% 2) v2-edges)]
-                   (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/concat-into-list-cell v2-remotes)
+                   (when v2-list-cell-row-id (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/concat-into-list-cell v2-remotes))
                    v1-remotes))
                (flatten)
                (doall))
