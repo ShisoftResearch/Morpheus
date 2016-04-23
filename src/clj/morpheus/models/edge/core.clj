@@ -42,14 +42,8 @@
                                 edge-cell-vertex-fields args))
           v1-remote (or edge-cell-id v2-id)
           v2-remote (or edge-cell-id v1-id)
-          v1-cell (neb/update-cell* v1-id 'morpheus.models.edge.base/record-edge-on-vertex
-                                    edge-schema-id v1-e-field)
-          v2-cell (neb/update-cell* v2-id 'morpheus.models.edge.base/record-edge-on-vertex
-                                    edge-schema-id v2-e-field)
-          v1-list-cell-row-id (eb/extract-cell-list-id v1-cell v1-e-field edge-schema-id)
-          v2-list-cell-row-id (eb/extract-cell-list-id v2-cell v2-e-field edge-schema-id)]
-      (assert v1-list-cell-row-id (pr-str [edge-schema-id v1-id v1-cell]))
-      (assert v2-list-cell-row-id (pr-str [edge-schema-id v2-id v2-cell]))
+          v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])
+          v2-list-cell-row-id (eb/vertex-edge-list [v2-id v2-e-field edge-schema-id])]
       (neb/update-cell* v1-list-cell-row-id 'morpheus.models.edge.base/conj-into-list-cell v1-remote)
       (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/conj-into-list-cell v2-remote)
       (merge edge-cell-vertex-fields
@@ -85,18 +79,14 @@
                (group-by first))
           v1-remotes
           (->> (for [[v2-id v2-edges] edges-group]
-                 (let [v2-cell (neb/update-cell* v2-id 'morpheus.models.edge.base/record-edge-on-vertex
-                                                 edge-schema-id v2-e-field)
-                       v2-list-cell-row-id (eb/extract-cell-list-id v2-cell v2-e-field edge-schema-id)
+                 (let [v2-list-cell-row-id (eb/vertex-edge-list [v2-id v2-e-field edge-schema-id])
                        v1-remotes (map second v2-edges)
                        v2-remotes (map #(% 2) v2-edges)]
                    (when v2-list-cell-row-id (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/concat-into-list-cell v2-remotes))
                    v1-remotes))
                (flatten)
                (doall))
-          v1-cell (neb/update-cell* v1-id 'morpheus.models.edge.base/record-edge-on-vertex
-                                    edge-schema-id v1-e-field)
-          v1-list-cell-row-id (eb/extract-cell-list-id v1-cell v1-e-field edge-schema-id)]
+          v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])]
       (neb/update-cell* v1-list-cell-row-id 'morpheus.models.edge.base/concat-into-list-cell v1-remotes))))
 
 (defn- vertex-cid-lists [vertex & params]
@@ -205,4 +195,6 @@
                       v1-field es-id (or *id* *end*))
     (neb/update-cell* *end* 'morpheus.models.edge.base/rm-ve-relation
                       v2-field es-id (or *id* *start*))
-    (when *id* (eb/delete-edge-cell *ep* edge *start* *end*))))
+    (when *id* (eb/delete-edge-cell *ep* edge *start* *end*))
+    (eb/reset-vertex-edge-list [*start* v1-field es-id])
+    (eb/reset-vertex-edge-list [*end* v2-field es-id])))

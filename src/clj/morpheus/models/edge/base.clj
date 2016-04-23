@@ -5,6 +5,7 @@
             [neb.cell :as neb-cell]
             [neb.trunk-store :as neb-ts]
             [cluster-connector.utils.for-debug :refer [spy $]]
+            [cluster-connector.native-cache.core :refer [defcache evict-cache-key]]
             [morpheus.models.core :as core]
             [com.climate.claypoole :as cp])
   (:import (java.util UUID)
@@ -102,3 +103,14 @@
     (merge pure-edge
            {:*ep* group-props
             :*direction* direction})))
+
+(defcache vertex-edge-list {:expire-after-access-secs 300
+                            :soft-values? true}
+          (fn [[vertex-id direction schema-id]]
+            (spy [vertex-id direction schema-id])
+            (let [v-cell (neb/update-cell* vertex-id 'morpheus.models.edge.base/record-edge-on-vertex
+                                           schema-id direction)]
+              ($ extract-cell-list-id v-cell direction schema-id))))
+
+(defn reset-vertex-edge-list [k]
+  (evict-cache-key vertex-edge-list k))
