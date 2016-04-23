@@ -195,6 +195,4 @@
                       v1-field es-id (or *id* *end*))
     (neb/update-cell* *end* 'morpheus.models.edge.base/rm-ve-relation
                       v2-field es-id (or *id* *start*))
-    (when *id* (eb/delete-edge-cell *ep* edge *start* *end*))
-    (eb/reset-vertex-edge-list [*start* v1-field es-id])
-    (eb/reset-vertex-edge-list [*end* v2-field es-id])))
+    (when *id* (eb/delete-edge-cell *ep* edge *start* *end*))))

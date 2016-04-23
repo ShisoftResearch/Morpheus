@@ -63,15 +63,26 @@
   (let [cid-lists (get vertex field)]
     (:list-cid (extract-edge-cid-list cid-lists edge-schema-id))))
 
+(defn cid-list-id-by-vertex [v-id field edge-schema-id]
+  (neb/cell-id-by-key (str v-id "-" field "-" edge-schema-id)))
+
 (defn record-edge-on-vertex [vertex edge-schema-id field & ]
   (let [cid-list-row-id (extract-cell-list-id vertex field edge-schema-id)
         list-cell-id (or cid-list-row-id
                          (neb/new-cell-by-ids
-                           (neb/rand-cell-id) @mb/cid-list-schema-id
+                           (cid-list-id-by-vertex (:*id* vertex) field edge-schema-id)
+                           @mb/cid-list-schema-id
                            {:next-list (UUID. 0 0) :cid-array []}))]
     (if-not cid-list-row-id
       (update vertex field conj {:sid edge-schema-id :list-cid list-cell-id})
       vertex)))
+
+(defn vertex-edge-list [[vertex-id direction schema-id]]
+  (let [id (cid-list-id-by-vertex vertex-id direction schema-id)]
+    (when-not (neb/cell-exists?* id)
+      (neb/update-cell* vertex-id 'morpheus.models.edge.base/record-edge-on-vertex
+                        schema-id direction))
+    id))
 
 (defn rm-ve-list-item* [{:keys [cid-array] :as list-cell} target-cid]
   ;(assert ((set cid-array) target-cid) "target does not in the list")
@@ -103,14 +114,3 @@
     (merge pure-edge
            {:*ep* group-props
             :*direction* direction})))
-
-(defcache vertex-edge-list {:expire-after-access-secs 300
-                            :soft-values? true}
-          (fn [[vertex-id direction schema-id]]
-            (spy [vertex-id direction schema-id])
-            (let [v-cell (neb/update-cell* vertex-id 'morpheus.models.edge.base/record-edge-on-vertex
-                                           schema-id direction)]
-              ($ extract-cell-list-id v-cell direction schema-id))))
-
-(defn reset-vertex-edge-list [k]
-  (evict-cache-key vertex-edge-list k))
