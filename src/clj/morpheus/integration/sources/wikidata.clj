@@ -237,7 +237,7 @@
                   :auto-backsync true
                   ;:recover-backup-at-startup true
                   :replication 2})
-  (let [wikidata-path "wikidata-20160328-all.json"]
+  (let [wikidata-path "wikidata-latest-all.json"]
     (prepare-schemas)
     (import-entities wikidata-path :en)
     (import-links wikidata-path)))
