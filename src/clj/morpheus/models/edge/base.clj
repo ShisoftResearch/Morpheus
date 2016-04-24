@@ -159,7 +159,7 @@
                           {:next-list empty-cid :cid-array []}))]
     (if (< list-length max-list-size)
       (let [cids-num-to-go (- max-list-size list-length)
-            cids-to-go (take cids-to-go target-cids)]
+            cids-to-go (take cids-num-to-go target-cids)]
         (neb-cell/update-cell trunk hash 'morpheus.models.edge.base/concat-into-list-cell
                               cids-num-to-go)
         (if (= cids-to-go target-cids)
