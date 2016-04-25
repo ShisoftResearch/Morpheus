@@ -44,8 +44,8 @@
           v2-remote (or edge-cell-id v1-id)
           v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])
           v2-list-cell-row-id (eb/vertex-edge-list [v2-id v2-e-field edge-schema-id])]
-      (neb/update-cell* v1-list-cell-row-id 'morpheus.models.edge.base/conj-into-list-cell v1-remote)
-      (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/conj-into-list-cell v2-remote)
+      (eb/append-cid-to-list v1-list-cell-row-id v1-remote)
+      (eb/append-cid-to-list v2-list-cell-row-id v2-remote)
       (merge edge-cell-vertex-fields
              {:*id* edge-cell-id
               :*ep* edge-schema}))))
@@ -82,12 +82,12 @@
                  (let [v2-list-cell-row-id (eb/vertex-edge-list [v2-id v2-e-field edge-schema-id])
                        v1-remotes (map second v2-edges)
                        v2-remotes (map #(% 2) v2-edges)]
-                   (when v2-list-cell-row-id (neb/update-cell* v2-list-cell-row-id 'morpheus.models.edge.base/concat-into-list-cell v2-remotes))
+                   (when v2-list-cell-row-id (eb/append-cids-to-list v2-list-cell-row-id v2-remotes))
                    v1-remotes))
                (flatten)
                (doall))
           v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])]
-      (neb/update-cell* v1-list-cell-row-id 'morpheus.models.edge.base/concat-into-list-cell v1-remotes))))
+      (eb/append-cids-to-list v1-list-cell-row-id v1-remotes))))
 
 (defn- vertex-cid-lists [vertex & params]
   (let [seqed-params (seq params)

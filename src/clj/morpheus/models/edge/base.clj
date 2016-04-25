@@ -48,12 +48,6 @@
                        (Math/floor) (int)
                        (dec)))
 
-(defn conj-into-list-cell [list-cell cell-id]
-  (update list-cell :cid-array conj cell-id))
-
-(defn concat-into-list-cell [list-cell cell-ids]
-  (update list-cell :cid-array concat cell-ids))
-
 (defn extract-edge-cid-list [cid-lists edge-schema-id]
   (first (filter
            (fn [item]
@@ -68,6 +62,79 @@
   (neb/cell-id-by-key (str v-id "-" field "-" edge-schema-id)))
 
 (def empty-cid (UUID. 0 0))
+
+(defn format-edge-cells [group-props direction edge]
+  (let [pure-edge (dissoc edge :*schema* :*hash*)]
+    (merge pure-edge
+           {:*ep* group-props
+            :*direction* direction})))
+
+(defmacro with-cid-list [& body]
+  `(let [^Trunk ~'trunk neb-cell/*cell-trunk*
+         ^Integer ~'hash neb-cell/*cell-hash*
+         ^CellMeta ~'meta neb-cell/*cell-meta*
+         ~'next-cid (neb-cell/get-in-cell ~'trunk ~'hash [:next-list])]
+     ~@body))
+
+(defmacro def-cid-append-op [func-name params & body]
+  `(defn ~func-name ~params
+     (with-cid-list
+       (let [~'move-to-list-with-params (fn [cid-id# params#]
+                                          (apply neb/write-lock-exec* cid-id#
+                                                 (quote ~(symbol (str "morpheus.models.edge.base/"
+                                                                      (name func-name))))
+                                                 params#))
+             ~'move-to-list (fn [next-cid#] (~'move-to-list-with-params next-cid# ~params))
+             ~'list-length (Reader/readInt (+ (.getLocation ~'meta) neb-header/cell-head-len))]
+         ~@body))))
+
+(defn new-list-cell []
+  (let [cell-id (neb/new-cell-by-ids (neb/rand-cell-id) @mb/cid-list-schema-id
+                                     {:next-list empty-cid :cid-array []})]
+    (neb-cell/update-cell*
+      neb-cell/*cell-trunk* neb-cell/*cell-hash*
+      (fn [cid-list next-list-cid]
+        (assoc cid-list :next-list next-list-cid)))
+    cell-id))
+
+(def-cid-append-op
+  append-cid-to-list* [target-cid]
+  (if (< list-length max-list-size)
+    (neb-cell/update-cell*
+      trunk hash
+      (fn [list-cell]
+        (update list-cell :cid-array conj target-cid)))
+    (move-to-list (or next-cid (new-list-cell)))))
+
+(defn append-cid-to-list [head-cid target-cid]
+  (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/append-cid-to-list* target-cid))
+
+(def-cid-append-op
+  append-cids-to-list* [target-cids]
+  (if (< list-length max-list-size)
+    (let [cids-num-to-go (- max-list-size list-length)
+          cids-to-go (take cids-num-to-go target-cids)]
+      (neb-cell/update-cell*
+        trunk hash
+        (fn [list-cell]
+          (update list-cell :cid-array concat cids-to-go)))
+      (when-not (= cids-to-go target-cids)
+        (move-to-list-with-params (or next-cid (new-list-cell)) [(subvec target-cids cids-num-to-go)])))
+    (move-to-list (or next-cid (new-list-cell)))))
+
+(defn append-cids-to-list [head-cid target-cids]
+  (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/append-cids-to-list* target-cids))
+
+(defn remove-cid-from-list* [target-cid]
+  (with-cid-list
+    (let [{:keys [cid-array] :as list-cell} (neb-cell/read-cell trunk hash)
+          removed-list (remove-first #(= % target-cid) cid-array)]
+      (if (= removed-list cid-array)
+        (neb/write-lock-exec* next-cid 'morpheus.models.edge.base/remove-cid-from-list* target-cid)
+        (neb-cell/replace-cell* trunk hash (assoc list-cell :cid-array removed-list))))))
+
+(defn remove-cid-from-list [head-cid target-cid]
+  (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/remove-cid-from-list* target-cid))
 
 (defn record-edge-on-vertex [vertex edge-schema-id field & ]
   (let [cid-list-row-id (extract-cell-list-id vertex field edge-schema-id)
@@ -87,86 +154,22 @@
                         schema-id direction))
     id))
 
-(defn rm-ve-list-item* [{:keys [cid-array] :as list-cell} target-cid]
-  ;(assert ((set cid-array) target-cid) "target does not in the list")
-  (update list-cell :cid-array #(remove-first (fn [x] (= target-cid x)) %)))
-
-(defn rm-ve-list-item [list-cell target-cid]  (let [{:keys [cid-array] :as proced-cell} (rm-ve-list-item* list-cell target-cid)]
-    (if (empty? cid-array)
-      (do (mb/try-invoke-local-neb-cell
-            neb-cell/delete-cell neb-ts/delete-cell list-cell) true)
-      (do (mb/try-invoke-local-neb-cell
-            neb-cell/replace-cell* neb-ts/replace-cell list-cell proced-cell) false))))
-
 (defn rm-ve-relation [vertex direction es-id target-cid]
   (let [cid-list-cell-id (->> (get vertex direction)
                               (filter (fn [m] (= es-id (:sid m))))
-                              (first) (:list-cid))
-        empty-relation? (when cid-list-cell-id
-                          (neb/write-lock-exec*
-                            cid-list-cell-id
-                            'morpheus.models.edge.base/rm-ve-list-item
-                            target-cid))]
-    (if empty-relation?
-      (update vertex direction
-              (fn [coll] (remove #(= cid-list-cell-id (:list-cid %)) coll)))
-      vertex)))
+                              (first) (:list-cid))]
+    (remove-cid-from-list cid-list-cell-id target-cid)
+    vertex))
 
-(defn format-edge-cells [group-props direction edge]
-  (let [pure-edge (dissoc edge :*schema* :*hash*)]
-    (merge pure-edge
-           {:*ep* group-props
-            :*direction* direction})))
+(defn remove-list-chain* []
+  (with-cid-list
+    (when next-cid (neb/write-lock-exec* next-cid 'morpheus.models.edge.base/remove-list-chain*))
+    (neb-cell/delete-cell trunk hash)))
 
-(defmacro with-cid-list [& body]
-  `(let [^Trunk ~'trunk neb-cell/*cell-trunk*
-         ^Integer ~'hash neb-cell/*cell-hash*
-         ^CellMeta ~'meta neb-cell/*cell-meta*
-         ~'next-cid (neb-cell/get-in-cell ~'trunk ~'hash [:next-list])]
-     ~@body))
+(defn remove-list-chain [head-cid]
+  (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/remove-list-chain*))
 
-(defmacro def-cid-tail-op [func-name params & body]
-  `(defn ~func-name ~params
-     (with-cid-list
-       (let [~'move-to-list-with-params (fn [cid-id# params#]
-                                          (apply neb/write-lock-exec* cid-id#
-                                                 (quote ~(symbol (str "morpheus.models.edge.base/"
-                                                                      (name func-name))))
-                                                 params#))
-             ~'move-to-list (fn [next-cid#] (~'move-to-list-with-params next-cid# ~params))]
-         (if (= ~'next-cid empty-cid)
-           (let [~'list-length (Reader/readInt (+ (.getLocation ~'meta) neb-header/cell-head-len))]
-             ~@body)
-           (~'move-to-list-with-params ~'next-cid ~params))))))
-
-(def-cid-tail-op
-  append-cid-to-list* [target-cid]
-  (if (< list-length max-list-size)
-    (do (neb-cell/update-cell trunk hash 'morpheus.models.edge.base/conj-into-list-cell target-cid)
-        neb-ts/*cell-id*)
-    (let [next-cid (neb/new-cell-by-ids (neb/rand-cell-id) @mb/cid-list-schema-id
-                                        {:next-list empty-cid :cid-array []})]
-      (move-to-list next-cid))))
-
-(defn append-cid-to-list [head-cid target-cid]
-  (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/append-cid-to-list* target-cid))
-
-(def-cid-tail-op
-  append-cids-to-list* [target-cids]
-  (let [new-list (fn [] (neb/new-cell-by-ids
-                          (neb/rand-cell-id)
-                          @mb/cid-list-schema-id
-                          {:next-list empty-cid :cid-array []}))]
-    (if (< list-length max-list-size)
-      (let [cids-num-to-go (- max-list-size list-length)
-            cids-to-go (take cids-num-to-go target-cids)]
-        (neb-cell/update-cell trunk hash 'morpheus.models.edge.base/concat-into-list-cell
-                              cids-num-to-go)
-        (if (= cids-to-go target-cids)
-          neb-ts/*cell-id*
-          (let [list-cid (new-list)]
-            (move-to-list-with-params list-cid [(subvec target-cids cids-num-to-go)]))))
-      (move-to-list (new-list)))))
-
-(defn append-cids-to-list [head-cid target-cids]
-  (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/append-cid-to-list* target-cids))
+(defn remove-vertex-edge-list-chains [vertex]
+  (let [lists (mapcat #(get vertex %) [:*inbounds* :*outbounds* :*neighbours*])
+        list-ids (map :list-cid lists)]
+    (dorun (map remove-list-chain list-ids))))

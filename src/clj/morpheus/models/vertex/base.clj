@@ -30,9 +30,10 @@
 (defn reset-vertex-cell-map [vertex value]
   (merge value (select-keys vertex vertex-relation-field-keys)))
 
-(defn delete-vertex* [vertex]
+(defn delete-vertex* []
   "It should been called from write-lock-exec in neb"
-  (let [v-id (:*id* vertex)]
+  (let [vertex (neb-cell/read-cell neb-cell/*cell-trunk* neb-cell/*cell-hash*)
+        v-id (:*id* vertex)]
     (doseq [{:keys [*ep* *direction* *start* *end* *id*] :as neighbour} (e/neighbours vertex)]
       (let [es-id (:id *ep*)
             target-id (or *id* v-id)
@@ -45,5 +46,5 @@
         (neb/update-cell* remote-vertex-id 'morpheus.models.edge.base/rm-ve-relation
                           remote-direction es-id target-id)
         (when *id* (eb/delete-edge-cell *ep* neighbour *start* *end*))))
-    (mb/try-invoke-local-neb-cell
-      neb-cell/delete-cell neb-ts/delete-cell vertex)))
+    (eb/remove-vertex-edge-list-chains vertex)
+    (neb-cell/delete-cell neb-cell/*cell-trunk* neb-cell/*cell-hash*)))

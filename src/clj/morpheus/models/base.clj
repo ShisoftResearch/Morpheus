@@ -75,12 +75,3 @@
         (neb/add-schema :cid-list  [[:next-list :cid] [:cid-array :cid-array]])
         (catch SchemaAlreadyExistsException _))))
   (reset! cid-list-schema-id (neb/schema-id-by-sname :cid-list)))
-
-(defn try-invoke-local-neb-cell [loc-func rem-func cell & args]
-  (let [*hash* (:*hash* cell)
-        trunk neb-cell/*cell-trunk*
-        *id* (:*id* cell)]
-    (if (and *hash* trunk)
-      (apply loc-func trunk *hash* args)
-      (do (assert *id*)
-          (apply rem-func *id* args)))))
