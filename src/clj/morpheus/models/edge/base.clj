@@ -111,7 +111,7 @@
 
 (def-cid-append-op
   append-cids-to-list* [target-cids]
-  (if (< list-length max-list-size)
+  (if (and (not (empty? target-cids)) (< list-length max-list-size))
     (let [cids-num-to-go (- max-list-size list-length)
           cids-to-go (take cids-num-to-go target-cids)]
       (neb-cell/update-cell*
