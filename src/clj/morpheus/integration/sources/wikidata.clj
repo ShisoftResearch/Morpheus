@@ -230,7 +230,7 @@
                   :port 5124
                   :zk  "10.0.1.104:2181"
                   :trunks-size "5gb"
-                  :memory-size "15gb"
+                  :memory-size "50gb"
                   ;:schema-file "configures/neb-schemas.edn"
                   :data-path   "wikidata"
                   :durability true
