@@ -111,16 +111,17 @@
 
 (def-cid-append-op
   append-cids-to-list* [target-cids]
-  (if (and (not (empty? target-cids)) (< list-length max-list-size))
-    (let [cids-num-to-go (- max-list-size list-length)
-          cids-to-go (take cids-num-to-go target-cids)]
-      (neb-cell/update-cell*
-        trunk hash
-        (fn [list-cell]
-          (update list-cell :cid-array concat cids-to-go)))
-      (when-not (= cids-to-go target-cids)
-        (move-to-list-with-params (or next-cid (new-list-cell)) [(subvec target-cids cids-num-to-go)])))
-    (move-to-list (or next-cid (new-list-cell)))))
+  (when (not (empty? target-cids))
+    (if (< list-length max-list-size)
+      (let [cids-num-to-go (- max-list-size list-length)
+            cids-to-go (take cids-num-to-go target-cids)]
+        (neb-cell/update-cell*
+          trunk hash
+          (fn [list-cell]
+            (update list-cell :cid-array concat cids-to-go)))
+        (when-not (= cids-to-go target-cids)
+          (move-to-list-with-params (or next-cid (new-list-cell)) [(subvec target-cids cids-num-to-go)])))
+      (move-to-list (or next-cid (new-list-cell))))))
 
 (defn append-cids-to-list [head-cid target-cids]
   (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/append-cids-to-list* target-cids))

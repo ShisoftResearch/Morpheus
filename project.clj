@@ -15,7 +15,7 @@
   :plugins [[lein-midje "3.1.3"]]
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[midje "1.8.3"]]}}
-  :jvm-opts ["-Djava.rmi.server.hostname=10.0.1.110" ;;add this when remote-connect fail
+  :jvm-opts ["-Djava.rmi.server.hostname=10.0.1.111" ;;add this when remote-connect fail
              "-Dcom.sun.management.jmxremote"
              "-Dcom.sun.management.jmxremote.port=9876"
              "-Dcom.sun.management.jmxremote.authenticate=false"
