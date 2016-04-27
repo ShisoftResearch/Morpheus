@@ -73,8 +73,15 @@
   `(let [^Trunk ~'trunk neb-cell/*cell-trunk*
          ^Integer ~'hash neb-cell/*cell-hash*
          ^CellMeta ~'meta neb-cell/*cell-meta*
-         ~'next-cid (neb-cell/get-in-cell ~'trunk ~'hash [:next-list])]
+         ~'next-cid (neb-cell/get-in-cell ~'trunk ~'hash [:next-list])
+         ~'next-cid (when-not (= ~'next-cid empty-cid) ~'next-cid)]
      ~@body))
+
+(defn read-cid-list-len []
+  (Reader/readInt
+    (+ (.getLocation neb-cell/*cell-meta*)
+       type_lengths/cidLen
+       neb-header/cell-head-len)))
 
 (defmacro def-cid-append-op [func-name params & body]
   `(defn ~func-name ~params
@@ -85,7 +92,7 @@
                                                                       (name func-name))))
                                                  params#))
              ~'move-to-list (fn [next-cid#] (~'move-to-list-with-params next-cid# ~params))
-             ~'list-length (Reader/readInt (+ (.getLocation ~'meta) neb-header/cell-head-len))]
+             ~'list-length (read-cid-list-len)]
          ~@body))))
 
 (defn new-list-cell []
@@ -93,8 +100,8 @@
                                      {:next-list empty-cid :cid-array []})]
     (neb-cell/update-cell*
       neb-cell/*cell-trunk* neb-cell/*cell-hash*
-      (fn [cid-list next-list-cid]
-        (assoc cid-list :next-list next-list-cid)))
+      (fn [cid-list]
+        (assoc cid-list :next-list cell-id)))
     cell-id))
 
 (def-cid-append-op
@@ -120,7 +127,7 @@
           (fn [list-cell]
             (update list-cell :cid-array concat cids-to-go)))
         (when-not (= cids-to-go target-cids)
-          (move-to-list-with-params (or next-cid (new-list-cell)) [(subvec target-cids cids-num-to-go)])))
+          (move-to-list-with-params (or next-cid (new-list-cell)) [(subvec (vec target-cids) cids-num-to-go)])))
       (move-to-list (or next-cid (new-list-cell))))))
 
 (defn append-cids-to-list [head-cid target-cids]
@@ -174,3 +181,22 @@
   (let [lists (mapcat #(get vertex %) [:*inbounds* :*outbounds* :*neighbours*])
         list-ids (map :list-cid lists)]
     (dorun (map remove-list-chain list-ids))))
+
+(defn extract-edges [direction sid]
+  (with-cid-list
+    (let [{:keys [cid-array] :as list-cell} (neb-cell/read-cell trunk hash)]
+      (concat [{:cid-array cid-array
+                :*direction* direction
+                :*group-props* (mb/schema-by-id sid)}]
+              (when next-cid
+                (neb/read-lock-exec* next-cid
+                                     'morpheus.models.edge.base/extract-edges
+                                     direction sid))))))
+
+(defn count-edges [& _]
+  (with-cid-list
+    (+ (read-cid-list-len)
+       (if next-cid
+         (neb/read-lock-exec* next-cid
+                              'morpheus.models.edge.base/count-edges)
+         0))))

@@ -10,8 +10,7 @@
             [neb.core :as neb]
             [morpheus.models.core :as core]
             [cluster-connector.utils.for-debug :refer [$ spy]]
-            [neb.utils :refer [map-on-vals]]
-            [morpheus.models.base :as mb]))
+            [neb.utils :refer [map-on-vals]]))
 
 (defn new-edge-group! [group-name group-props]
   (let [{:keys [fields]} group-props
@@ -89,7 +88,7 @@
           v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])]
       (eb/append-cids-to-list v1-list-cell-row-id v1-remotes))))
 
-(defn- vertex-cid-lists [vertex & params]
+(defn- vertex-cid-lists [vertex read-list-sym & params]
   (let [seqed-params (seq params)
         params (cond
                  (or (nil? seqed-params) (coll? (first params)))
@@ -137,9 +136,10 @@
                  (fn [{:keys [sid list-cid]}]
                    (when (or (nil? types)
                              (types sid))
-                     {:cid-array (:cid-array (neb/read-cell* list-cid))
-                      :*direction* direction
-                      :*group-props* (mb/schema-by-id sid)}))
+                     ;{:cid-array (:cid-array (neb/read-cell* list-cid))
+                     ; :*direction* direction
+                     ; :*group-props* (mb/schema-by-id sid)}
+                     (neb/read-lock-exec* list-cid read-list-sym direction sid)))
                  dir-cid-list)))
            cid-lists)
          (flatten)
@@ -147,7 +147,7 @@
 
 (defn neighbours [vertex & params]
   (let [vertex-id (:*id* vertex)
-        cid-lists (apply vertex-cid-lists vertex params)]
+        cid-lists (apply vertex-cid-lists vertex 'morpheus.models.edge.base/extract-edges params)]
     (->> (map
            (fn [{:keys [*group-props* *direction*] :as cid-list}]
              (map
@@ -158,8 +158,7 @@
          (filter identity))))
 
 (defn degree [vertex & params]
-  (let [cid-lists (apply vertex-cid-lists vertex params)]
-    (reduce + (map (comp count :cid-array) cid-lists))))
+  (reduce + (apply vertex-cid-lists vertex 'morpheus.models.edge.base/count-edges params)))
 
 (def opposite-direction-mapper
   {:*outbounds* #{:*end*}

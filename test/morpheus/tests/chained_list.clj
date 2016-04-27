@@ -19,9 +19,16 @@
             (new-vertex! :item {:name "v2"}) => anything)
       (let [v1 (vertex-by-key :item "v1")
             v2 (vertex-by-key :item "v2")]
+        (spy max-list-items)
         (fact "Create edges that can fit in one list"
               (apply link-group! v1 :rel (repeat max-list-items v2)))
-        (fact "Check Degree"
+        (fact "Check Degree - single"
               (degree (reload-vertex v1) :direction :*outbounds*) => max-list-items)
         (fact "Check list link - single"
+              )
+        (fact "Create edges that can fit in two list"
+              (apply link-group! v1 :rel (repeat (* 2 max-list-items) v2)))
+        (fact "Check Degree - duo"
+              (degree (reload-vertex v1) :direction :*outbounds*) => (* 2 max-list-items))
+        (fact "Check list link - duo"
               )))))
