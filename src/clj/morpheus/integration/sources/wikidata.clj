@@ -140,7 +140,7 @@
 (defn import-entities [dump-path lang]
   (println "Import Vertices")
   (let [lang (keyword lang)
-        th-pool (cp/threadpool 24)]
+        th-pool (cp/threadpool 14)]
     (with-open [rdr (clojure.java.io/reader dump-path)]
       (cp/pdoseq
         th-pool [line (line-seq rdr)]
@@ -188,7 +188,7 @@
 (defn import-links [dump-path]
   (println "Import Edges")
   (with-open [rdr (clojure.java.io/reader dump-path)]
-    (let [th-parse-pool (cp/threadpool 24)]
+    (let [th-parse-pool (cp/threadpool 14)]
       (cp/pdoseq
         th-parse-pool [line (line-seq rdr)]
         (try
@@ -229,8 +229,8 @@
   (start-server* {:server-name :morpheus
                   :port 5124
                   :zk  "10.0.1.104:2181"
-                  :trunks-size "5gb"
-                  :memory-size "50gb"
+                  :trunks-size "16gb"
+                  :memory-size "16gb"
                   ;:schema-file "configures/neb-schemas.edn"
                   :data-path   "wikidata"
                   :durability true
