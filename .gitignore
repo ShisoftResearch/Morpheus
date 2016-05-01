@@ -104,3 +104,4 @@ crashlytics-build.properties
 #Testing data
 /data
 /wikidata*
+.dat
