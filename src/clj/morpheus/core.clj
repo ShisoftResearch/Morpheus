@@ -2,6 +2,7 @@
   (:require [morpheus.models.vertex.core :as veterx]
             [morpheus.models.edge.core :as edge]
             [morpheus.models.core :as models]
+            [morpheus.messaging.core :as msg]
             [neb.server :as nserver]
             [cluster-connector.utils.for-debug :refer [$]])
   (:gen-class)
@@ -14,7 +15,10 @@
   (nserver/stop-server))
 
 (defn start-server* [configs]
+  (println "Starting store server...")
   (nserver/start-server configs)
+  (println "Starting Messiging server...")
+  (msg/start-server)
   (println "Initialize Models...")
   (models/init-models))
 
