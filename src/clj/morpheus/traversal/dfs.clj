@@ -24,8 +24,8 @@
         proced-stack (map (fn [v]
                             (let [[svid] v]
                               (if (= svid vertex-id)
-                                (reset! current-vertex-stat v)
-                                (assoc v 1 1) ;; reset flag to visited
+                                (do (assoc v 1 1) ;; reset flag to visited
+                                    (reset! current-vertex-stat v))
                                 v)))
                           stack)
         deepth (@current-vertex-stat 2)

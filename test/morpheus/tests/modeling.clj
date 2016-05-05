@@ -33,7 +33,7 @@
                 batman-begins  (vertex-by-key :movie "Batman Begins")
                 dark-knight    (vertex-by-key :movie "The Dark Knight")
                 oblivion       (vertex-by-key :movie "Oblivion")
-                dark-knight-rises (vertex-by-key :name "The Dark Knight Rises")
+                dark-knight-rises (vertex-by-key :movie "The Dark Knight Rises")
                 jeanette-adair-bradshaw (vertex-by-key :people "Jeanette Adair Bradshaw")]
             (link! morgan-freeman :acted-in batman-begins {:as "Lucius Fox"}) => anything
             (link! morgan-freeman :acted-in dark-knight {:as "Lucius Fox"}) => anything
@@ -119,8 +119,21 @@
                 batman-begins  (vertex-by-key :movie "Batman Begins")
                 dark-knight    (vertex-by-key :movie "The Dark Knight")
                 oblivion       (vertex-by-key :movie "Oblivion")
-                dark-knight-rises (vertex-by-key :name "The Dark Knight Rises")
+                dark-knight-rises (vertex-by-key :movie "The Dark Knight Rises")
                 jeanette-adair-bradshaw (vertex-by-key :people "Jeanette Adair Bradshaw")]
+            (fact "Check morgan freeman"
+                  morgan-freeman => identity)
+            (fact "Check batman begins"
+                  batman-begins => identity)
+            (fact "Check dark knight"
+                  dark-knight => identity)
+            (fact "Check obilivion"
+                  oblivion => nil?)
+            (fact "Check dark knight rises"
+                  dark-knight-rises => identity)
+            (fact "Check jab"
+                  jeanette-adair-bradshaw => identity)
+            (degree (reload-vertex morgan-freeman)) => 2
             (link-group! morgan-freeman
                          :related-with
                          batman-begins
@@ -141,4 +154,4 @@
                          [jeanette-adair-bradshaw {:num 5}]) => anything
             (degree (reload-vertex morgan-freeman)) => 10
             (degree (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*}) => 4
-            ($ neighbours (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*})))))
+            (neighbours (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*})))))
