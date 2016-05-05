@@ -12,6 +12,7 @@
 
 (defn shutdown-server []
   (println "Shuting down...")
+  (msg/stop-server)
   (nserver/stop-server))
 
 (defn start-server* [configs]

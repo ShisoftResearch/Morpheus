@@ -141,4 +141,4 @@
                          [jeanette-adair-bradshaw {:num 5}]) => anything
             (degree (reload-vertex morgan-freeman)) => 10
             (degree (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*}) => 4
-            (neighbours (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*})))))
+            ($ neighbours (reload-vertex morgan-freeman) {:types :related-with-2 :directions :*outbounds*})))))
