@@ -75,7 +75,7 @@
                   (link! (get-vertex2 16) :link1 (get-vertex2 17))  => anything
                   (link! (get-vertex2 17) :link1 (get-vertex2 18))  => anything
                   (link! (get-vertex2 18) :link1 (get-vertex2 19))  => anything
-                  (link! (get-vertex2 19) :link (get-vertex2 20))  => anything
+                  (link! (get-vertex2 19) :link1 (get-vertex2 20))  => anything
                   (link! (get-vertex2 16) :link1 (get-vertex2 21))  => anything
                   (link! (get-vertex2 20) :link1 (get-vertex2 22))  => anything))
       (fact "Simple check"
