@@ -2,9 +2,12 @@
   (:require [neb.core :as neb]
             [cluster-connector.networking.core :as nw]
             [cluster-connector.native-cache.core :refer [evict-cache-key defcache]]
+            [cluster-connector.utils.core :refer [get-server-host]]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [cluster-connector.distributed-store.core :as ds]))
+            [cluster-connector.distributed-store.core :as ds]
+            [cluster-connector.utils.for-debug :refer [$ spy]]
+            [clojure.core.async :as a]))
 
 (defonce server (atom nil))
 (def ws-port 7177)
@@ -21,8 +24,10 @@
     (swap! id->act-func-map assoc id func)))
 
 (defn server-handler [obj]
-  (when-let [[task-id act data] obj]
-    ((id->act-func act) task-id data)))
+  (when (vector? obj)
+    (let [[task-id act data] obj]
+      ((id->act-func act) task-id data)))
+  nil)
 
 (defn stop-server []
   (when @server
@@ -36,12 +41,18 @@
 (declare entity-get-client)
 
 (defn get-client* [host]
-  (let [c @(nw/client host ws-port)]
-    (s/on-closed c (fn [] (evict-cache-key get-client host)))
-    (d/let-flow
-      [msg (s/take! c ::none)]
-      (when (and msg (not (= ::none msg)))
-        (server-handler msg)))
+  (let [c @(nw/client (get-server-host host) ws-port)
+        recev-chan (a/chan)]
+    (s/on-closed
+      c (fn []
+          (evict-cache-key get-client host)
+          (a/close! recev-chan)))
+    (s/connect c recev-chan)
+    (a/go-loop []
+               (let [msg (a/<! recev-chan)]
+                 (when msg
+                   (server-handler msg)))
+               (recur))
     c))
 
 (defcache get-client {} get-client*)
