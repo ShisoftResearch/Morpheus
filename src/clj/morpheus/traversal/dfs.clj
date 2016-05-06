@@ -22,7 +22,7 @@
 
 (defn proc-forward-msg [task-id data]
   (let [[vertex-id stack filters max-deepth] data
-        neighbours (apply edges/neighbours (vertex/get-veterx-by-id vertex-id) (or filters []))
+        neighbours (apply edges/neighbours (vertex/get-veterx-by-id vertex-id) (if filters (mapcat identity filters) []))
         current-vertex-stat (atom nil)
         proced-stack (doall (map (fn [v]
                                    (let [[svid] v]
@@ -70,7 +70,11 @@
       (a/close! feedback-chan)
       (if (nil? feedback)
         (throw (TimeoutException.))
-        (map  feedback)))))
+        (map (fn [[vid visited deepeth parent]]
+               {:id vid
+                :deepth deepeth
+                :parent parent})
+             feedback)))))
 
 (msg/register-action :DFS-FORWARD proc-forward-msg)
 (msg/register-action :DFS-RETURN  proc-return-msg)

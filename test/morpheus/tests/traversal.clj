@@ -14,7 +14,8 @@
       (fact "Schemas"
             (new-vertex-group! :item-1 {:body :dynamic :key-field :name}) => anything
             (new-vertex-group! :item-2 {:body :dynamic :key-field :name}) => anything
-            (new-edge-group! :link {:type :directed :body :dynamic}) => anything)
+            (new-edge-group! :link1 {:type :directed :body :dynamic}) => anything
+            (new-edge-group! :link2 {:type :directed :body :dynamic}) => anything)
       (fact "Create Edges"
             (new-vertex! :item-1 {:name "1"}) => anything
             (new-vertex! :item-1 {:name "2"}) => anything
@@ -51,36 +52,43 @@
             ;;   21                  22
 
             (fact "Sub Graph 1"
-                  (link! (get-vertex1 1) :link (get-vertex1 2))  => anything
-                  (link! (get-vertex1 2) :link (get-vertex1 3))  => anything
-                  (link! (get-vertex1 3) :link (get-vertex1 4))  => anything
-                  (link! (get-vertex1 4) :link (get-vertex1 5))  => anything
-                  (link! (get-vertex1 5) :link (get-vertex1 6))  => anything
-                  (link! (get-vertex1 6) :link (get-vertex1 7))  => anything
-                  (link! (get-vertex1 7) :link (get-vertex1 8))  => anything
-                  (link! (get-vertex1 8) :link (get-vertex1 9))  => anything
-                  (link! (get-vertex1 9) :link (get-vertex1 10)) => anything
-                  (link! (get-vertex1 3) :link (get-vertex1 8))  => anything
+                  (link! (get-vertex1 1) :link1 (get-vertex1 2))  => anything
+                  (link! (get-vertex1 2) :link1 (get-vertex1 3))  => anything
+                  (link! (get-vertex1 3) :link1 (get-vertex1 4))  => anything
+                  (link! (get-vertex1 4) :link1 (get-vertex1 5))  => anything
+                  (link! (get-vertex1 5) :link1 (get-vertex1 6))  => anything
+                  (link! (get-vertex1 6) :link1 (get-vertex1 7))  => anything
+                  (link! (get-vertex1 7) :link1 (get-vertex1 8))  => anything
+                  (link! (get-vertex1 8) :link1 (get-vertex1 9))  => anything
+                  (link! (get-vertex1 9) :link1 (get-vertex1 10)) => anything
+                  (link! (get-vertex1 3) :link1 (get-vertex1 8))  => anything
 
-                  (link! (get-vertex2 11) :link (get-vertex2 12))  => anything
-                  (link! (get-vertex2 12) :link (get-vertex2 13))  => anything
-                  (link! (get-vertex2 13) :link (get-vertex2 14))  => anything
-                  (link! (get-vertex2 14) :link (get-vertex2 15))  => anything
+                  (link! (get-vertex2 11) :link2 (get-vertex2 12))  => anything
+                  (link! (get-vertex2 12) :link2 (get-vertex2 13))  => anything
+                  (link! (get-vertex2 13) :link2 (get-vertex2 14))  => anything
+                  (link! (get-vertex2 14) :link2 (get-vertex2 15))  => anything
 
-                  (link! (get-vertex1 6)  :link (get-vertex2 11))  => anything
-                  (link! (get-vertex1 10) :link (get-vertex2 15))  => anything)
+                  (link! (get-vertex1 6)  :link2 (get-vertex2 11))  => anything
+                  (link! (get-vertex1 10) :link2 (get-vertex2 15))  => anything)
 
             (fact "Sub Graph 2"
-                  (link! (get-vertex2 16) :link (get-vertex2 17))  => anything
-                  (link! (get-vertex2 17) :link (get-vertex2 18))  => anything
-                  (link! (get-vertex2 18) :link (get-vertex2 19))  => anything
+                  (link! (get-vertex2 16) :link1 (get-vertex2 17))  => anything
+                  (link! (get-vertex2 17) :link1 (get-vertex2 18))  => anything
+                  (link! (get-vertex2 18) :link1 (get-vertex2 19))  => anything
                   (link! (get-vertex2 19) :link (get-vertex2 20))  => anything
-                  (link! (get-vertex2 16) :link (get-vertex2 21))  => anything
-                  (link! (get-vertex2 20) :link (get-vertex2 22))  => anything))
+                  (link! (get-vertex2 16) :link1 (get-vertex2 21))  => anything
+                  (link! (get-vertex2 20) :link1 (get-vertex2 22))  => anything))
       (fact "Simple check"
             (degree (get-vertex1 1)) => 1
             (count (apply neighbours (get-vertex1 1) [])) => 1)
       (fact "DFS"
-            (println "Starting DFS")
-            ($ dfs (get-vertex1 1)) => anything
-            (println "DFS Test End")))))
+            (fact "Subgraph 1 search"
+                  (println "Starting DFS")
+                  (let [dfs-outout (dfs (get-vertex1 1))
+                        subgraph-1 (concat (map (fn [i] (vertex-id-by-key :item-1 (str i))) (range 1 11))
+                                           (map (fn [i] (vertex-id-by-key :item-2 (str i))) (range 11 16))) ]
+                    (println "DFS Test End")
+                    (count dfs-outout) => 15
+                    (map :id dfs-outout) => (just subgraph-1 :in-any-order)))
+            (fact "Subgraph 1 search with edge restriction"
+                  (count (dfs (get-vertex1 1) :filter {:type :link1})) => 10)))))
