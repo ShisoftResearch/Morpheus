@@ -5,10 +5,10 @@
             [cluster-connector.distributed-store.lock :as dl]
             [cluster-connector.utils.for-debug :refer [$ spy]]
             [neb.cell :as neb-cell])
-  (:import (org.shisoft.morpheus schemaStore)
+  (:import (org.shisoft.morpheus SchemaStore)
            (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
 
-(def schema-store (schemaStore.))
+(def schema-store (SchemaStore.))
 (def cid-list-schema-id (atom nil))
 
 (defn add-schema [sname neb-id id meta]

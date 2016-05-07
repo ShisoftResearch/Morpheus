@@ -6,7 +6,7 @@ import net.openhft.koloboke.collect.map.hash.*;
 /**
  * Created by shisoft on 24/2/2016.
  */
-public class schemaStore {
+public class SchemaStore {
     HashIntObjMap schemaIdMap = HashIntObjMaps.newMutableMap();
     HashObjIntMap snameIdMap = HashObjIntMaps.newMutableMap();
     HashIntObjMap nebIdschemaMap = HashIntObjMaps.newMutableMap();
