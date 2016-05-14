@@ -56,8 +56,8 @@
   (let [feedback-chan (get @pending-tasks task-id)]
     (a/>!! feedback-chan data)))
 
-(defn dfs [vertex & {:keys [filter max-deepeth timeout] :as extra-params
-                        :or {timeout 60000}}]
+(defn dfs [vertex & {:keys [filter max-deepeth timeout stop-cond path-only? tail-only?] :as extra-params
+                     :or {timeout 60000}}]
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
         feedback-chan (a/chan 1)]

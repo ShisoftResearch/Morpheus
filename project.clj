@@ -5,10 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [neb "0.1.0-SNAPSHOT"]
-                 [com.cemerick/pomegranate "0.3.1"]
-                 [leiningen-core "2.6.1"]
-                 [cheshire "5.5.0"]
-                 [clj-time "0.11.0"]]
+                 [hurricane "0.1.0-SNAPSHOT"]
+                 [cheshire "5.5.0"]]
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
   :main ^:skip-aot morpheus.core
