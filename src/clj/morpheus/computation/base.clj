@@ -1,13 +1,13 @@
 (ns morpheus.computation.base
-  (:require [cluster-connector.distributed-store.atom :as da]))
+  (:require [cluster-connector.distributed-store.synced-atom :as da]))
 
-(def tasks (da/atom :tasks {}))
+(da/defatom tasks {})
 
 (defn new-task [id data]
   (da/swap tasks assoc id data))
 
 (defn remove-task [id]
-  (da/swap tasks id))
+  (da/swap tasks dissoc id))
 
 (defn get-task [id]
   (get @tasks id))

@@ -91,4 +91,4 @@
                     (count dfs-outout) => 15
                     (map :id dfs-outout) => (just subgraph-1 :in-any-order)))
             (fact "Subgraph 1 search with edge restriction"
-                  (count (dfs (get-vertex1 1) :filter {:type :link1})) => 10)))))
+                  (count (dfs (get-vertex1 1) :filters {:type :link1})) => 10)))))
