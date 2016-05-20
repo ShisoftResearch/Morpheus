@@ -19,7 +19,7 @@ public class SchemaStore {
         this.schemaIdMap.put(id, schema);
         this.snameIdMap.put(sname, id);
         if (nebSchemaId != null) {
-            this.nebIdschemaMap.put((int) nebSchemaId, schema);
+            this.nebIdschemaMap.put(nebSchemaId.intValue(), schema);
         }
         return id;
     }
