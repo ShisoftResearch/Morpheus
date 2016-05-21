@@ -1,8 +1,7 @@
 (ns morpheus.tests.server
   (:require [midje.sweet :refer :all]
             [morpheus.models.base :refer [clear-schema]]
-            [morpheus.core :refer [start-server* shutdown-server]]
-            )
+            [morpheus.core :refer [start-server* shutdown-server]])
   (:import (java.io File)))
 
 (defn remove-server-files []

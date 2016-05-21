@@ -7,14 +7,14 @@
     (identity (clojure.string/index-of a b))
     (coll? a)
     (clojure.set/subset?
-      (set a) (set (if (coll? b) (set b) #{b})))))
+      (if (coll? b) (set b) #{b}) (set a))))
 
 (defn concat- [a & colls]
   (cond
     (string? a)
     (apply str a colls)
     (coll? a)
-    (apply concat- a colls)))
+    (apply concat a colls)))
 
 (defn and- [& conds]
   (loop [ccond (first conds)
@@ -31,6 +31,9 @@
       ccond
       (recur (first conds)
              (rest conds)))))
+
+(defn if- [clause a & [b]]
+  (if clause a b))
 
 (def op-mapper
   {'= =
@@ -49,9 +52,12 @@
    'coll? coll?
    'set? set?
    'str str
+   'num read-string
    'concat concat-
+   'append conj
    'or or-
    'and and-
    '|| or-
-   '&& and-})
+   '&& and-
+   'if if-})
 
