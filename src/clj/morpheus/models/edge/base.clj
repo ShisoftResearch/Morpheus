@@ -182,9 +182,10 @@
         list-ids (map :list-cid lists)]
     (dorun (map remove-list-chain list-ids))))
 
-(defn extract-edges [direction sid]
+(defn extract-edges [direction sid filters]
   (with-cid-list
-    (let [{:keys [cid-array] :as list-cell} (neb-cell/read-cell trunk hash)]
+    (let [[vertex-filter edge-filter] ((juxt :vertex :edge) filters)
+          {:keys [cid-array] :as list-cell} (neb-cell/read-cell trunk hash)]
       (concat [{:cid-array cid-array
                 :*direction* direction
                 :*group-props* (mb/schema-by-id sid)}]
@@ -193,10 +194,12 @@
                                      'morpheus.models.edge.base/extract-edges
                                      direction sid))))))
 
-(defn count-edges [& _]
+(defn count-edges [direction sid filters]
   (with-cid-list
     (+ (read-cid-list-len)
        (if next-cid
-         (neb/read-lock-exec* next-cid
-                              'morpheus.models.edge.base/count-edges)
+         (neb/read-lock-exec*
+           next-cid
+           'morpheus.models.edge.base/count-edges
+           direction sid filters)
          0))))

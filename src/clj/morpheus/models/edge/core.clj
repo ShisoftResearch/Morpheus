@@ -91,7 +91,7 @@
 (defn- vertex-cid-lists [vertex read-list-sym & params]
   (let [seqed-params (seq params)
         params (cond
-                 (or (nil? seqed-params) (coll? (first params)))
+                 (or (nil? seqed-params) (map? (first params)))
                  params
                  seqed-params
                  [(apply hash-map params)]
@@ -109,37 +109,48 @@
                                            types [types])))))
         params (if-not (seq params)
                  (map (fn [d] {:directions [d]}) all-dir-fields)
-                 (map (fn [{:keys [type types direction directions]}]
+                 (map (fn [{:keys [type types direction directions filters]}]
                         {:types (regular-types (or type types))
-                         :directions (regular-directions (or direction directions))})
+                         :directions (regular-directions (or direction directions))
+                         :filters filters})
                       params))
-        expand-params (flatten (map (fn [{:keys [directions types]}]
+        expand-params (flatten (map (fn [{:keys [directions types filters]}]
                                         (map
                                           (fn [d]
                                             (if (seq types)
-                                              (map (fn [t] {:d d :t (or t :Nil)}) types)
-                                              {:d d :t :Nil}))
+                                              (map (fn [t] {:d d :t (or t :Nil) :f filters}) types)
+                                              {:d d :t nil :f filters}))
                                           directions))
                                       params))
         params-grouped (group-by :d expand-params)
         direction-fields (->> params-grouped (keys) (set))
-        direction-types (map-on-vals
+        direction-items (map-on-vals
                           (fn [ps]
-                            (let [t (set (map :t ps))]
-                              (when-not (t :Nil) t)))
+                            (let [item (set (map (fn [{:keys [t f]}]
+                                                   (if t [t f] :Nil))
+                                                 ps))]
+                              (when-not (item :Nil) item)))
                           params-grouped)
+        direction-types (map-on-vals
+                          (fn [items] (set (map first items)))
+                          direction-items)
         cid-lists (select-keys vertex direction-fields)]
     (->> (map
            (fn [[direction dir-cid-list]]
-             (let [types (get direction-types direction)]
+             (let [items (get direction-items direction)
+                   types (get direction-types direction)]
                (map
                  (fn [{:keys [sid list-cid]}]
-                   (when (or (nil? types)
+                   (when (or (nil? items)
                              (types sid))
                      ;{:cid-array (:cid-array (neb/read-cell* list-cid))
                      ; :*direction* direction
                      ; :*group-props* (mb/schema-by-id sid)}
-                     (neb/read-lock-exec* list-cid read-list-sym direction sid)))
+                     (neb/read-lock-exec*
+                       list-cid read-list-sym direction sid
+                       (map second
+                            (filter (fn [[t f]] (and (= t sid) (identity t) (identity f)))
+                                    items)))))
                  dir-cid-list)))
            cid-lists)
          (flatten)
