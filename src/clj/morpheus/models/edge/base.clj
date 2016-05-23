@@ -190,9 +190,14 @@
                 :*direction* direction
                 :*group-props* (mb/schema-by-id sid)}]
               (when next-cid
-                (neb/read-lock-exec* next-cid
-                                     'morpheus.models.edge.base/extract-edges
-                                     direction sid))))))
+                (neb/read-lock-exec*
+                  next-cid
+                  'morpheus.models.edge.base/extract-edges
+                  direction sid filters))))))
+
+(defn neighbours [direction sid filters]
+  (with-cid-list
+    ))
 
 (defn count-edges [direction sid filters]
   (with-cid-list
