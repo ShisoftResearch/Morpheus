@@ -45,18 +45,18 @@
                 batman-begins  (vertex-by-key :movie "Batman Begins")
                 oblivion       (vertex-by-key :movie "Oblivion")
                 jeanette-adair-bradshaw (vertex-by-key :people "Jeanette Adair Bradshaw")]
-            (neighbours morgan-freeman) => (contains [(contains {:*ep* (contains {:name :spouse, :type :indirected}), :*direction* :*neighbours*})
-                                                      (contains {:*ep* (contains {:name :acted-in, :type :directed}), :*direction* :*outbounds*})]
+            (neighbours morgan-freeman) => (contains [(contains {:*edge* (contains {:*ep* (contains {:name :spouse, :type :indirected}), :*direction* :*neighbours*})})
+                                                      (contains {:*edge* (contains {:*ep* (contains {:name :acted-in, :type :directed}), :*direction*  :*outbounds*})})]
                                                      :gaps-ok :in-any-order)
             (neighbours morgan-freeman) => #(= 5 (count %))
             (degree morgan-freeman) => 5
-            (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})
-                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
-                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})
-                                                                           (contains {:*ep* (contains {:name :acted-in, :type :directed}),  :*direction* :*outbounds*})])
-            (neighbours morgan-freeman {:types :spouse}) => (just [(contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})])
+            (neighbours morgan-freeman :directions :*outbounds*) => (just [(contains {:*edge* (contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})})
+                                                                           (contains {:*edge* (contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})})
+                                                                           (contains {:*edge* (contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})})
+                                                                           (contains {:*edge* (contains {:*ep* (contains {:name :acted-in, :type :directed}) :*direction* :*outbounds*})})])
+            (neighbours morgan-freeman {:types :spouse}) => (just [(contains {:*edge* (contains {:*ep* (contains {:name :spouse, :type :indirected}),  :*direction* :*neighbours*})})])
             (degree morgan-freeman {:types :spouse} {:types :acted-in}) => 5
-            (neighbours batman-begins) => (just [(contains {:*ep* (contains {:name :acted-in :type :directed}) :*direction* :*inbounds*})])
+            (neighbours batman-begins) => (just [(contains {:*edge* (contains {:*ep* (contains {:name :acted-in :type :directed}) :*direction* :*inbounds*})})])
             (relationships morgan-freeman batman-begins) => (just (contains {:*direction* :*outbounds* :as "Lucius Fox"}))
             (relationships batman-begins oblivion) => nil
             (linked? morgan-freeman batman-begins) => truthy
@@ -82,14 +82,14 @@
           (vertex-by-key :movie "Batman Begins") => (contains {:name "Batman Begins" :year 2005 :directed-by "Christopher Nolan"}))
     (fact "Update Edges"
           (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")
-                mf-spouse-edge (first (neighbours morgan-freeman :types :spouse))
-                rand-acted-movie (first (neighbours morgan-freeman :types :acted-in))]
+                mf-spouse-edge (first (neighbours-edges morgan-freeman :types :spouse))
+                rand-acted-movie (first (neighbours-edges morgan-freeman :types :acted-in))]
             mf-spouse-edge => map?
             (update-edge! mf-spouse-edge :a :b) => (throws AssertionError)
             rand-acted-movie => map?
             (update-edge! rand-acted-movie 'clojure.core/assoc :actor-name "Morgan Freeman") => anything))
     (fact "Check Edge Updated"
-          (first (neighbours (vertex-by-key :people "Morgan Freeman") :types :acted-in)) => (contains {:actor-name "Morgan Freeman"}))
+          (first (neighbours-edges (vertex-by-key :people "Morgan Freeman") :types :acted-in)) => (contains {:actor-name "Morgan Freeman"}))
     (fact "Delete Vertex"
           (delete-vertex! (vertex-by-key :people "Jeanette Adair Bradshaw")) => anything
           (delete-vertex! (vertex-by-key :movie "Oblivion")) => anything)
@@ -106,8 +106,8 @@
           (degree (vertex-by-key :people "Morgan Freeman")) => 4)
     (fact "Delete Edge"
           (let [morgan-freeman (vertex-by-key :people "Morgan Freeman")
-                rand-acted-movie (first (neighbours morgan-freeman :types :acted-in))
-                mf-spouse-edge (first (neighbours morgan-freeman :types :spouse))]
+                rand-acted-movie (first (neighbours-edges morgan-freeman :types :acted-in))
+                mf-spouse-edge (first (neighbours-edges morgan-freeman :types :spouse))]
             (unlink! rand-acted-movie) => anything
             (unlink! mf-spouse-edge) => anything
             (degree (reload-vertex morgan-freeman)) => 2))

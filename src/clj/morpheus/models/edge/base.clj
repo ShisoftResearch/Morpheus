@@ -1,14 +1,13 @@
 (ns morpheus.models.edge.base
   (:require [morpheus.utils :refer :all]
             [morpheus.models.base :as mb]
+            [morpheus.models.core :as mc]
             [neb.core :as neb]
             [neb.cell :as neb-cell]
             [neb.header :as neb-header]
-            [neb.trunk-store :as neb-ts]
             [cluster-connector.utils.for-debug :refer [spy $]]
             [cluster-connector.native-cache.core :refer [defcache evict-cache-key]]
-            [morpheus.models.core :as core]
-            [com.climate.claypoole :as cp])
+            [neb.utils :refer [map-on-vals]])
   (:import (java.util UUID)
            (org.shisoft.neb Trunk)
            (org.shisoft.neb.io type_lengths CellMeta Reader)))
@@ -182,29 +181,98 @@
         list-ids (map :list-cid lists)]
     (dorun (map remove-list-chain list-ids))))
 
-(defn extract-edges [direction sid filters]
+(defn extract-cid-lists [direction sid vertex-id filters]
   (with-cid-list
-    (let [[vertex-filter edge-filter] ((juxt :vertex :edge) filters)
-          {:keys [cid-array] :as list-cell} (neb-cell/read-cell trunk hash)]
+    (let [{:keys [cid-array] :as list-cell} (neb-cell/read-cell trunk hash)]
       (concat [{:cid-array cid-array
                 :*direction* direction
                 :*group-props* (mb/schema-by-id sid)}]
               (when next-cid
                 (neb/read-lock-exec*
                   next-cid
-                  'morpheus.models.edge.base/extract-edges
-                  direction sid filters))))))
+                  'morpheus.models.edge.base/extract-cid-lists
+                  direction sid vertex-id filters))))))
 
-(defn neighbours [direction sid filters]
-  (with-cid-list
-    ))
+(defn get-oppisite [edge vertex-id]
+  (let [{:keys [*start* *end*]} edge]
+    (cond (and (= vertex-id *start*) (not= vertex-id *end*))   *end*
+          (and (= vertex-id *end*)   (not= vertex-id *start*)) *start*)))
 
-(defn count-edges [direction sid filters]
-  (with-cid-list
-    (+ (read-cid-list-len)
-       (if next-cid
-         (neb/read-lock-exec*
-           next-cid
-           'morpheus.models.edge.base/count-edges
-           direction sid filters)
-         0))))
+(defn- vertex-cid-lists [vertex read-list-sym & params]
+  (let [vertex-id (:*id* vertex)
+        seqed-params (seq params)
+        params (cond
+                 (or (nil? seqed-params) (map? (first params)))
+                 params
+                 seqed-params
+                 [(apply hash-map params)]
+                 :else params)
+        all-dir-fields #{:*inbounds* :*outbounds* :*neighbours*}
+        regular-directions (fn [directions]
+                             (or (when directions
+                                   (if (vector? directions)
+                                     directions [directions]))
+                                 all-dir-fields))
+        regular-types (fn [types]
+                        (when types
+                          (into #{} (map (fn [x] (mc/get-schema-id :e x))
+                                         (if (vector? types)
+                                           types [types])))))
+        params (if-not (seq params)
+                 (map (fn [d] {:directions [d]}) all-dir-fields)
+                 (map (fn [{:keys [type types direction directions filters]}]
+                        {:types (regular-types (or type types))
+                         :directions (regular-directions (or direction directions))
+                         :filters filters})
+                      params))
+        expand-params (flatten (map (fn [{:keys [directions types filters]}]
+                                      (map
+                                        (fn [d]
+                                          (if (seq types)
+                                            (map (fn [t] {:d d :t (or t :Nil) :f filters}) types)
+                                            {:d d :t nil :f filters}))
+                                        directions))
+                                    params))
+        params-grouped (group-by :d expand-params)
+        direction-fields (->> params-grouped (keys) (set))
+        direction-items (map-on-vals
+                          (fn [ps]
+                            (let [item (set (map (fn [{:keys [t f]}]
+                                                   (if t [t f] :Nil))
+                                                 ps))]
+                              (when-not (item :Nil) item)))
+                          params-grouped)
+        direction-types (map-on-vals
+                          (fn [items] (set (map first items)))
+                          direction-items)
+        cid-lists (select-keys vertex direction-fields)]
+    (->> (map
+           (fn [[direction dir-cid-list]]
+             (let [items (get direction-items direction)
+                   types (get direction-types direction)]
+               (map
+                 (fn [{:keys [sid list-cid]}]
+                   (when (or (nil? items)
+                             (types sid))
+                     ;{:cid-array (:cid-array (neb/read-cell* list-cid))
+                     ; :*direction* direction
+                     ; :*group-props* (mb/schema-by-id sid)}
+                     (neb/read-lock-exec*
+                       list-cid read-list-sym
+                       direction sid vertex-id
+                       (map second
+                            (filter (fn [[t f]] (and (= t sid) (identity t) (identity f)))
+                                    items)))))
+                 dir-cid-list)))
+           cid-lists)
+         (flatten)
+         (filter identity))))
+
+(defn neighbours [vertex & params]
+  (apply vertex-cid-lists vertex 'morpheus.models.edge.remotes/neighbours* params))
+
+(defn neighbours-edges [vertex & params]
+  (apply vertex-cid-lists vertex 'morpheus.models.edge.remotes/neighbours-edges* params))
+
+(defn degree [vertex & params]
+  (reduce + (apply vertex-cid-lists vertex 'morpheus.models.edge.remotes/count-edges params)))

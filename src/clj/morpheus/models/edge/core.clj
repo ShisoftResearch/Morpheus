@@ -7,10 +7,14 @@
             [morpheus.models.edge.defined]
             [morpheus.models.edge.dynamic]
             [morpheus.models.edge.base :as eb]
+            [morpheus.models.edge.remotes]
             [neb.core :as neb]
             [morpheus.models.core :as core]
-            [cluster-connector.utils.for-debug :refer [$ spy]]
-            [neb.utils :refer [map-on-vals]]))
+            [cluster-connector.utils.for-debug :refer [$ spy]]))
+
+(def neighbours eb/neighbours)
+(def neighbours-edges eb/neighbours-edges)
+(def degree eb/degree)
 
 (defn new-edge-group! [group-name group-props]
   (let [{:keys [fields]} group-props
@@ -88,96 +92,13 @@
           v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])]
       (eb/append-cids-to-list v1-list-cell-row-id v1-remotes))))
 
-(defn- vertex-cid-lists [vertex read-list-sym & params]
-  (let [seqed-params (seq params)
-        params (cond
-                 (or (nil? seqed-params) (map? (first params)))
-                 params
-                 seqed-params
-                 [(apply hash-map params)]
-                 :else params)
-        all-dir-fields #{:*inbounds* :*outbounds* :*neighbours*}
-        regular-directions (fn [directions]
-                             (or (when directions
-                                   (if (vector? directions)
-                                     directions [directions]))
-                                 all-dir-fields))
-        regular-types (fn [types]
-                        (when types
-                          (into #{} (map (fn [x] (core/get-schema-id :e x))
-                                         (if (vector? types)
-                                           types [types])))))
-        params (if-not (seq params)
-                 (map (fn [d] {:directions [d]}) all-dir-fields)
-                 (map (fn [{:keys [type types direction directions filters]}]
-                        {:types (regular-types (or type types))
-                         :directions (regular-directions (or direction directions))
-                         :filters filters})
-                      params))
-        expand-params (flatten (map (fn [{:keys [directions types filters]}]
-                                        (map
-                                          (fn [d]
-                                            (if (seq types)
-                                              (map (fn [t] {:d d :t (or t :Nil) :f filters}) types)
-                                              {:d d :t nil :f filters}))
-                                          directions))
-                                      params))
-        params-grouped (group-by :d expand-params)
-        direction-fields (->> params-grouped (keys) (set))
-        direction-items (map-on-vals
-                          (fn [ps]
-                            (let [item (set (map (fn [{:keys [t f]}]
-                                                   (if t [t f] :Nil))
-                                                 ps))]
-                              (when-not (item :Nil) item)))
-                          params-grouped)
-        direction-types (map-on-vals
-                          (fn [items] (set (map first items)))
-                          direction-items)
-        cid-lists (select-keys vertex direction-fields)]
-    (->> (map
-           (fn [[direction dir-cid-list]]
-             (let [items (get direction-items direction)
-                   types (get direction-types direction)]
-               (map
-                 (fn [{:keys [sid list-cid]}]
-                   (when (or (nil? items)
-                             (types sid))
-                     ;{:cid-array (:cid-array (neb/read-cell* list-cid))
-                     ; :*direction* direction
-                     ; :*group-props* (mb/schema-by-id sid)}
-                     (neb/read-lock-exec*
-                       list-cid read-list-sym direction sid
-                       (map second
-                            (filter (fn [[t f]] (and (= t sid) (identity t) (identity f)))
-                                    items)))))
-                 dir-cid-list)))
-           cid-lists)
-         (flatten)
-         (filter identity))))
-
-(defn neighbours [vertex & params]
-  (let [vertex-id (:*id* vertex)
-        cid-lists (apply vertex-cid-lists vertex 'morpheus.models.edge.base/extract-edges params)]
-    (->> (map
-           (fn [{:keys [*group-props* *direction*] :as cid-list}]
-             (map
-               (fn [x] (when x (eb/format-edge-cells *group-props* *direction* x)))
-               (eb/edges-from-cid-array *group-props* cid-list vertex-id)))
-           cid-lists)
-         (flatten)
-         (filter identity))))
-
-(defn degree [vertex & params]
-  (reduce + (apply vertex-cid-lists vertex 'morpheus.models.edge.base/count-edges params)))
-
 (def opposite-direction-mapper
   {:*outbounds* #{:*end*}
    :*inbounds* #{:*start*}
    :*neighbours* #{:*start* :*end*}})
 
 (defn relationships [vertex-1 vertex-2 & params]
-  (let [neighbours (apply neighbours vertex-1 params)
+  (let [neighbours (apply neighbours-edges vertex-1 params)
         v2-id (:*id* vertex-2)]
     (seq (filter (fn [{:keys [*direction*] :as edge}]
                    ((set (vals (select-keys edge (get opposite-direction-mapper *direction*)))) v2-id)) neighbours))))

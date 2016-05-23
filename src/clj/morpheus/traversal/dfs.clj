@@ -6,7 +6,8 @@
             [neb.base :as nb]
             [clojure.core.async :as a]
             [neb.core :as neb]
-            [cluster-connector.utils.for-debug :refer [$ spy]])
+            [cluster-connector.utils.for-debug :refer [$ spy]]
+            [morpheus.models.edge.base :as eb])
   (:import (java.util.concurrent TimeoutException)))
 
 ;; Distributed deepeth first search divised by S.A.M. Makki and George Havas
@@ -24,7 +25,7 @@
 (defn proc-forward-msg [task-id data]
   (let [[vertex-id stack] data
         {:keys [filters max-deepth stop-cond path-only? tail-only?]} (compute/get-task task-id)
-        neighbours (apply edges/neighbours (vertex/get-veterx-by-id vertex-id) (if filters (mapcat identity filters) []))
+        neighbours (apply edges/neighbours-edges (vertex/get-veterx-by-id vertex-id) (if filters (mapcat identity filters) []))
         current-vertex-stat (atom nil)
         proced-stack (doall (map (fn [v]
                                    (let [[svid] v]
@@ -37,9 +38,8 @@
         deepth (@current-vertex-stat 2)
         next-depth (inc deepth)
         stack-verteics (set (map first stack))
-        neighbour-oppisites (->> (map (fn [{:keys [*start* *end*]}]
-                                        (let [opptsite-id (cond (and (= vertex-id *start*) (not= vertex-id *end*))   *end*
-                                                                (and (= vertex-id *end*)   (not= vertex-id *start*)) *start*)]
+        neighbour-oppisites (->> (map (fn [edge]
+                                        (let [opptsite-id (eb/get-oppisite edge vertex-id)]
                                           (when (and opptsite-id (not (stack-verteics opptsite-id)))
                                             [opptsite-id 0 next-depth vertex-id])))
                                       neighbours)

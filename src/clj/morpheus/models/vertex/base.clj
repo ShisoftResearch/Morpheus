@@ -2,12 +2,9 @@
   (:require [morpheus.utils :refer :all]
             [neb.core :as neb]
             [morpheus.models.core :as core]
-            [morpheus.models.edge.core :as e]
             [morpheus.models.edge.base :as eb]
             [cluster-connector.utils.for-debug :refer [spy $]]
-            [neb.cell :as neb-cell]
-            [neb.trunk-store :as neb-ts]
-            [morpheus.models.base :as mb])
+            [neb.cell :as neb-cell])
   (:import (org.shisoft.morpheus.exceptions GroupNotFoundException)))
 
 (def vertex-relation-fields
@@ -34,7 +31,7 @@
   "It should been called from write-lock-exec in neb"
   (let [vertex (neb-cell/read-cell neb-cell/*cell-trunk* neb-cell/*cell-hash*)
         v-id (:*id* vertex)]
-    (doseq [{:keys [*ep* *direction* *start* *end* *id*] :as neighbour} (e/neighbours vertex)]
+    (doseq [{:keys [*ep* *direction* *start* *end* *id*] :as neighbour} (eb/neighbours-edges vertex)]
       (let [es-id (:id *ep*)
             target-id (or *id* v-id)
             remote-direction (case *direction*
