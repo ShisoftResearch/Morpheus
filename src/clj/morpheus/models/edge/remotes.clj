@@ -45,11 +45,18 @@
            (filter identity)))))
 
 (defn count-edges [direction sid vertex-id filters]
-  (with-cid-list
-    (+ (read-cid-list-len)
-       (if next-cid
-         (neb/read-lock-exec*
-           next-cid
-           'morpheus.models.edge.remotes/count-edges
-           direction sid vertex-id filters)
-         0))))
+  (let [[vertex-filter edge-filter] ((juxt :vertex :edge) filters)]
+    (cond
+      (and (not edge-filter) (not vertex-filter))
+      (with-cid-list
+        (+ (read-cid-list-len)
+           (if next-cid
+             (neb/read-lock-exec*
+               next-cid
+               'morpheus.models.edge.remotes/count-edges
+               direction sid vertex-id filters)
+             0)))
+      (and edge-filter (not vertex-filter))
+      (count (neighbours-edges* direction sid vertex-id filters))
+      vertex-filter
+      (count (neighbours direction sid vertex-id filters)))))
