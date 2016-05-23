@@ -7,7 +7,7 @@
             [morpheus.models.edge.defined]
             [morpheus.models.edge.dynamic]
             [morpheus.models.edge.base :as eb]
-            [morpheus.models.edge.remotes]
+            [morpheus.models.edge.statistics]
             [neb.core :as neb]
             [morpheus.models.core :as core]
             [cluster-connector.utils.for-debug :refer [$ spy]]))

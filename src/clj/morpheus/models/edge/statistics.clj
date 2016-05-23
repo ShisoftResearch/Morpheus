@@ -1,4 +1,4 @@
-(ns morpheus.models.edge.remotes
+(ns morpheus.models.edge.statistics
   (:require [morpheus.models.edge.base :refer :all]
             [morpheus.query.lang.AST :as AST]
             [morpheus.models.vertex.core :as vertex]
@@ -53,7 +53,7 @@
            (if next-cid
              (neb/read-lock-exec*
                next-cid
-               'morpheus.models.edge.remotes/count-edges
+               'morpheus.models.edge.statistics/count-edges
                direction sid vertex-id filters)
              0)))
       (and edge-filter (not vertex-filter))

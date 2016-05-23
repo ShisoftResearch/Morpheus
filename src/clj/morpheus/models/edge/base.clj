@@ -269,10 +269,10 @@
          (filter identity))))
 
 (defn neighbours [vertex & params]
-  (apply vertex-cid-lists vertex 'morpheus.models.edge.remotes/neighbours* params))
+  (apply vertex-cid-lists vertex 'morpheus.models.edge.statistics/neighbours* params))
 
 (defn neighbours-edges [vertex & params]
-  (apply vertex-cid-lists vertex 'morpheus.models.edge.remotes/neighbours-edges* params))
+  (apply vertex-cid-lists vertex 'morpheus.models.edge.statistics/neighbours-edges* params))
 
 (defn degree [vertex & params]
-  (reduce + (apply vertex-cid-lists vertex 'morpheus.models.edge.remotes/count-edges params)))
+  (reduce + (apply vertex-cid-lists vertex 'morpheus.models.edge.statistics/count-edges params)))
