@@ -181,7 +181,7 @@
         list-ids (map :list-cid lists)]
     (dorun (map remove-list-chain list-ids))))
 
-(defn extract-cid-lists [direction sid vertex-id filters]
+(defn extract-cid-lists [direction sid vertex-id criteria]
   (with-cid-list
     (let [{:keys [cid-array] :as list-cell} (neb-cell/read-cell trunk hash)]
       (concat [{:cid-array cid-array
@@ -191,7 +191,7 @@
                 (neb/read-lock-exec*
                   next-cid
                   'morpheus.models.edge.base/extract-cid-lists
-                  direction sid vertex-id filters))))))
+                  direction sid vertex-id criteria))))))
 
 (defn get-oppisite [edge vertex-id]
   (let [{:keys [*start* *end*]} edge]
@@ -220,25 +220,25 @@
                                            types [types])))))
         params (if-not (seq params)
                  (map (fn [d] {:directions [d]}) all-dir-fields)
-                 (map (fn [{:keys [type types direction directions filters]}]
+                 (map (fn [{:keys [type types direction directions criteria]}]
                         {:types (regular-types (or type types))
                          :directions (regular-directions (or direction directions))
-                         :filters filters})
+                         :criteria criteria})
                       params))
-        expand-params (flatten (map (fn [{:keys [directions types filters]}]
+        expand-params (flatten (map (fn [{:keys [directions types criteria]}]
                                       (map
                                         (fn [d]
                                           (if (seq types)
-                                            (map (fn [t] {:d d :t (or t :Nil) :f filters}) types)
-                                            {:d d :t nil :f filters}))
+                                            (map (fn [t] {:d d :t (or t :Nil) :c criteria}) types)
+                                            {:d d :t nil :c criteria}))
                                         directions))
                                     params))
         params-grouped (group-by :d expand-params)
         direction-fields (->> params-grouped (keys) (set))
         direction-items (map-on-vals
                           (fn [ps]
-                            (let [item (set (map (fn [{:keys [t f]}]
-                                                   (if t [t f] :Nil))
+                            (let [item (set (map (fn [{:keys [t c]}]
+                                                   (if t [t c] :Nil))
                                                  ps))]
                               (when-not (item :Nil) item)))
                           params-grouped)
@@ -261,7 +261,7 @@
                        list-cid read-list-sym
                        direction sid vertex-id
                        (map second
-                            (filter (fn [[t f]] (and (= t sid) (identity t) (identity f)))
+                            (filter (fn [[t c]] (and (= t sid) (identity t) (identity c)))
                                     items)))))
                  dir-cid-list)))
            cid-lists)
