@@ -7,7 +7,8 @@
             [clojure.core.async :as a]
             [neb.core :as neb]
             [cluster-connector.utils.for-debug :refer [$ spy]]
-            [morpheus.models.edge.base :as eb])
+            [morpheus.models.edge.base :as eb]
+            [morpheus.query.lang.AST :as AST])
   (:import (java.util.concurrent TimeoutException)))
 
 ;; Distributed deepeth first search divised by S.A.M. Makki and George Havas
@@ -25,7 +26,10 @@
 (defn proc-forward-msg [task-id data]
   (let [[vertex-id stack] data
         {:keys [filters max-deepth stop-cond path-only? tail-only?]} (compute/get-task task-id)
-        neighbours (apply edges/neighbours-edges (vertex/get-veterx-by-id vertex-id) (if filters (mapcat identity filters) []))
+        vertex (vertex/get-veterx-by-id vertex-id)
+        vertex-criteria (get-in filters [:criteria :vertex])
+        vertex-vailed (if vertex-criteria (AST/eval-with-data vertex vertex-criteria) true)
+        neighbours (if vertex-vailed (apply edges/neighbours-edges vertex (if filters (mapcat identity filters) [])) [])
         current-vertex-stat (atom nil)
         proced-stack (doall (map (fn [v]
                                    (let [[svid] v]
@@ -35,6 +39,9 @@
                                            )
                                        v)))
                                  stack))
+        proced-stack (if vertex-vailed
+                       proced-stack
+                       (filter (fn [[svid]] (not= svid vertex-id)) proced-stack))
         deepth (@current-vertex-stat 2)
         next-depth (inc deepth)
         stack-verteics (set (map first stack))
