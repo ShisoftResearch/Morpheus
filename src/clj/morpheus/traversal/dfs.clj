@@ -3,6 +3,7 @@
             [morpheus.models.edge.core :as edges]
             [morpheus.models.vertex.core :as vertex]
             [morpheus.computation.base :as compute]
+            [morpheus.traversal.dfs.rebuild :as rebuild]
             [neb.base :as nb]
             [clojure.core.async :as a]
             [neb.core :as neb]
@@ -25,7 +26,7 @@
 
 (defn proc-forward-msg [task-id data]
   (let [[vertex-id stack] data
-        {:keys [filters max-deepth stop-cond path-only? tail-only?]} (compute/get-task task-id)
+        {:keys [filters max-deepth stop-cond with-edges?]} (compute/get-task task-id)
         vertex (vertex/get-veterx-by-id vertex-id)
         vertex-criteria (get-in filters [:criteria :vertex])
         vertex-vailed (if vertex-criteria (AST/eval-with-data vertex vertex-criteria) true)
@@ -43,19 +44,21 @@
                        proced-stack
                        (filter (fn [[svid]] (not= svid vertex-id)) proced-stack))
         deepth (@current-vertex-stat 2)
+        edge (@current-vertex-stat 4)
+        vertex (if edge (assoc vertex :*edge* edge) vertex)
         next-depth (inc deepth)
         stack-verteics (set (map first stack))
         neighbour-oppisites (->> (map (fn [edge]
                                         (let [opptsite-id (eb/get-oppisite edge vertex-id)]
                                           (when (and opptsite-id (not (stack-verteics opptsite-id)))
-                                            [opptsite-id 0 next-depth vertex-id])))
+                                            [opptsite-id 0 next-depth vertex-id (when with-edges? edge)])))
                                       neighbours)
                                  (filter identity))
         final-stack (if-not (> deepth (or max-deepth Long/MAX_VALUE))
                       (concat neighbour-oppisites proced-stack)
                       proced-stack)
         unvisited-id (first (first (filter (fn [[_ flag]] (= flag 0)) final-stack)))
-        all-visted? (nil? unvisited-id)]
+        all-visted? (or (nil? unvisited-id) (and stop-cond (AST/eval-with-data vertex stop-cond)))]
     (if all-visted?
       (let [root-id (first (last stack))]
         (send-stack task-id :DFS-RETURN root-id proced-stack))
@@ -65,26 +68,47 @@
   (let [feedback-chan (get @pending-tasks task-id)]
     (a/>!! feedback-chan data)))
 
-(defn dfs [vertex & {:keys [filters max-deepth timeout stop-cond path-only? tail-only?] :as extra-params
+
+
+(defn dfs [vertex & {:keys [filters max-deepth timeout stop-cond path-only? tail-only? destination-id with-edges? with-vertices?
+                            adjacancy-list?] :as extra-params
                      :or {timeout 60000}}]
+  "Perform distributed deepth first search. stop-cond is for vertex."
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
         feedback-chan (a/chan 1)]
     (compute/new-task task-id extra-params)
     (swap! pending-tasks assoc task-id feedback-chan)
-    ;;                                          [svid      flag depth parent]
-    (send-stack task-id :DFS-FORWARD vertex-id [[vertex-id 0    0     nil]])
+    ;;                                          [svid      flag depth parent edge]
+    (send-stack task-id :DFS-FORWARD vertex-id [[vertex-id 0    0     nil    nil]])
     (let [feedback (first (a/alts!! [(a/timeout timeout) feedback-chan]))]
       (swap! pending-tasks dissoc task-id feedback-chan)
       (compute/remove-task task-id)
       (a/close! feedback-chan)
       (if (nil? feedback)
         (throw (TimeoutException.))
-        (map (fn [[vid visited deepeth parent]]
-               {:id vid
-                :deepth deepeth
-                :parent parent})
-             feedback)))))
+        (let [stack (map (fn [[vid visited deepeth parent edge]]
+                           (merge
+                             {:id vid
+                              :deepth deepeth
+                              :parent parent}
+                             (when with-edges?
+                               {:edge edge})
+                             (when with-vertices?
+                               {:vertex (vertex/get-veterx-by-id vid)})))
+                         feedback)]
+          (cond
+            path-only?
+            (rebuild/paths-from-stack
+              stack vertex-id
+              (or destination-id
+                  (:id (last stack))))
+            adjacancy-list?
+            (rebuild/adjacancy-list stack)
+            tail-only?
+            (last stack)
+            :else
+            stack))))))
 
 (msg/register-action :DFS-FORWARD proc-forward-msg)
 (msg/register-action :DFS-RETURN  proc-return-msg)
