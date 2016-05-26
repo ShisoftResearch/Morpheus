@@ -9,7 +9,8 @@
             [neb.core :as neb]
             [cluster-connector.utils.for-debug :refer [$ spy]]
             [morpheus.models.edge.base :as eb]
-            [morpheus.query.lang.AST :as AST])
+            [morpheus.query.lang.AST :as AST]
+            [morpheus.utils :refer [and* or*]])
   (:import (java.util.concurrent TimeoutException)))
 
 ;; Distributed deepeth first search divised by S.A.M. Makki and George Havas
@@ -71,7 +72,7 @@
 
 
 (defn dfs [vertex & {:keys [filters max-deepth timeout stop-cond path-only? tail-only? destination-id with-edges? with-vertices?
-                            adjacancy-list?] :as extra-params
+                            adjacancy-list? complete-adjacancy-list?] :as extra-params
                      :or {timeout 60000}}]
   "Perform distributed deepth first search. stop-cond is for vertex."
   (let [task-id (neb/rand-cell-id)
@@ -105,10 +106,25 @@
                   (:id (last stack))))
             adjacancy-list?
             (rebuild/adjacancy-list stack)
+            complete-adjacancy-list?
+            (rebuild/complete-adjacancy-list stack)
             tail-only?
             (last stack)
             :else
             stack))))))
+
+(defn has-path? [vertex-a vertex-b & params]
+  (let [vertex-b-id (:*id* vertex-b)
+        dfs-stack (apply dfs vertex-a
+                         :stop-cond ['(= :*id* :.vid)
+                                     {:.vid vertex-b-id}]
+                         params)]
+    (or*
+      (map
+        (fn [vm]
+          (let [vid (:id vm)]
+            (fn [] (= vertex-b-id vid))))
+        dfs-stack))))
 
 (msg/register-action :DFS-FORWARD proc-forward-msg)
 (msg/register-action :DFS-RETURN  proc-return-msg)

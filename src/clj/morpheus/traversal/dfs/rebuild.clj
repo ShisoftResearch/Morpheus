@@ -26,5 +26,8 @@
            (update vm :adjacents deref))
          vertices-map)))
 
+(defn complete-adjacancy-list [stack]
+  (throw (UnsupportedOperationException.)))
+
 (defn paths-from-stack [stack a b]
   )

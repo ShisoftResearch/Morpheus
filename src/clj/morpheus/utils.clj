@@ -1,4 +1,5 @@
-(ns morpheus.utils)
+(ns morpheus.utils
+  (:require [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 (defmacro defmulties [dispatch-fn & body]
   (concat
@@ -38,3 +39,19 @@
       (concat (rest remains) checked)
       (recur (conj checked (first remains))
              (rest remains)))))
+
+(defn and* [cond-funcs]
+  (loop [ccond ((first cond-funcs))
+         conds (rest cond-funcs)]
+    (if (or (not ccond) (empty? conds))
+      ccond
+      (recur ((first conds))
+             (rest conds)))))
+
+(defn or* [cond-funcs]
+  (loop [ccond ((first cond-funcs))
+         conds (rest cond-funcs)]
+    (if (or ccond (empty? conds))
+      ccond
+      (recur ((first conds))
+             (rest conds)))))
