@@ -62,7 +62,7 @@
         all-visted? (or (nil? unvisited-id) (and stop-cond (AST/eval-with-data vertex stop-cond)))]
     (if all-visted?
       (let [root-id (first (last stack))]
-        (send-stack task-id :DFS-RETURN root-id proced-stack))
+        (send-stack task-id :DFS-RETURN root-id [proced-stack vertex-id]))
       (send-stack task-id :DFS-FORWARD unvisited-id final-stack))))
 
 (defn proc-return-msg [task-id data]
@@ -87,33 +87,29 @@
       (a/close! feedback-chan)
       (if (nil? feedback)
         (throw (TimeoutException.))
-        (map (fn [[vid visited deepeth parent edge]]
-               (merge
-                 {:id vid
-                  :deepth deepeth
-                  :parent parent}
-                 (when with-edges?
-                   {:edge edge})
-                 (when with-vertices?
-                   {:vertex (vertex/get-veterx-by-id vid)})))
-             feedback)))))
+        (let [[stack exit-id] feedback]
+          {:stack (map (fn [[vid visited deepeth parent edge]]
+                         (merge
+                           {:id vid
+                            :deepth deepeth
+                            :parent parent}
+                           (when with-edges?
+                             {:edge edge})
+                           (when with-vertices?
+                             {:vertex (vertex/get-veterx-by-id vid)})))
+                       stack)
+           :exit-id exit-id})))))
 
 (defn has-path? [vertex-a vertex-b & params]
   (let [vertex-b-id (:*id* vertex-b)
-        dfs-stack (apply dfs vertex-a
-                         :stop-cond ['(= :*id* :.vid)
-                                     {:.vid vertex-b-id}]
-                         :stack? true
-                         params)]
-    (or*
-      (map
-        (fn [vm]
-          (let [vid (:id vm)]
-            (fn [] (= vertex-b-id vid))))
-        dfs-stack))))
+        {:keys [stack exit-id]} (apply dfs vertex-a
+                                       :stop-cond ['(= :*id* :.vid)
+                                                   {:.vid vertex-b-id}]
+                                       params)]
+    (= vertex-b-id exit-id)))
 
 (defn adjacancy-list [vertex & params]
-  (rebuild/adjacancy-list (apply dfs vertex params)))
+  (rebuild/adjacancy-list (:stack (apply dfs vertex params))))
 
 (defn endpoint [vertex & params]
   (first (apply dfs vertex params)))

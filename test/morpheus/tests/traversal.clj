@@ -84,17 +84,17 @@
       (fact "DFS"
             (fact "Subgraph 1 search"
                   (println "Starting DFS")
-                  (let [dfs-outout (dfs (get-vertex1 1))
+                  (let [dfs-outout (:stack (dfs (get-vertex1 1)))
                         subgraph-1 (concat (map (fn [i] (vertex-id-by-key :item-1 (str i))) (range 1 11))
                                            (map (fn [i] (vertex-id-by-key :item-2 (str i))) (range 11 16))) ]
                     (println "DFS Test End")
                     (count dfs-outout) => 15
                     (map :id dfs-outout) => (just subgraph-1 :in-any-order)))
             (fact "Subgraph 1 search with edge restriction"
-                  (count (dfs (get-vertex1 1) :filters {:type :link1})) => 10)
+                  (count (:stack (dfs (get-vertex1 1) :filters {:type :link1}))) => 10)
             (fact "Has Path"
                   (has-path? (get-vertex1 1) (get-vertex2 15)) => truthy
                   (has-path? (get-vertex1 1) (get-vertex2 22)) => falsey
                   )
             (fact "Adjacency list"
-                  (adjacancy-list (get-vertex1 1)) => anything)))))
+                  (adjacancy-list (get-vertex1 1)) => #(> (count %) 0))))))
