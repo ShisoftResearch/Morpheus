@@ -95,4 +95,6 @@
             (fact "Has Path"
                   (has-path? (get-vertex1 1) (get-vertex2 15)) => truthy
                   (has-path? (get-vertex1 1) (get-vertex2 22)) => falsey
-                  )))))
+                  )
+            (fact "Adjacency list"
+                  (dfs (get-vertex1 1) :adjacancy-list? true) => anything)))))

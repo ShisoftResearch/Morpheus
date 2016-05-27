@@ -1,12 +1,14 @@
 (ns morpheus.traversal.dfs.rebuild
-  (:require [morpheus.traversal.dfs.mutable :as mv]))
+  (:require [morpheus.traversal.dfs.mutable :as mv]
+            [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 (defn new-mutable-vertex [vp]
   {:vertex-props vp
    :adjacents    (atom [])})
 
 (defn push-adj [mutable-vertex target-mutable-vertex-props]
-  (swap! (:adjacents mutable-vertex) conj target-mutable-vertex-props))
+  (when (and mutable-vertex target-mutable-vertex-props)
+    (swap! (:adjacents mutable-vertex) conj target-mutable-vertex-props)))
 
 (defn preproc-stack-for-adj-list [stack]
   (into
