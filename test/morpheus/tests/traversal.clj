@@ -97,4 +97,9 @@
                   (has-path? (get-vertex1 1) (get-vertex2 22)) => falsey
                   )
             (fact "Adjacency list"
-                  (adjacancy-list (get-vertex1 1)) => #(> (count %) 0))))))
+                  (adjacancy-list (get-vertex1 1)) => #(> (count %) 0))
+            (fact "Path to"
+                  (path-to (get-vertex1 1) (get-vertex1 3))
+                  (one-path-to (get-vertex1 1) (get-vertex1 3)) => (contains [(contains {:deepth 0 :parent nil})
+                                                                              (contains {:deepth 1})
+                                                                              (contains {:deepth 2})]))))))

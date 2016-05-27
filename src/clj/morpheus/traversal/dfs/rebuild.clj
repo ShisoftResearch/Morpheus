@@ -1,6 +1,5 @@
 (ns morpheus.traversal.dfs.rebuild
-  (:require [morpheus.traversal.dfs.mutable :as mv]
-            [cluster-connector.utils.for-debug :refer [$ spy]]))
+  (:require [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 (defn new-mutable-vertex [vp]
   {:vertex-props vp
@@ -31,5 +30,11 @@
 (defn complete-adjacancy-list [stack]
   (throw (UnsupportedOperationException.)))
 
-(defn paths-from-stack [stack a b]
-  )
+(defn one-path-from-stack [stack a b]
+  (let [vertices-info (into {} (map (fn [{:keys [id] :as vp}] [id vp]) stack))]
+    (loop [path [(get vertices-info b)]
+           parent (:parent (get vertices-info b))]
+      (if (nil? parent)
+        (reverse path)
+        (recur (conj path (get vertices-info parent))
+               (:parent (get vertices-info parent)))))))
