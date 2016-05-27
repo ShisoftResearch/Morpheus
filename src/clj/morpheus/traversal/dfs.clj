@@ -71,8 +71,7 @@
 
 
 
-(defn dfs [vertex & {:keys [filters max-deepth timeout stop-cond path-only? tail-only? destination-id with-edges? with-vertices?
-                            adjacancy-list? complete-adjacancy-list?] :as extra-params
+(defn dfs [vertex & {:keys [filters max-deepth timeout stop-cond with-edges? with-vertices?] :as extra-params
                      :or {timeout 60000}}]
   "Perform distributed deepth first search. stop-cond is for vertex."
   (let [task-id (neb/rand-cell-id)
@@ -88,36 +87,23 @@
       (a/close! feedback-chan)
       (if (nil? feedback)
         (throw (TimeoutException.))
-        (let [stack (map (fn [[vid visited deepeth parent edge]]
-                           (merge
-                             {:id vid
-                              :deepth deepeth
-                              :parent parent}
-                             (when with-edges?
-                               {:edge edge})
-                             (when with-vertices?
-                               {:vertex (vertex/get-veterx-by-id vid)})))
-                         feedback)]
-          (cond
-            path-only?
-            (rebuild/paths-from-stack
-              stack vertex-id
-              (or destination-id
-                  (:id (last stack))))
-            adjacancy-list?
-            (rebuild/adjacancy-list stack)
-            complete-adjacancy-list?
-            (rebuild/complete-adjacancy-list stack)
-            tail-only?
-            (last stack)
-            :else
-            stack))))))
+        (map (fn [[vid visited deepeth parent edge]]
+               (merge
+                 {:id vid
+                  :deepth deepeth
+                  :parent parent}
+                 (when with-edges?
+                   {:edge edge})
+                 (when with-vertices?
+                   {:vertex (vertex/get-veterx-by-id vid)})))
+             feedback)))))
 
 (defn has-path? [vertex-a vertex-b & params]
   (let [vertex-b-id (:*id* vertex-b)
         dfs-stack (apply dfs vertex-a
                          :stop-cond ['(= :*id* :.vid)
                                      {:.vid vertex-b-id}]
+                         :stack? true
                          params)]
     (or*
       (map
@@ -125,6 +111,18 @@
           (let [vid (:id vm)]
             (fn [] (= vertex-b-id vid))))
         dfs-stack))))
+
+(defn adjacancy-list [vertex & params]
+  (rebuild/adjacancy-list (apply dfs vertex params)))
+
+(defn endpoint [vertex & params]
+  (first (apply dfs vertex params)))
+
+(defn path-to [vertex-a vertex-b & params]
+  (rebuild/paths-from-stack
+    (apply dfs vertex-a params)
+    (:*id* vertex-a)
+    (:*id* vertex-b)))
 
 (msg/register-action :DFS-FORWARD proc-forward-msg)
 (msg/register-action :DFS-RETURN  proc-return-msg)
