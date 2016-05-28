@@ -27,7 +27,7 @@
 
 (defn proc-forward-msg [task-id data]
   (let [[vertex-id stack] data
-        {:keys [filters max-deepth stop-cond with-edges?]} (compute/get-task task-id)
+        {:keys [filters max-deepth stop-cond with-edges? full-stack?]} (compute/get-task task-id)
         vertex (vertex/get-veterx-by-id vertex-id)
         vertex-criteria (get-in filters [:criteria :vertex])
         vertex-vailed (if vertex-criteria (AST/eval-with-data vertex vertex-criteria) true)
@@ -50,9 +50,10 @@
         next-depth (inc deepth)
         stack-verteics (set (map first stack))
         neighbour-oppisites (->> (map (fn [edge]
-                                        (let [opptsite-id (eb/get-oppisite edge vertex-id)]
-                                          (when (and opptsite-id (not (stack-verteics opptsite-id)))
-                                            [opptsite-id 0 next-depth vertex-id (when with-edges? edge)])))
+                                        (let [opptsite-id (eb/get-oppisite edge vertex-id)
+                                              exists? (stack-verteics opptsite-id)]
+                                          (when (and opptsite-id (or (not exists?) (and exists? full-stack?)))
+                                            [opptsite-id (if exists? 1 0) next-depth vertex-id (when with-edges? edge)])))
                                       neighbours)
                                  (filter identity))
         final-stack (if-not (> deepth (or max-deepth Long/MAX_VALUE))
@@ -71,7 +72,7 @@
 
 
 
-(defn dfs [vertex & {:keys [filters max-deepth timeout stop-cond with-edges? with-vertices?] :as extra-params
+(defn dfs [vertex & {:keys [filters max-deepth stop-cond full-stack? timeout with-edges? with-vertices?] :as extra-params
                      :or {timeout 60000}}]
   "Perform distributed deepth first search. stop-cond is for vertex."
   (let [task-id (neb/rand-cell-id)
