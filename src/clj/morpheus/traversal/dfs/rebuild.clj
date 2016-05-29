@@ -30,7 +30,25 @@
 (defn complete-adjacancy-list [stack]
   (throw (UnsupportedOperationException.)))
 
-(defn one-path-from-stack [stack a b]
+(defn path-from-stack
+  "Recursive (non-linear) path extraction"
+  [stack b]
+  (let [vertices-map (group-by :id stack)
+        next-parent (fn next-parent [path]
+                      (let [last-vertex (last path)]
+                        (map
+                          (fn [vp]
+                            (if vp
+                              (next-parent (conj path vp))
+                              path))
+                          (get vertices-map (:id last-vertex)))))]
+    ($ mapcat (fn [b-parent]
+           (next-parent [b-parent]))
+         (get vertices-map b))))
+
+(defn one-path-from-stack
+  "Linear path extraction"
+  [stack b]
   (let [vertices-info (into {} (map (fn [{:keys [id] :as vp}] [id vp]) stack))]
     (loop [path [(get vertices-info b)]
            parent (:parent (get vertices-info b))]

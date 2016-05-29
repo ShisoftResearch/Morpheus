@@ -116,16 +116,17 @@
   (first (apply dfs vertex params)))
 
 (defn path-to [vertex-a vertex-b & params]
-  )
+  (let [vertex-b-id (:*id* vertex-b)]
+    (rebuild/path-from-stack
+      (:stack ($ apply dfs vertex-a :full-stack? true params))
+      vertex-b-id)))
 
 (defn one-path-to [vertex-a vertex-b & params]
-  (let [vertex-a-id (:*id* vertex-a)
-        vertex-b-id (:*id* vertex-b)]
+  (let [vertex-b-id (:*id* vertex-b)]
     (rebuild/one-path-from-stack
       (:stack (apply dfs vertex-a params
                      :stop-cond ['(= :*id* :.vid)
                                  {:.vid (:*id* vertex-b)}]))
-      vertex-a-id
       vertex-b-id)))
 
 (msg/register-action :DFS-FORWARD proc-forward-msg)

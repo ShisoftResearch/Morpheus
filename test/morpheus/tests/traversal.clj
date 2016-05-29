@@ -14,8 +14,8 @@
       (fact "Schemas"
             (new-vertex-group! :item-1 {:body :dynamic :key-field :name}) => anything
             (new-vertex-group! :item-2 {:body :dynamic :key-field :name}) => anything
-            (new-edge-group! :link1 {:type :directed :body :dynamic}) => anything
-            (new-edge-group! :link2 {:type :directed :body :dynamic}) => anything)
+            (new-edge-group! :link1 {:type :indirected :body :dynamic}) => anything
+            (new-edge-group! :link2 {:type :indirected :body :dynamic}) => anything)
       (fact "Create Edges"
             (new-vertex! :item-1 {:name "1"}) => anything
             (new-vertex! :item-1 {:name "2"}) => anything
@@ -99,7 +99,8 @@
             (fact "Adjacency list"
                   (adjacancy-list (get-vertex1 1)) => #(> (count %) 0))
             (fact "Path to"
-                  (path-to (get-vertex1 1) (get-vertex1 3))
+                  (clojure.pprint/pprint
+                    (path-to (get-vertex2 15) (get-vertex1 1)))
                   (one-path-to (get-vertex1 1) (get-vertex1 3)) => (contains [(contains {:deepth 0 :parent nil})
                                                                               (contains {:deepth 1})
                                                                               (contains {:deepth 2})]))))))
