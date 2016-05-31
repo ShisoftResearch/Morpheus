@@ -1,5 +1,7 @@
 (ns morpheus.traversal.dfs.rebuild
-  (:require [cluster-connector.utils.for-debug :refer [$ spy]]))
+  (:require [cluster-connector.utils.for-debug :refer [$ spy]]
+            [clojure.core.async :as a]
+            [manifold.stream :as s]))
 
 (defn new-mutable-vertex [vp]
   {:vertex-props vp
@@ -27,24 +29,25 @@
            (update vm :adjacents deref))
          vertices-map)))
 
-(defn complete-adjacancy-list [stack]
-  (throw (UnsupportedOperationException.)))
+(defn- next-parents [a path visited vertices-map chan vertex-id]
+  (doseq [vertex (get vertices-map vertex-id)]
+    (let [{:keys [parent id] :as vp} vertex
+          new-path (conj path vp)]
+      (if (and parent (not (visited parent)))
+        (next-parents a new-path (conj visited parent) vertices-map chan parent)
+        (when (= id a)
+          (s/put! chan (reverse new-path)))))))
 
 (defn path-from-stack
   "Recursive (non-linear) path extraction"
-  [stack b]
+  [stack a b]
   (let [vertices-map (group-by :id stack)
-        next-parent (fn next-parent [path]
-                      (let [last-vertex (last path)]
-                        (map
-                          (fn [vp]
-                            (if vp
-                              (next-parent (conj path vp))
-                              path))
-                          (get vertices-map (:id last-vertex)))))]
-    ($ mapcat (fn [b-parent]
-           (next-parent [b-parent]))
-         (get vertices-map b))))
+        res-chan (s/stream)]
+    (try
+      (next-parents a [] #{b} vertices-map res-chan b)
+      (s/stream->seq res-chan)
+      (finally
+        (s/close! res-chan)))))
 
 (defn one-path-from-stack
   "Linear path extraction"

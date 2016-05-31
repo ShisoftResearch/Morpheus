@@ -99,8 +99,7 @@
             (fact "Adjacency list"
                   (adjacancy-list (get-vertex1 1)) => #(> (count %) 0))
             (fact "Path to"
-                  (clojure.pprint/pprint
-                    (path-to (get-vertex2 15) (get-vertex1 1)))
+                  (path-to (get-vertex1 1) (get-vertex2 15) :with-vertices? true) => #(= 2 (count %))
                   (one-path-to (get-vertex1 1) (get-vertex1 3)) => (contains [(contains {:deepth 0 :parent nil})
                                                                               (contains {:deepth 1})
                                                                               (contains {:deepth 2})]))))))
