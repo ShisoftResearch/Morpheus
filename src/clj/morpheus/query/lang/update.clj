@@ -1,5 +1,5 @@
 (ns morpheus.query.lang.update
-  (:require [morpheus.query.lang.AST :as AST]
+  (:require [morpheus.query.lang.evaluation :as eva]
             [morpheus.models.vertex.core :as vertex]
             [morpheus.models.edge.core :as edge]
             [neb.utils :refer [map-on-keys]]))
@@ -12,12 +12,12 @@
       (let [[k exp] (first exp-pairs)]
         (recur (rest exp-pairs)
                (assoc-in vertex-to-update k
-                         (AST/eval-with-data vertex exp)))))))
+                         (eva/eval-with-data vertex exp)))))))
 
 (defn update-object [update-func obj field-exp-map]
   (update-func
     obj 'morpheus.query.lang.update/update-object*
-    (map-on-keys AST/parse-map-path field-exp-map)))
+    (map-on-keys eva/parse-map-path field-exp-map)))
 
 (defn update-vertex [vertex field-exp-map]
   (update-object vertex/update-vertex! vertex field-exp-map))

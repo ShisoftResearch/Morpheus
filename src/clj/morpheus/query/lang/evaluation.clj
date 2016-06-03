@@ -1,4 +1,4 @@
-(ns morpheus.query.lang.AST
+(ns morpheus.query.lang.evaluation
   (:require [morpheus.query.lang.base :as base]
             [cluster-connector.utils.for-debug :refer [$ spy]]))
 

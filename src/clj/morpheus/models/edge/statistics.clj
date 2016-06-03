@@ -1,6 +1,6 @@
 (ns morpheus.models.edge.statistics
   (:require [morpheus.models.edge.base :refer :all]
-            [morpheus.query.lang.AST :as AST]
+            [morpheus.query.lang.evaluation :as eva]
             [morpheus.models.vertex.core :as vertex]
             [neb.core :as neb]
             [cluster-connector.utils.for-debug :refer [$ spy]]))
@@ -23,7 +23,7 @@
                (when
                  (and edge
                       (if edge-filter
-                        (AST/eval-with-data
+                        (eva/eval-with-data
                           edge edge-filter)
                         true))
                  edge)))
@@ -39,7 +39,7 @@
              (fn [edge]
                (let [oppisite-vertex-id (get-oppisite edge vertex-id)
                      oppisite-vertex (vertex/get-veterx-by-id oppisite-vertex-id)]
-                 (when (or (not vertex-filter) (AST/eval-with-data oppisite-vertex vertex-filter))
+                 (when (or (not vertex-filter) (eva/eval-with-data oppisite-vertex vertex-filter))
                    (assoc oppisite-vertex
                      :*edge* edge)))))
            (filter identity)))))

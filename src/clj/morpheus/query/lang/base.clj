@@ -38,38 +38,38 @@
 (defn power-of-2?- [n]
   (= 0 (bit-and n (- n 1))))
 
-(defn round- ^double [^double x]
-  (Math/floor (+ 0.5 x)))
+(defn round- ^double [x]
+  (Math/floor (+ 0.5 (double x))))
 
-(defn round?- [^double x]
-  (= x (Math/floor (+ 0.5 x))))
+(defn round?- [x]
+  (= x (Math/floor (+ 0.5 (double x)))))
 
-(defn floor- ^double [^double x]
-  (Math/floor x))
+(defn floor- ^double [x]
+  (Math/floor (double x)))
 
-(defn ceil- ^double [^double x]
-  (Math/ceil x))
+(defn ceil- ^double [x]
+  (Math/ceil (double x)))
 
-(defn pow- ^double [^double x ^double y]
-  (Math/pow x y))
+(defn pow- ^double [x y]
+  (Math/pow (double x) (double y)))
 
-(defn exp- ^double [^double x]
-  (Math/exp x))
+(defn exp- ^double [x]
+  (Math/exp (double x)))
 
-(defn log- ^double [^double x]
-  (Math/log x))
+(defn log- ^double [x]
+  (Math/log (double x)))
 
-(defn log10- ^double [^double x]
-  (Math/log10 x))
+(defn log10- ^double [x]
+  (Math/log10 (double x)))
 
-(defn log1p- ^double [^double x]
-  (Math/log1p x))
+(defn log1p- ^double [x]
+  (Math/log1p (double x)))
 
-(defn sqrt- ^double [^double x]
-  (Math/sqrt x))
+(defn sqrt- ^double [x]
+  (Math/sqrt (double x)))
 
-(defn abs- ^double [^double x]
-  (Math/abs x))
+(defn abs- ^double [x]
+  (Math/abs (double x)))
 
 (def op-mapper
   {'= =

@@ -9,7 +9,7 @@
             [neb.core :as neb]
             [cluster-connector.utils.for-debug :refer [$ spy]]
             [morpheus.models.edge.base :as eb]
-            [morpheus.query.lang.AST :as AST]
+            [morpheus.query.lang.evaluation :as eva]
             [morpheus.utils :refer [and* or*]])
   (:import (java.util.concurrent TimeoutException)))
 
@@ -30,7 +30,7 @@
         {:keys [filters max-deepth stop-cond with-edges? full-stack?]} (compute/get-task task-id)
         vertex (vertex/get-veterx-by-id vertex-id)
         vertex-criteria (get-in filters [:criteria :vertex])
-        vertex-vailed (if vertex-criteria (AST/eval-with-data vertex vertex-criteria) true)
+        vertex-vailed (if vertex-criteria (eva/eval-with-data vertex vertex-criteria) true)
         neighbours (if vertex-vailed (apply edges/neighbours-edges vertex (if filters (mapcat identity filters) [])) [])
         current-vertex-stat (atom nil)
         proced-stack (doall (map (fn [v]
@@ -60,7 +60,7 @@
                       (concat neighbour-oppisites proced-stack)
                       proced-stack)
         unvisited-id (first (first (filter (fn [[_ flag]] (= flag 0)) final-stack)))
-        all-visted? (or (nil? unvisited-id) (and stop-cond (AST/eval-with-data vertex stop-cond)))]
+        all-visted? (or (nil? unvisited-id) (and stop-cond (eva/eval-with-data vertex stop-cond)))]
     (if all-visted?
       (let [root-id (first (last stack))]
         (send-stack task-id :DFS-RETURN root-id [proced-stack vertex-id]))
