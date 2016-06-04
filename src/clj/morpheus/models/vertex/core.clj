@@ -16,7 +16,7 @@
 
 (def veterx-group-props vb/veterx-group-props)
 
-(defn get-veterx-by-id [id]
+(defn veterx-by-id [id]
   (when-let [neb-cell (neb/read-cell* id)]
     (let [neb-sid  (:*schema* neb-cell)
           morph-schema (mb/schema-by-neb-id neb-sid)]
@@ -28,10 +28,10 @@
     (mb/cell-id-by-key :v vp key)))
 
 (defn vertex-by-key [group key]
-  (get-veterx-by-id (vertex-id-by-key group key)))
+  (veterx-by-id (vertex-id-by-key group key)))
 
 (defn reload-vertex [vertex]
-  (get-veterx-by-id (:*id* vertex)))
+  (veterx-by-id (:*id* vertex)))
 
 (defn new-vertex! [group data]
   (vb/new-vertex (vb/veterx-group-props group) data))

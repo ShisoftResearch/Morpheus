@@ -28,7 +28,7 @@
 (defn proc-forward-msg [task-id data]
   (let [[vertex-id stack] data
         {:keys [filters max-deepth stop-cond with-edges? full-stack?]} (compute/get-task task-id)
-        vertex (vertex/get-veterx-by-id vertex-id)
+        vertex (vertex/veterx-by-id vertex-id)
         vertex-criteria (get-in filters [:criteria :vertex])
         vertex-vailed (if vertex-criteria (eva/eval-with-data vertex vertex-criteria) true)
         neighbours (if vertex-vailed (apply edges/neighbours-edges vertex (if filters (mapcat identity filters) [])) [])
@@ -97,7 +97,7 @@
                            (when with-edges?
                              {:edge edge})
                            (when with-vertices?
-                             {:vertex (vertex/get-veterx-by-id vid)})))
+                             {:vertex (vertex/veterx-by-id vid)})))
                        stack)
            :exit-id exit-id})))))
 

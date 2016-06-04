@@ -1,5 +1,7 @@
 (ns morpheus.query.lang.base
-  (:require [cluster-connector.utils.for-debug :refer [$ spy]]))
+  (:require [cluster-connector.utils.for-debug :refer [$ spy]]
+            [morpheus.models.vertex.core :as v])
+  (:import (java.util UUID)))
 
 (defn has?- [a b]
   (cond
@@ -31,6 +33,12 @@
       ccond
       (recur (first conds)
              (rest conds)))))
+
+(defn and-coll- [coll]
+  (apply and- coll))
+
+(defn or-coll- [coll]
+  (apply or- coll))
 
 (defn if- [clause a & [b]]
   (if clause a b))
@@ -71,6 +79,24 @@
 (defn abs- ^double [x]
   (Math/abs (double x)))
 
+(defn vertex- [& params]
+  (let [[arg1 arg2] params]
+    (cond
+      (instance? UUID arg1)
+      (v/veterx-by-id arg1)
+      (keyword? arg1)
+      (v/vertex-by-key arg1 arg2))))
+
+(defn uuid- [& params]
+  (let [[arg1 arg2] params]
+    (cond
+      (empty? params)
+      (UUID/randomUUID)
+      (string? arg1)
+      (UUID/fromString arg1)
+      (and (number? arg1) (number? arg2))
+      (UUID. arg1 arg2))))
+
 (def op-mapper
   {'= =
    '< <
@@ -89,10 +115,17 @@
    'set? set?
    'str str
    'num read-string
+   'double double
+   'int int
+   'float float
+   'uuid uuid-
+   'cid uuid-
    'concat concat-
    'append conj
    'or or-
    'and and-
+   'or-coll or-coll-
+   'and-coll and-coll-
    '|| or-
    '&& and-
    'if if-
@@ -107,5 +140,6 @@
    'log10 log10-
    'log1p log1p-
    'sqrt sqrt-
-   'abs abs-})
+   'abs abs-
+   'vertex vertex-})
 
