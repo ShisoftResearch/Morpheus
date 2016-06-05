@@ -36,5 +36,14 @@
              (eva/eval-with-data {} '(if (= 2 2) 1 2)) => 1
              (eva/eval-with-data {} '(if (= 2 2) 2)) => 2
              (eva/eval-with-data {} '(if (= 1 2) 2)) => nil
-             )
-       )
+             (eva/eval-with-data {} '(upper-case "Neo")) => "NEO")
+       (fact "Let bindings"
+             (eva/eval-with-data {} '(let [a 1 b 2]
+                                       (+ :a :b))) => 3
+             (eva/eval-with-data {} '(let [:a (+ 1 2)
+                                           :b (+ 3 4)]
+                                       (+ :a :b))) => 10
+             (eva/eval-with-data {:a "Hello" :b "world"}
+                                 '(let [:name (let [:name "Neo"]
+                                               (upper-case :name))]
+                                    (str :a " " :name ". Welcome to the real " :b "."))) => "Hello NEO. Welcome to the real world."))

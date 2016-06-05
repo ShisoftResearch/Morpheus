@@ -18,13 +18,17 @@
   (let [data base/*data*]
     (if (list? s-exp)
       (let [func-sym (peek s-exp)
-            params (rest s-exp)]
-        (apply
-          (get base/op-mapper func-sym)
-          (map eval-with-data* params)))
+            params (rest s-exp)
+            function (get base/function-mapper func-sym)
+            interpreter (get base/interpreter-mapper func-sym)]
+        (cond
+          function
+          (apply function (map eval-with-data* params))
+          interpreter
+          (apply interpreter params)))
       (cond
         (symbol? s-exp)
-        (get base/op-mapper s-exp)
+        (get base/function-mapper s-exp)
         (keyword? s-exp)
         (get-in data (parse-map-path s-exp))
         :else
@@ -37,3 +41,17 @@
                  (second s-exp-or-with-params) {})]
     (with-bindings {#'base/*data* (merge data params)}
       (eval-with-data* s-exp))))
+
+(defn let- [bindings & body]
+  (with-bindings
+    {#'base/*data*
+     (merge
+       base/*data*
+       (into
+         {}
+         (map
+           (fn [[k exp]]
+             [(keyword (name k))
+              (eval-with-data* exp)])
+           (partition 2 bindings))))}
+    (last (map eval-with-data* body))))

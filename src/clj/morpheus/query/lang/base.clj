@@ -104,7 +104,7 @@
   (fn [& args]
     (apply (rfi/compiled-cache sym) args)))
 
-(def op-mapper
+(def function-mapper
   {'= =
    '< <
    '> >
@@ -155,8 +155,12 @@
    'keyword keyword
    'get get
    'get-in get-in
+   'lower-case clojure.string/lower-case
+   'upper-case clojure.string/upper-case
    '$ vertex-
    '-> (soft-link 'morpheus.models.edge.core/neighbours)
    '->- (soft-link 'morpheus.models.edge.core/neighbours-edges)
    '->n (soft-link 'morpheus.models.edge.core/degree)})
 
+(def interpreter-mapper
+  {'let (soft-link 'morpheus.query.lang.evaluation/let-)})
