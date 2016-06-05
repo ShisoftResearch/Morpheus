@@ -1,7 +1,10 @@
 (ns morpheus.query.lang.base
   (:require [cluster-connector.utils.for-debug :refer [$ spy]]
-            [morpheus.models.vertex.core :as v])
+            [morpheus.models.vertex.core :as v]
+            [cluster-connector.remote-function-invocation.core :as rfi])
   (:import (java.util UUID)))
+
+(def ^:dynamic *data* nil)
 
 (defn has?- [a b]
   (cond
@@ -97,6 +100,10 @@
       (and (number? arg1) (number? arg2))
       (UUID. arg1 arg2))))
 
+(defn soft-link [sym]
+  (fn [& args]
+    (apply (rfi/compiled-cache sym) args)))
+
 (def op-mapper
   {'= =
    '< <
@@ -141,5 +148,15 @@
    'log1p log1p-
    'sqrt sqrt-
    'abs abs-
-   'vertex vertex-})
+   'assoc assoc
+   'assoc-in assoc-in
+   'dissoc dissoc
+   'keyword? keyword?
+   'keyword keyword
+   'get get
+   'get-in get-in
+   '$ vertex-
+   '-> (soft-link 'morpheus.models.edge.core/neighbours)
+   '->- (soft-link 'morpheus.models.edge.core/neighbours-edges)
+   '->n (soft-link 'morpheus.models.edge.core/degree)})
 
