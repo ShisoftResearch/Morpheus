@@ -46,4 +46,13 @@
              (eva/eval-with-data {:a "Hello" :b "world"}
                                  '(let [:name (let [:name "Neo"]
                                                (upper-case :name))]
-                                    (str :a " " :name ". Welcome to the real " :b "."))) => "Hello NEO. Welcome to the real world."))
+                                    (str :a " " :name ". Welcome to the real " :b "."))) => "Hello NEO. Welcome to the real world."
+             (fact "Instant and sequel binding"
+                   (eva/eval-with-data
+                     {:a 0}
+                     '(let [:a 1
+                            :b (+ :a 1)] :b)) => 2
+                   (eva/eval-with-data
+                     {:a 0}
+                     '(let* [:a 1
+                             :b (+ :a 1)] :b)) => 1)))

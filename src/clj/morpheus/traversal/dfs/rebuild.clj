@@ -36,18 +36,15 @@
       (if (and parent (not (visited parent)))
         (next-parents a new-path (conj visited parent) vertices-map chan parent)
         (when (= id a)
-          (s/put! chan (reverse new-path)))))))
+          (swap! chan conj (reverse new-path)))))))
 
 (defn path-from-stack
   "Recursive (non-linear) path extraction"
   [stack a b]
   (let [vertices-map (group-by :id stack)
-        res-chan (s/stream)]
-    (try
-      (next-parents a [] #{b} vertices-map res-chan b)
-      (s/stream->seq res-chan)
-      (finally
-        (s/close! res-chan)))))
+        res-chan (atom [])]
+    (next-parents a [] #{b} vertices-map res-chan b)
+    @res-chan))
 
 (defn one-path-from-stack
   "Linear path extraction"

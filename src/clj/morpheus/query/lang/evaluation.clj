@@ -42,7 +42,7 @@
     (with-bindings {#'base/*data* (merge data params)}
       (eval-with-data* s-exp))))
 
-(defn let- [bindings & body]
+(defn let*- [bindings & body]
   (with-bindings
     {#'base/*data*
      (merge
@@ -55,3 +55,13 @@
               (eval-with-data* exp)])
            (partition 2 bindings))))}
     (last (map eval-with-data* body))))
+
+(defn let- [bindings & body]
+  (let [data (atom base/*data*)]
+    (doseq [[k exp] (partition 2 bindings)]
+      (with-bindings
+        {#'base/*data* @data}
+        (swap! data assoc (keyword (name k)) (eval-with-data* exp))))
+    (with-bindings
+      {#'base/*data* @data}
+      (last (map eval-with-data* body)))))

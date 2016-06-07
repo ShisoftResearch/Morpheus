@@ -163,4 +163,6 @@
    '->n (soft-link 'morpheus.models.edge.core/degree)})
 
 (def interpreter-mapper
-  {'let (soft-link 'morpheus.query.lang.evaluation/let-)})
+  {'let (soft-link 'morpheus.query.lang.evaluation/let-)
+   'let* (soft-link 'morpheus.query.lang.evaluation/let*-) ;let* will be slightly faster than let, but is not instant binding
+   })
