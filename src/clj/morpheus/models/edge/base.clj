@@ -10,7 +10,8 @@
             [neb.utils :refer [map-on-vals]])
   (:import (java.util UUID)
            (org.shisoft.neb Trunk)
-           (org.shisoft.neb.io type_lengths CellMeta Reader)))
+           (org.shisoft.neb.io type_lengths CellMeta Reader)
+           (com.google.common.hash Hashing)))
 
 (def schema-fields
   [[:*start*  :cid]
@@ -57,8 +58,16 @@
   (let [cid-lists (get vertex field)]
     (:list-cid (extract-edge-cid-list cid-lists edge-schema-id))))
 
+(defn edge-list* [[v-id field edge-schema-id]]
+  (UUID.
+    (.getMostSignificantBits v-id)
+    (neb/hash-str (str v-id "-" field "-" edge-schema-id) (Hashing/sha1))))
+
+(defcache edge-list {:expire-after-access-secs 60
+                     :soft-values? true} edge-list*)
+
 (defn cid-list-id-by-vertex [v-id field edge-schema-id]
-  (neb/cell-id-by-key (str v-id "-" field "-" edge-schema-id)))
+  (edge-list [v-id field edge-schema-id]))
 
 (def empty-cid (UUID. 0 0))
 
