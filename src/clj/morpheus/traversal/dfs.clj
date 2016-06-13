@@ -13,7 +13,9 @@
             [morpheus.utils :refer [and* or*]])
   (:import (java.util.concurrent TimeoutException)))
 
-;; Distributed deepeth first search divised by S.A.M. Makki and George Havas
+;; Distributed deepeth-first-search divised by S.A.M. Makki and George Havas
+;; I tried to parallelize this algorithm and find it impossible. J.H. Reif also backed this idea.
+;; If you need parallel graph traversal, try BFS instead.
 
 ;; Message schama [vertex-id stack]
 
