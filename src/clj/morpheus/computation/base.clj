@@ -1,5 +1,6 @@
 (ns morpheus.computation.base
-  (:require [cluster-connector.distributed-store.synced-atom :as da]))
+  (:require [cluster-connector.distributed-store.synced-atom :as da]
+            [com.climate.claypoole :as cp]))
 
 (da/defatom tasks {})
 
@@ -11,3 +12,5 @@
 
 (defn get-task [id]
   (get @tasks id))
+
+(def compution-threadpool (cp/threadpool (cp/ncpus)))
