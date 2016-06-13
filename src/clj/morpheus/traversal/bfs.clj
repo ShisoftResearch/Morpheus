@@ -1,6 +1,7 @@
 (ns morpheus.traversal.bfs
   (:require [neb.core :as neb]
-            [morpheus.computation.base :as compute]))
+            [morpheus.computation.base :as compute]
+            [morpheus.messaging.core :as msg]))
 
 ; Parallel breadth-first-search divised by Aydın Buluç
 ; The algoithm was first introduced in Lawrence National Laboratory on BlueGene supercomputer
@@ -16,9 +17,18 @@
 (defn partation-vertices [vertex-ids]
   )
 
+(defn proc-forward-msg [task-id data]
+  )
+
+(defn proc-return-msg [task-id data]
+  )
+
 (defn bfs [vertex {:keys [filters max-deepth stop-cond timeout with-edges? with-vertices?] :as extra-params
                    :or {:timeout 60000}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)]
     (compute/new-task task-id extra-params)
     ))
+
+(msg/register-action :BFS-FORWARD proc-forward-msg)
+(msg/register-action :BFS-RETURN proc-return-msg)
