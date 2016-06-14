@@ -86,7 +86,7 @@
   (let [[arg1 arg2] params]
     (cond
       (instance? UUID arg1)
-      (v/veterx-by-id arg1)
+      (v/vertex-by-id arg1)
       (keyword? arg1)
       (v/vertex-by-key arg1 arg2))))
 

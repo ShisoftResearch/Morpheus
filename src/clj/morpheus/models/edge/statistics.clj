@@ -38,7 +38,7 @@
            (map
              (fn [edge]
                (let [oppisite-vertex-id (get-oppisite edge vertex-id)
-                     oppisite-vertex (vertex/veterx-by-id oppisite-vertex-id)]
+                     oppisite-vertex (vertex/vertex-by-id oppisite-vertex-id)]
                  (when (or (not vertex-filter) (eva/eval-with-data oppisite-vertex vertex-filter))
                    (assoc oppisite-vertex
                      :*edge* edge)))))
