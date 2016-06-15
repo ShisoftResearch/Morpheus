@@ -8,7 +8,8 @@
             [com.climate.claypoole :as cp]
             [morpheus.models.edge.core :as edges]
             [morpheus.models.edge.base :as eb]
-            [morpheus.query.lang.evaluation :as eva]))
+            [morpheus.query.lang.evaluation :as eva]
+            [clojure.core.async :as a]))
 
 ; Parallel breadth-first-search divised by Aydın Buluç
 ; The algoithm was first introduced in Lawrence National Laboratory on BlueGene supercomputer
@@ -52,15 +53,20 @@
 
 (defn proc-return-msg [task-id data]
   (let [[superstep-id vertices-stack] data]
-    ))
+    (a/>!! (get @superstep-tasks superstep-id) vertices-stack)))
 
 (defn proc-stack [task-id stack]
   (let[server-vertices (partation-vertices stack)
-       superstep-id (neb/rand-cell-id)]
-    (cp/pdoseq
-      compute/compution-threadpool
-      [[server-name vertices] server-vertices]
-      (msg/send-msg server-name :BFS-FORWARD [superstep-id vertices] :task-id task-id))))
+       step-chains (doall (cp/pfor
+                            compute/compution-threadpool
+                            [[server-name vertex-ids] server-vertices]
+                            (let [superstep-id (neb/rand-cell-id)
+                                  superstep-chan (a/chan 1)]
+                              (swap! superstep-tasks assoc superstep-id superstep-chan)
+                              (msg/send-msg server-name :BFS-FORWARD [superstep-id vertex-ids] :task-id task-id)
+                              super-chain)))]
+    (doall (for [step-chain step-chains]
+             (a/<!! step-chain)))))
 
 (defn bfs [vertex {:keys [filters max-deepth stop-cond timeout with-edges? with-vertices?] :as extra-params
                    :or {timeout 60000 max-deepth 8}}]
