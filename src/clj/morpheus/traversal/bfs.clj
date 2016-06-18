@@ -17,8 +17,8 @@
 ; I also took some idea from Charles E. Leiserson and Tao B. Schardl, for the underlying BSP data processing mechanism.
 ; Morpueus will use the task founder server as the only machine for join operations in each level.
 
+(def tasks-vertices (atom {}))
 (def superstep-tasks (atom {}))
-(def searched-stacks (atom {}))
 
 (defn fetch-local-edges [task-id vertex-ids]
   )
@@ -44,7 +44,7 @@
                           vertex-res (if with-vertices? vertex (select-keys vertex [:*id*]))
                           edges-res (map (fn [edge]
                                            (assoc (if with-edges? edge {})
-                                             :opp (eb/get-oppisite edge vertex-id)))
+                                             :*opp* (eb/get-oppisite edge vertex-id)))
                                          neighbours)]
                       [vertex-res edges-res]))))
               vertices-stack)
@@ -52,8 +52,21 @@
       :task-id task-id)))
 
 (defn proc-return-msg [task-id data]
-  (let [[superstep-id vertices-stack] data]
-    (a/>!! (get @superstep-tasks superstep-id) vertices-stack)))
+  (let [[superstep-id vertices-stack] data
+        deepth (get-in @tasks-vertices [task-id :current-level])]
+    (a/go
+      (doseq [[vertex-res edges-res] vertices-stack]
+        (let [vertex-id (:*id* vertex-res)]
+          (swap! tasks-vertices update-in [task-id vertex-id]
+                 #(merge % vertex-res
+                         {:*visited* true
+                          :*edges* edges-res}))
+          (doseq [edge edges-res]
+            (let [opp-id (:*opp* edge)]
+              (swap! tasks-vertices update-in [task-id opp-id]
+                     #(if % % {:*visited* false
+                               :*level* deepth}))))))
+      (a/>! (get @superstep-tasks superstep-id) true))))
 
 (defn proc-stack [task-id stack]
   (let[server-vertices (partation-vertices stack)
@@ -64,21 +77,34 @@
                                   superstep-chan (a/chan 1)]
                               (swap! superstep-tasks assoc superstep-id superstep-chan)
                               (msg/send-msg server-name :BFS-FORWARD [superstep-id vertex-ids] :task-id task-id)
-                              super-chain)))]
-    (doall (for [step-chain step-chains]
-             (a/<!! step-chain)))))
+                              [superstep-id superstep-chan])))]
+    (doseq [[superstep-id superstep-chan] step-chains]
+      (a/<!! superstep-chan)
+      (swap! superstep-tasks dissoc superstep-id))))
 
-(defn bfs [vertex {:keys [filters max-deepth stop-cond timeout with-edges? with-vertices?] :as extra-params
+(defn bfs [vertex {:keys [filters max-deepth timeout with-edges? with-vertices?] :as extra-params
                    :or {timeout 60000 max-deepth 8}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
         initial-stack [vertex-id]]
     (compute/new-task task-id (assoc extra-params :founder ds/this-server-name))
-    (swap! searched-stacks assoc task-id initial-stack)
+    (swap! tasks-vertices assoc task-id {:current-level 0})
     (proc-stack task-id initial-stack)
-    (doseq [level (range max-deepth)]
-      )))
+    (loop [level 1]
+      (let [vertices (get @tasks-vertices task-id)
+            unvisited (filter
+                        identity
+                        (for [[id vertex] vertices]
+                          (if (get vertex :*visted*)
+                            nil id)))]
+        (when-not (or (empty? unvisited) (> level max-deepth))
+          (proc-stack task-id unvisited)
+          (swap! tasks-vertices update-in [task-id :current-level] inc)
+          (recur (inc level)))))
+    (let [result (get @tasks-vertices task-id)]
+      (swap! tasks-vertices dissoc task-id)
+      result)))
 
 (msg/register-action :BFS-FORWARD proc-forward-msg)
 (msg/register-action :BFS-RETURN proc-return-msg)
