@@ -3,7 +3,8 @@
             [morpheus.tests.server :refer [with-server]]
             [morpheus.models.vertex.core :refer :all]
             [morpheus.models.edge.core :refer :all]
-            [morpheus.traversal.dfs :refer :all]
+            [morpheus.traversal.dfs :as dfs]
+            [morpheus.traversal.bfs :as bfs]
             [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 (facts
@@ -56,7 +57,6 @@
                   (link! (get-vertex1 2) :link1 (get-vertex1 3))  => anything
                   (link! (get-vertex1 3) :link1 (get-vertex1 4))  => anything
                   (link! (get-vertex1 4) :link1 (get-vertex1 5))  => anything
-                  (link! (get-vertex1 5) :link1 (get-vertex1 6))  => anything
                   (link! (get-vertex1 6) :link1 (get-vertex1 7))  => anything
                   (link! (get-vertex1 7) :link1 (get-vertex1 8))  => anything
                   (link! (get-vertex1 8) :link1 (get-vertex1 9))  => anything
@@ -84,7 +84,7 @@
       (fact "DFS"
             (fact "Subgraph 1 search"
                   (println "Starting DFS")
-                  (let [dfs-outout (:stack (dfs (get-vertex1 1)))
+                  (let [dfs-outout (:stack (dfs/dfs (get-vertex1 1)))
                         subgraph-1 (concat (map (fn [i] (vertex-id-by-key :item-1 (str i))) (range 1 11))
                                            (map (fn [i] (vertex-id-by-key :item-2 (str i))) (range 11 16))) ]
                     (println "DFS Test End")
@@ -93,13 +93,41 @@
             (fact "Subgraph 1 search with edge restriction"
                   (count (:stack (dfs (get-vertex1 1) :filters {:type :link1}))) => 10)
             (fact "Has Path"
-                  (has-path? (get-vertex1 1) (get-vertex2 15)) => truthy
-                  (has-path? (get-vertex1 1) (get-vertex2 22)) => falsey
+                  (dfs/has-path? (get-vertex1 1) (get-vertex2 15)) => truthy
+                  (dfs/has-path? (get-vertex1 1) (get-vertex2 22)) => falsey
                   )
             (fact "Adjacency list"
-                  (adjacancy-list (get-vertex1 1)) => #(> (count %) 0))
+                  (dfs/adjacancy-list (get-vertex1 1)) => #(> (count %) 0))
             (fact "Path to"
-                  (path-to (get-vertex1 1) (get-vertex2 15) :with-vertices? true) => #(= 2 (count %))
-                  (one-path-to (get-vertex1 1) (get-vertex1 3)) => (contains [(contains {:deepth 0 :parent nil})
+                  (dfs/path-to (get-vertex1 1) (get-vertex2 15) :with-vertices? true) => #(= 2 (count %))
+                  (dfs/one-path-to (get-vertex1 1) (get-vertex1 3)) => (contains [(contains {:deepth 0 :parent nil})
                                                                               (contains {:deepth 1})
-                                                                              (contains {:deepth 2})]))))))
+                                                                              (contains {:deepth 2})])))
+      (fact "BFS"
+            (fact "Create Graph"
+
+                  ;;   1  - 2  - 3  - 4  - 5
+                  ;;   |         |
+                  ;;   6  - 7  - 8  - 9  - 10
+                  ;;   |                    |
+                  ;;   11 - 12 - 13 - 14 - 15
+                  ;;
+                  ;;   16 - 17 - 18 - 19 - 20
+                  ;;   |                   |
+                  ;;   21                  22
+
+                  (link! (get-vertex1 1) :link1 (get-vertex1 6))  => anything)
+            (println "Starting BFS")
+            (fact "Subgraph 1 search"
+                  (let [bfs-output (bfs/bfs (get-vertex1 1))]
+                    (println "BFS Test End")
+                    (count bfs-output) => 15
+                    (count (bfs/bfs (get-vertex1 1) :max-deepth 1)) => 3
+                    (count (bfs/bfs (get-vertex1 1) :max-deepth 2)) => 6
+
+                    (set (map (comp read-string :name)
+                              (vals (bfs/bfs (get-vertex1 1)
+                                             :max-deepth 2
+                                             :with-vertices? true)))) => #{1 2 3 6 7 11}
+
+                    ))))))

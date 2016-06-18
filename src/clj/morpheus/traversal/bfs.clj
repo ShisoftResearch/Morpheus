@@ -9,7 +9,8 @@
             [morpheus.models.edge.core :as edges]
             [morpheus.models.edge.base :as eb]
             [morpheus.query.lang.evaluation :as eva]
-            [clojure.core.async :as a]))
+            [clojure.core.async :as a]
+            [cluster-connector.utils.for-debug :refer [$ spy]]))
 
 ; Parallel breadth-first-search divised by Aydın Buluç
 ; The algoithm was first introduced in Lawrence National Laboratory on BlueGene supercomputer
@@ -19,9 +20,6 @@
 
 (def tasks-vertices (atom {}))
 (def superstep-tasks (atom {}))
-
-(defn fetch-local-edges [task-id vertex-ids]
-  )
 
 (defn partation-vertices [vertex-ids]
   (group-by
@@ -35,6 +33,7 @@
       founder :BFS-RETURN
       [superstep-id
        (->> (cp/pmap
+              compute/compution-threadpool
               (fn [vertex-id]
                 (let [vertex (vertex/vertex-by-id vertex-id)
                       vertex-criteria (get-in filters [:criteria :vertex])
@@ -82,13 +81,13 @@
       (a/<!! superstep-chan)
       (swap! superstep-tasks dissoc superstep-id))))
 
-(defn bfs [vertex {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices?] :as extra-params
+(defn bfs [vertex & {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices?] :as extra-params
                    :or {timeout 60000 max-deepth 8}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
         initial-stack [vertex-id]]
-    (compute/new-task task-id (assoc extra-params :founder ds/this-server-name))
+    (compute/new-task task-id (assoc extra-params :founder @ds/this-server-name))
     (swap! tasks-vertices assoc task-id {:current-level 0})
     (proc-stack task-id initial-stack)
     (loop [level 1]
@@ -96,7 +95,7 @@
             unvisited (filter
                         identity
                         (for [[id vertex] vertices]
-                          (if (get vertex :*visted*)
+                          (if (or (not (map? vertex)) (get vertex :*visted*))
                             nil id)))
             level-vertices (when level-stop-cond
                              (filter
@@ -120,7 +119,9 @@
           (recur (inc level)))))
     (let [result (get @tasks-vertices task-id)]
       (swap! tasks-vertices dissoc task-id)
-      result)))
+      (into {} (filterv identity
+                        (map (fn [[id v]] (when (:*visited* v) [id v]))
+                             (dissoc result :current-level)))))))
 
 (msg/register-action :BFS-FORWARD proc-forward-msg)
 (msg/register-action :BFS-RETURN proc-return-msg)
