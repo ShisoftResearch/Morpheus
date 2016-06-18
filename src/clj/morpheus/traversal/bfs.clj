@@ -119,9 +119,9 @@
           (recur (inc level)))))
     (let [result (get @tasks-vertices task-id)]
       (swap! tasks-vertices dissoc task-id)
-      (into {} (filterv identity
-                        (map (fn [[id v]] (when (:*visited* v) [id v]))
-                             (dissoc result :current-level)))))))
+      (->> (dissoc result :current-level)
+           (vals)
+           (filter :*visited*)))))
 
 (msg/register-action :BFS-FORWARD proc-forward-msg)
 (msg/register-action :BFS-RETURN proc-return-msg)

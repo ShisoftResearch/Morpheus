@@ -126,8 +126,8 @@
                     (count (bfs/bfs (get-vertex1 1) :max-deepth 2)) => 6
 
                     (set (map (comp read-string :name)
-                              (vals (bfs/bfs (get-vertex1 1)
-                                             :max-deepth 2
-                                             :with-vertices? true)))) => #{1 2 3 6 7 11}
+                              (bfs/bfs (get-vertex1 1)
+                                       :max-deepth 2
+                                       :with-vertices? true))) => #{1 2 3 6 7 11}
 
                     ))))))
