@@ -82,7 +82,7 @@
       (a/<!! superstep-chan)
       (swap! superstep-tasks dissoc superstep-id))))
 
-(defn bfs [vertex {:keys [filters max-deepth timeout with-edges? with-vertices?] :as extra-params
+(defn bfs [vertex {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices?] :as extra-params
                    :or {timeout 60000 max-deepth 8}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
@@ -97,8 +97,24 @@
                         identity
                         (for [[id vertex] vertices]
                           (if (get vertex :*visted*)
-                            nil id)))]
-        (when-not (or (empty? unvisited) (> level max-deepth))
+                            nil id)))
+            level-vertices (when level-stop-cond
+                             (filter
+                               (fn [[_ vertex]]
+                                 (= (:*level* vertex) (dec level)))
+                               vertices))
+            stop-required? (if-not level-vertices
+                             false
+                             (loop [vertices-to-check level-vertices]
+                               (let [vertex (first vertices-to-check)]
+                                 (cond
+                                   (not vertex)
+                                   false
+                                   (eva/eval-with-data vertex level-stop-cond)
+                                   true
+                                   :else
+                                   (recur (rest vertices-to-check))))))]
+        (when-not (or stop-required? (empty? unvisited) (> level max-deepth))
           (proc-stack task-id unvisited)
           (swap! tasks-vertices update-in [task-id :current-level] inc)
           (recur (inc level)))))
