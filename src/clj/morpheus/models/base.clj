@@ -8,7 +8,9 @@
   (:import (org.shisoft.morpheus SchemaStore)
            (org.shisoft.neb.exceptions SchemaAlreadyExistsException)))
 
-(def schema-store (SchemaStore.))
+(set! *warn-on-reflection* true)
+
+(def ^SchemaStore schema-store (SchemaStore.))
 (def cid-list-schema-id (atom nil))
 
 (defn add-schema [sname neb-id id meta]
