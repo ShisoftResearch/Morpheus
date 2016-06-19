@@ -123,5 +123,12 @@
            (vals)
            (filter :*visited*)))))
 
+(defn shortest-path [vertex-a vertex-b & params]
+  (let [vertex-b-id (:*id* vertex-b)
+        bfs-result (apply bfs vertex-a
+                          :level-stop-cond ['(= :*id* :.vid) {:.vid vertex-b-id}]
+                          params)]
+    ))
+
 (msg/register-action :BFS-FORWARD proc-forward-msg)
 (msg/register-action :BFS-RETURN proc-return-msg)
