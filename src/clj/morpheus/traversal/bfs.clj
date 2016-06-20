@@ -3,12 +3,14 @@
             [morpheus.computation.base :as compute]
             [morpheus.messaging.core :as msg]
             [morpheus.models.vertex.core :as vertex]
+            [neb.utils :refer :all]
             [neb.base :as nb]
             [cluster-connector.distributed-store.core :as ds]
             [com.climate.claypoole :as cp]
             [morpheus.models.edge.core :as edges]
             [morpheus.models.edge.base :as eb]
             [morpheus.query.lang.evaluation :as eva]
+            [morpheus.traversal.bfs.rebuild :refer :all]
             [clojure.core.async :as a]
             [cluster-connector.utils.for-debug :refer [$ spy]]))
 
@@ -32,27 +34,26 @@
     (msg/send-msg
       founder :BFS-RETURN
       [superstep-id
-       (->> (cp/pmap
+       (->> (cp/pfor
               compute/compution-threadpool
-              (fn [vertex-id]
-                (let [vertex (vertex/vertex-by-id vertex-id)
-                      vertex-criteria (get-in filters [:criteria :vertex])
-                      vertex-vailed (if vertex-criteria (eva/eval-with-data vertex vertex-criteria) true)]
-                  (when vertex-vailed
-                    (let [neighbours (apply edges/neighbours-edges vertex (if filters (mapcat identity filters) []))
-                          vertex-res (if with-vertices? vertex (select-keys vertex [:*id*]))
-                          edges-res (map (fn [edge]
-                                           (assoc (if with-edges? edge {})
-                                             :*opp* (eb/get-oppisite edge vertex-id)))
-                                         neighbours)]
-                      [vertex-res edges-res]))))
-              vertices-stack)
+              [vertex-id vertices-stack]
+              (let [vertex (vertex/vertex-by-id vertex-id)
+                    vertex-criteria (get-in filters [:criteria :vertex])
+                    vertex-vailed (if vertex-criteria (eva/eval-with-data vertex vertex-criteria) true)]
+                (when vertex-vailed
+                  (let [neighbours (apply edges/neighbours-edges vertex (if filters (mapcat identity filters) []))
+                        vertex-res (if with-vertices? vertex (select-keys vertex [:*id*]))
+                        edges-res (map (fn [edge]
+                                         (assoc (if with-edges? edge {})
+                                           :*opp* (eb/get-oppisite edge vertex-id)))
+                                       neighbours)]
+                    [vertex-res edges-res]))))
             (filter identity))]
       :task-id task-id)))
 
 (defn proc-return-msg [task-id data]
   (let [[superstep-id vertices-stack] data
-        deepth (get-in @tasks-vertices [task-id :current-level])]
+        deepth ($ get-in @tasks-vertices [task-id :current-level])]
     (a/go
       (doseq [[vertex-res edges-res] vertices-stack]
         (let [vertex-id (:*id* vertex-res)]
@@ -61,10 +62,12 @@
                          {:*visited* true
                           :*edges* edges-res}))
           (doseq [edge edges-res]
-            (let [opp-id (:*opp* edge)]
+            (let [opp-id ($ :*opp* edge)]
               (swap! tasks-vertices update-in [task-id opp-id]
-                     #(if % % {:*visited* false
-                               :*level* deepth}))))))
+                     #(if % (update % :*parents* conj vertex-id)
+                            {:*visited* false
+                             :*level* deepth
+                             :*parents* [vertex-id]}))))))
       (a/>! (get @superstep-tasks superstep-id) true))))
 
 (defn proc-stack [task-id stack]
@@ -82,7 +85,7 @@
       (swap! superstep-tasks dissoc superstep-id))))
 
 (defn bfs [vertex & {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices?] :as extra-params
-                   :or {timeout 60000 max-deepth 8}}]
+                   :or {timeout 60000 max-deepth 10}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
@@ -98,10 +101,11 @@
                           (if (or (not (map? vertex)) (get vertex :*visted*))
                             nil id)))
             level-vertices (when level-stop-cond
-                             (filter
-                               (fn [[_ vertex]]
-                                 (= (:*level* vertex) (dec level)))
-                               vertices))
+                             (map second
+                                  (filter
+                                    (fn [[_ vertex]]
+                                      (= (:*level* vertex) (dec level)))
+                                    vertices)))
             stop-required? (if-not level-vertices
                              false
                              (loop [vertices-to-check level-vertices]
@@ -109,7 +113,7 @@
                                  (cond
                                    (not vertex)
                                    false
-                                   (eva/eval-with-data vertex level-stop-cond)
+                                   (eva/eval-with-data (spy vertex) level-stop-cond)
                                    true
                                    :else
                                    (recur (rest vertices-to-check))))))]
@@ -124,11 +128,17 @@
            (filter :*visited*)))))
 
 (defn shortest-path [vertex-a vertex-b & params]
-  (let [vertex-b-id (:*id* vertex-b)
+  (let [vertex-a-id (:*id* vertex-a)
+        vertex-b-id (:*id* vertex-b)
         bfs-result (apply bfs vertex-a
                           :level-stop-cond ['(= :*id* :.vid) {:.vid vertex-b-id}]
-                          params)]
-    ))
+                          params)
+        vertex-map (map-on-vals first (group-by :*id* bfs-result))
+        res-chan (atom (transient []))]
+    (spy (-> (get vertex-map vertex-b-id)
+             (:*parents*) (count)))
+    (next-parents vertex-a-id [] #{vertex-b-id} vertex-map res-chan vertex-b-id)
+    (persistent! @res-chan)))
 
 (msg/register-action :BFS-FORWARD proc-forward-msg)
 (msg/register-action :BFS-RETURN proc-return-msg)

@@ -91,7 +91,7 @@
                     (count dfs-outout) => 15
                     (map :id dfs-outout) => (just subgraph-1 :in-any-order)))
             (fact "Subgraph 1 search with edge restriction"
-                  (count (:stack (dfs (get-vertex1 1) :filters {:type :link1}))) => 10)
+                  (count (:stack (dfs/dfs (get-vertex1 1) :filters {:type :link1}))) => 10)
             (fact "Has Path"
                   (dfs/has-path? (get-vertex1 1) (get-vertex2 15)) => truthy
                   (dfs/has-path? (get-vertex1 1) (get-vertex2 22)) => falsey
@@ -130,4 +130,4 @@
                                        :max-deepth 2
                                        :with-vertices? true))) => #{1 2 3 6 7 11}
 
-                    ))))))
+                    (spy (bfs/shortest-path (get-vertex1 1) (get-vertex1 8) :with-vertices? true :max-deepth 50))))))))
