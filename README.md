@@ -10,7 +10,7 @@ General Purpose Graph Engine. Aimed to solve most of the graph related problems 
 * Query directed, indirected, simple (pointer) edges in one vertex
 * `Morpheus query language` (S-Expresion)
 * Deepth-first-search (paths to, adjacent lists, `updates`)
-* Breadth-first-search (`shortest path`)
+* Breadth-first-search (shortest path)
 * `PageRank (traversal and bulk approaches)`
 * `Graph-based data processing and streaming`
 * `Node and vertices indexes`
