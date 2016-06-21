@@ -53,7 +53,7 @@
 
 (defn proc-return-msg [task-id data]
   (let [[superstep-id vertices-stack] data
-        deepth ($ get-in @tasks-vertices [task-id :current-level])]
+        deepth (get-in @tasks-vertices [task-id :current-level])]
     (a/go
       (doseq [[vertex-res edges-res] vertices-stack]
         (let [vertex-id (:*id* vertex-res)]
@@ -62,9 +62,10 @@
                          {:*visited* true
                           :*edges* edges-res}))
           (doseq [edge edges-res]
-            (let [opp-id ($ :*opp* edge)]
+            (let [opp-id (:*opp* edge)]
               (swap! tasks-vertices update-in [task-id opp-id]
-                     #(if % (update % :*parents* conj vertex-id)
+                     #(if % (if-not (:*visited* %)
+                              (update % :*parents* conj vertex-id) %)
                             {:*visited* false
                              :*level* deepth
                              :*parents* [vertex-id]}))))))
@@ -98,8 +99,7 @@
             unvisited (filter
                         identity
                         (for [[id vertex] vertices]
-                          (if (or (not (map? vertex)) (get vertex :*visted*))
-                            nil id)))
+                          (when-not (or (not (map? vertex)) (get vertex :*visited*)) id)))
             level-vertices (when level-stop-cond
                              (map second
                                   (filter
@@ -113,7 +113,7 @@
                                  (cond
                                    (not vertex)
                                    false
-                                   (eva/eval-with-data (spy vertex) level-stop-cond)
+                                   (eva/eval-with-data vertex level-stop-cond)
                                    true
                                    :else
                                    (recur (rest vertices-to-check))))))]
@@ -133,11 +133,9 @@
         bfs-result (apply bfs vertex-a
                           :level-stop-cond ['(= :*id* :.vid) {:.vid vertex-b-id}]
                           params)
-        vertex-map (map-on-vals first (group-by :*id* bfs-result))
+        vertices-map (map-on-vals first (group-by :*id* bfs-result))
         res-chan (atom (transient []))]
-    (spy (-> (get vertex-map vertex-b-id)
-             (:*parents*) (count)))
-    (next-parents vertex-a-id [] #{vertex-b-id} vertex-map res-chan vertex-b-id)
+    (next-parents vertex-a-id [] #{vertex-b-id} vertices-map res-chan vertex-b-id)
     (persistent! @res-chan)))
 
 (msg/register-action :BFS-FORWARD proc-forward-msg)
