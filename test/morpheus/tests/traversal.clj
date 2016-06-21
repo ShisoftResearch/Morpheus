@@ -129,4 +129,6 @@
                               (bfs/bfs (get-vertex1 1)
                                        :max-deepth 2
                                        :with-vertices? true))) => #{1 2 3 6 7 11}
-                    (count (bfs/shortest-path (get-vertex1 1) (get-vertex1 8) :max-deepth 50)) => 2))))))
+                    (count (bfs/shortest-path (get-vertex1 1) (get-vertex1 8) :max-deepth 50)) => 2
+                    (count (bfs/shortest-path (get-vertex1 8) (get-vertex2 11) :max-deepth 50)) => 1
+                    (count (bfs/shortest-path (get-vertex1 8) (get-vertex2 13) :max-deepth 50)) => 2))))))
