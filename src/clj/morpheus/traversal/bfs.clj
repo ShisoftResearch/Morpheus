@@ -43,10 +43,10 @@
                 (when vertex-vailed
                   (let [neighbours (apply edges/neighbours-edges vertex (if filters (mapcat identity filters) []))
                         vertex-res (if with-vertices? vertex (select-keys vertex [:*id*]))
-                        edges-res (map (fn [edge]
-                                         (assoc (if with-edges? edge {})
-                                           :*opp* (eb/get-oppisite edge vertex-id)))
-                                       neighbours)]
+                        edges-res (doall (map (fn [edge]
+                                                (assoc (if with-edges? edge {})
+                                                  :*opp* (eb/get-oppisite edge vertex-id)))
+                                              neighbours))]
                     [vertex-res edges-res]))))
             (filter identity)
             (doall))]
