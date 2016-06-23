@@ -56,13 +56,17 @@
   (let [[superstep-id vertices-stack] data
         deepth (get-in @tasks-vertices [task-id :current-level])]
     (a/go
-      (doseq [[vertex-res edges-res] vertices-stack]
+      (cp/pdoseq
+        compute/compution-threadpool
+        [[vertex-res edges-res] vertices-stack]
         (let [vertex-id (:*id* vertex-res)]
           (swap! tasks-vertices update-in [task-id vertex-id]
                  #(merge % vertex-res
                          {:*visited* true
                           :*edges* edges-res}))
-          (doseq [edge edges-res]
+          (cp/pdoseq
+            compute/compution-threadpool
+            [edge edges-res]
             (let [opp-id (:*opp* edge)]
               (swap! tasks-vertices update-in [task-id opp-id]
                      #(if % (if-not (:*visited* %)
