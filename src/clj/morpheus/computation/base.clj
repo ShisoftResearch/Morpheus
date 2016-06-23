@@ -13,4 +13,4 @@
 (defn get-task [id]
   (get @tasks id))
 
-(def compution-threadpool (cp/threadpool (cp/ncpus)))
+(def compution-threadpool (cp/threadpool (cp/ncpus) :name "graph-compute"))
