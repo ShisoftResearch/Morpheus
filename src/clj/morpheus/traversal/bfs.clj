@@ -48,7 +48,8 @@
                                            :*opp* (eb/get-oppisite edge vertex-id)))
                                        neighbours)]
                     [vertex-res edges-res]))))
-            (filter identity))]
+            (filter identity)
+            (doall))]
       :task-id task-id)))
 
 (defn proc-return-msg [task-id data]
