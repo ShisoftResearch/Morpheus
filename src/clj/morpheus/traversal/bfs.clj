@@ -56,24 +56,26 @@
   (let [[superstep-id vertices-stack] data
         deepth (get-in @tasks-vertices [task-id :current-level])]
     (a/go
-      (cp/pdoseq
-        compute/compution-threadpool
-        [[vertex-res edges-res] vertices-stack]
-        (let [vertex-id (:*id* vertex-res)]
-          (swap! tasks-vertices update-in [task-id vertex-id]
-                 #(merge % vertex-res
-                         {:*visited* true
-                          :*edges* edges-res}))
-          (cp/pdoseq
-            compute/compution-threadpool
-            [edge edges-res]
-            (let [opp-id (:*opp* edge)]
-              (swap! tasks-vertices update-in [task-id opp-id]
-                     #(if % (if-not (:*visited* %)
-                              (update % :*parents* conj vertex-id) %)
-                            {:*visited* false
-                             :*level* deepth
-                             :*parents* [vertex-id]}))))))
+      (swap! tasks-vertices update task-id
+             (fn [vertices-map_]
+               (let [vertices-map (atom (transient vertices-map_))]
+                 (doseq [[vertex-res edges-res] vertices-stack]
+                   (let [vertex-id (:*id* vertex-res)]
+                     (swap! vertices-map assoc! vertex-id
+                            (merge (get @vertices-map vertex-id)
+                                   vertex-res
+                                   {:*visited* true
+                                    :*edges* edges-res}))
+                     (doseq [edge edges-res]
+                       (let [opp-id (:*opp* edge)]
+                         (swap! vertices-map assoc! opp-id
+                                (let [oppv (get @vertices-map opp-id)]
+                                  (if oppv (if-not (:*visited* oppv)
+                                             (update oppv :*parents* conj vertex-id) oppv)
+                                           {:*visited* false
+                                            :*level* deepth
+                                            :*parents* [vertex-id]})))))))
+                 (persistent! @vertices-map))))
       (a/>! (get @superstep-tasks superstep-id) true))))
 
 (defn proc-stack [task-id stack]
