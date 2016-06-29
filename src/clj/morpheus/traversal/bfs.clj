@@ -12,7 +12,9 @@
             [morpheus.query.lang.evaluation :as eva]
             [morpheus.traversal.bfs.rebuild :refer :all]
             [clojure.core.async :as a]
-            [cluster-connector.utils.for-debug :refer [$ spy]]))
+            [cluster-connector.utils.for-debug :refer [$ spy]]
+            [morpheus.computation.data-map :as data-map])
+  (:import (java.util Map)))
 
 ; Parallel breadth-first-search divised by Aydın Buluç
 ; The algoithm was first introduced in Lawrence National Laboratory on BlueGene supercomputer
@@ -21,6 +23,7 @@
 ; Morpueus will use the task founder server as the only machine for join operations in each level.
 
 (def tasks-vertices (atom {}))
+(def tasks-level (atom {}))
 (def superstep-tasks (atom {}))
 
 (defn partation-vertices [vertex-ids]
@@ -54,28 +57,26 @@
 
 (defn proc-return-msg [task-id data]
   (let [[superstep-id vertices-stack] data
-        deepth (get-in @tasks-vertices [task-id :current-level])]
+        deepth (get @tasks-level task-id)]
     (a/go
-      (swap! tasks-vertices update task-id
-             (fn [vertices-map_]
-               (let [vertices-map (atom (transient vertices-map_))]
-                 (doseq [[vertex-res edges-res] vertices-stack]
-                   (let [vertex-id (:*id* vertex-res)]
-                     (swap! vertices-map assoc! vertex-id
-                            (merge (get @vertices-map vertex-id)
-                                   vertex-res
-                                   {:*visited* true
-                                    :*edges* edges-res}))
-                     (doseq [edge edges-res]
-                       (let [opp-id (:*opp* edge)]
-                         (swap! vertices-map assoc! opp-id
-                                (let [oppv (get @vertices-map opp-id)]
-                                  (if oppv (if-not (:*visited* oppv)
-                                             (update oppv :*parents* conj vertex-id) oppv)
-                                           {:*visited* false
-                                            :*level* deepth
-                                            :*parents* [vertex-id]})))))))
-                 (persistent! @vertices-map))))
+      (let [^Map vertices-map (get @tasks-vertices task-id)]
+        (locking vertices-map
+          (doseq [[vertex-res edges-res] vertices-stack]
+            (let [vertex-id (:*id* vertex-res)]
+              (.put vertices-map vertex-id
+                    (merge (.get vertices-map vertex-id)
+                           vertex-res
+                           {:*visited* true}))
+              (doseq [edge edges-res]
+                (let [opp-id (:*opp* edge)]
+                  (.put vertices-map opp-id
+                        (let [oppv (get vertices-map opp-id)]
+                          (if oppv (if-not (:*visited* oppv)
+                                     (update oppv :*parents* conj vertex-id) oppv)
+                                   {:*id* opp-id
+                                    :*visited* false
+                                    :*level* deepth
+                                    :*parents* [vertex-id]})))))))))
       (a/>! (get @superstep-tasks superstep-id) true))))
 
 (defn proc-stack [task-id stack]
@@ -92,27 +93,28 @@
       (a/<!! superstep-chan)
       (swap! superstep-tasks dissoc superstep-id))))
 
-(defn bfs [vertex & {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices?] :as extra-params
+(defn bfs [vertex & {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices? on-disk?] :as extra-params
                    :or {timeout 60000 max-deepth 10}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
         initial-stack [vertex-id]]
     (compute/new-task task-id (assoc extra-params :founder @ds/this-server-name))
-    (swap! tasks-vertices assoc task-id {:current-level 0})
+    (swap! tasks-level assoc task-id 0)
+    (swap! tasks-vertices assoc task-id
+           (data-map/gen-map task-id on-disk?))
     (proc-stack task-id initial-stack)
     (loop [level 1]
-      (let [vertices (get @tasks-vertices task-id)
+      (let [vertices (.values ^Map (get @tasks-vertices task-id))
             unvisited (filter
                         identity
-                        (for [[id vertex] vertices]
-                          (when-not (or (not (map? vertex)) (get vertex :*visited*)) id)))
+                        (for [{:keys [*id* *visited*] :as vertex} vertices]
+                          (when (not *visited*) *id*)))
             level-vertices (when level-stop-cond
-                             (map second
-                                  (filter
-                                    (fn [[_ vertex]]
-                                      (= (:*level* vertex) (dec level)))
-                                    vertices)))
+                             (filter
+                               (fn [vertex]
+                                 (= (:*level* vertex) (dec level)))
+                               vertices))
             stop-required? (if-not level-vertices
                              false
                              (loop [vertices-to-check level-vertices]
@@ -126,11 +128,12 @@
                                    (recur (rest vertices-to-check))))))]
         (when-not (or stop-required? (empty? unvisited) (> level max-deepth))
           (proc-stack task-id unvisited)
-          (swap! tasks-vertices update-in [task-id :current-level] inc)
+          (swap! tasks-level update task-id inc)
           (recur (inc level)))))
     (let [result (get @tasks-vertices task-id)]
       (swap! tasks-vertices dissoc task-id)
-      (->> (dissoc result :current-level)
+      (swap! tasks-level dissoc task-id)
+      (->> result
            (vals)
            (filter :*visited*)))))
 
