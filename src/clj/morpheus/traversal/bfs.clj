@@ -94,7 +94,7 @@
       (swap! superstep-tasks dissoc superstep-id))))
 
 (defn bfs [vertex & {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices? on-disk?] :as extra-params
-                   :or {timeout 60000 max-deepth 10}}]
+                     :or {timeout 60000 max-deepth 10}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
@@ -148,13 +148,15 @@
 
 (defn shortest-path [vertex-a vertex-b & params]
   (apply path-to vertex-a vertex-b
-         :level-stop-cond ['(= :*id* :.vid) {:.vid (:*id* vertex-b)}] params))
+         :level-stop-cond ['(= :*id* :.vid) {:.vid (:*id* vertex-b)}]
+         params))
 
 (defn has-path? [vertex-a vertex-b & params]
   (let [vertex-b-id (:*id* vertex-b)]
     (first (filter #(= vertex-b-id (:*id* %))
-                   (apply bfs vertex-a params
-                          :level-stop-cond ['(= :*id* :.vid) {:.vid vertex-b-id}])))))
+                   (apply bfs vertex-a
+                          :level-stop-cond ['(= :*id* :.vid) {:.vid vertex-b-id}]
+                          params)))))
 
 (defn one-path-to [vertex-a vertex-b & params]
   (first (apply shortest-path vertex-a vertex-b params)))

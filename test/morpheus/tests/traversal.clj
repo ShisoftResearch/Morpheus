@@ -133,4 +133,6 @@
                     (count (bfs/shortest-path (get-vertex1 8) (get-vertex2 11) :max-deepth 50)) => 1
                     (count (bfs/shortest-path (get-vertex1 8) (get-vertex2 13) :max-deepth 50)) => 2
                     (bfs/has-path? (get-vertex1 1) (get-vertex2 13)) => truthy
-                    (bfs/has-path? (get-vertex1 1) (get-vertex2 20)) => falsey))))))
+                    (bfs/has-path? (get-vertex1 1) (get-vertex2 20)) => falsey
+                    (bfs/has-path? (get-vertex1 1) (get-vertex2 20) :on-disk? true) => falsey
+                    (bfs/has-path? (get-vertex1 1) (get-vertex2 13) :on-disk? true) => truthy))))))
