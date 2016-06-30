@@ -99,15 +99,14 @@
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
-        initial-stack [vertex-id]]
+        initial-stack [vertex-id]
+        ^SeqableMap vertices-map (data-map/gen-map task-id on-disk?)]
     (compute/new-task task-id (assoc extra-params :founder @ds/this-server-name))
     (swap! tasks-level assoc task-id 0)
-    (swap! tasks-vertices assoc task-id
-           (data-map/gen-map task-id on-disk?))
+    (swap! tasks-vertices assoc task-id vertices-map)
     (proc-stack task-id initial-stack)
     (loop [level 1]
-      (let [^SeqableMap vertices-map (get @tasks-vertices task-id)
-            vertices-list (.keyColl vertices-map)
+      (let [vertices-list (.keyColl vertices-map)
             unvisited-tr (atom (transient []))
             stop-required? (atom false)]
         (loop [vl   vertices-list]
@@ -129,6 +128,7 @@
     (let [result (get @tasks-vertices task-id)]
       (swap! tasks-vertices dissoc task-id)
       (swap! tasks-level dissoc task-id)
+      (.dispose vertices-map)
       (->> result
            (vals)
            (filter :*visited*)))))
