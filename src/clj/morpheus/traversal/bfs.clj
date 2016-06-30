@@ -14,7 +14,8 @@
             [clojure.core.async :as a]
             [cluster-connector.utils.for-debug :refer [$ spy]]
             [morpheus.computation.data-map :as data-map])
-  (:import (java.util Map)))
+  (:import (java.util Map)
+           (org.shisoft.hurricane.datastructure SeqableMap)))
 
 ; Parallel breadth-first-search divised by Aydın Buluç
 ; The algoithm was first introduced in Lawrence National Laboratory on BlueGene supercomputer
@@ -105,31 +106,26 @@
            (data-map/gen-map task-id on-disk?))
     (proc-stack task-id initial-stack)
     (loop [level 1]
-      (let [vertices (.values ^Map (get @tasks-vertices task-id))
-            unvisited (filter
-                        identity
-                        (for [{:keys [*id* *visited*] :as vertex} vertices]
-                          (when (not *visited*) *id*)))
-            level-vertices (when level-stop-cond
-                             (filter
-                               (fn [vertex]
-                                 (= (:*level* vertex) (dec level)))
-                               vertices))
-            stop-required? (if-not level-vertices
-                             false
-                             (loop [vertices-to-check level-vertices]
-                               (let [vertex (first vertices-to-check)]
-                                 (cond
-                                   (not vertex)
-                                   false
-                                   (eva/eval-with-data vertex level-stop-cond)
-                                   true
-                                   :else
-                                   (recur (rest vertices-to-check))))))]
-        (when-not (or stop-required? (empty? unvisited) (> level max-deepth))
-          (proc-stack task-id unvisited)
-          (swap! tasks-level update task-id inc)
-          (recur (inc level)))))
+      (let [^SeqableMap vertices-map (get @tasks-vertices task-id)
+            vertices-list (.keyColl vertices-map)
+            unvisited-tr (atom (transient []))
+            stop-required? (atom false)]
+        (loop [vl   vertices-list]
+          (let [vid  (first vl)
+                {:keys [*id* *visited* *level*] :as vertex} (.get vertices-map vid)]
+            (when (and *id* (not *visited*)) (swap! unvisited-tr conj! *id*))
+            (when-not (= 1 (count vl))
+              (if
+                (or (not vertex)
+                    (when (and level-stop-cond (= *level* (dec level)))
+                       (eva/eval-with-data vertex level-stop-cond)))
+                (reset! stop-required? true)
+                (recur (rest vl))))))
+        (let [unvisited (persistent! @unvisited-tr)]
+          (when-not (or @stop-required? (empty? unvisited) (> level max-deepth))
+            (proc-stack task-id unvisited)
+            (swap! tasks-level update task-id inc)
+            (recur (inc level))))))
     (let [result (get @tasks-vertices task-id)]
       (swap! tasks-vertices dissoc task-id)
       (swap! tasks-level dissoc task-id)
