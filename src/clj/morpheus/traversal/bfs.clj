@@ -94,8 +94,8 @@
       (a/<!! superstep-chan)
       (swap! superstep-tasks dissoc superstep-id))))
 
-(defn bfs [vertex & {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices? on-disk?] :as extra-params
-                     :or {timeout 60000 max-deepth 10}}]
+(defn bfs ^SeqableMap [vertex & {:keys [filters max-deepth timeout level-stop-cond with-edges? with-vertices? on-disk?] :as extra-params
+                                 :or {timeout 60000 max-deepth 10}}]
   "Perform parallel and distributed breadth first search"
   (let [task-id (neb/rand-cell-id)
         vertex-id (:*id* vertex)
@@ -121,23 +121,20 @@
                 (reset! stop-required? true)
                 (recur (rest vl))))))
         (let [unvisited (persistent! @unvisited-tr)]
-          (when-not (or @stop-required? (empty? unvisited) (> level max-deepth))
-            (proc-stack task-id unvisited)
-            (swap! tasks-level update task-id inc)
-            (recur (inc level))))))
-    (let [result (get @tasks-vertices task-id)]
-      (swap! tasks-vertices dissoc task-id)
-      (swap! tasks-level dissoc task-id)
-      (.dispose vertices-map)
-      (->> result
-           (vals)
-           (filter :*visited*)))))
+          (if (or @stop-required? (empty? unvisited) (> level max-deepth))
+            (doseq [unvisted-id unvisited]
+              (.remove vertices-map unvisted-id))
+            (do (proc-stack task-id unvisited)
+                (swap! tasks-level update task-id inc)
+                (recur (inc level)))))))
+    (swap! tasks-vertices dissoc task-id)
+    (swap! tasks-level dissoc task-id)
+    vertices-map))
 
 (defn path-to [vertex-a vertex-b & params]
   (let [vertex-a-id (:*id* vertex-a)
         vertex-b-id (:*id* vertex-b)
-        bfs-result (apply bfs vertex-a params)
-        vertices-map (map-on-vals first (group-by :*id* bfs-result))
+        vertices-map (apply bfs vertex-a params)
         res-chan (atom (transient []))]
     (next-parents vertex-a-id [] #{vertex-b-id} vertices-map res-chan vertex-b-id)
     (persistent! @res-chan)))
@@ -149,10 +146,11 @@
 
 (defn has-path? [vertex-a vertex-b & params]
   (let [vertex-b-id (:*id* vertex-b)]
-    (first (filter #(= vertex-b-id (:*id* %))
-                   (apply bfs vertex-a
-                          :level-stop-cond ['(= :*id* :.vid) {:.vid vertex-b-id}]
-                          params)))))
+    (.containsKey
+      (apply bfs vertex-a
+             :level-stop-cond ['(= :*id* :.vid) {:.vid vertex-b-id}]
+             params)
+      vertex-b-id)))
 
 (defn one-path-to [vertex-a vertex-b & params]
   (first (apply shortest-path vertex-a vertex-b params)))

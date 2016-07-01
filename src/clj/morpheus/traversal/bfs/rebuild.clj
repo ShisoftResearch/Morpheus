@@ -1,8 +1,9 @@
 (ns morpheus.traversal.bfs.rebuild
-  (:require [cluster-connector.utils.for-debug :refer [$ spy]]))
+  (:require [cluster-connector.utils.for-debug :refer [$ spy]])
+  (:import (org.shisoft.hurricane.datastructure SeqableMap)))
 
-(defn next-parents [a path visited vertices-map chan vertex-id]
-  (let [vertex (get vertices-map vertex-id)
+(defn next-parents [a path visited ^SeqableMap vertices-map chan vertex-id]
+  (let [vertex (.get vertices-map vertex-id)
         {:keys [*parents* *id*] :as vp} vertex
         new-path (conj path vp)]
     (if (seq *parents*)

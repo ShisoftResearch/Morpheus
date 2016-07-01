@@ -7,7 +7,9 @@
 
 (defn ^SeqableMap gen-map [uuid on-disk?]
   (if on-disk?
-    (DiskMappingTable.
-      (spy (.getAbsolutePath (File/createTempFile (str uuid) ".bin")))
-      nippy/freeze nippy/thaw true)
+    (let [tmp-dir "computation/tmp/"]
+      (.mkdirs (File. tmp-dir))
+      (DiskMappingTable.
+        (str tmp-dir (str uuid) ".bin")
+        nippy/freeze nippy/thaw true))
     (InMemoryMap.)))
