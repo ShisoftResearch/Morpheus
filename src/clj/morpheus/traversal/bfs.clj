@@ -137,6 +137,7 @@
         vertices-map (apply bfs vertex-a params)
         res-chan (atom (transient []))]
     (next-parents vertex-a-id [] #{vertex-b-id} vertices-map res-chan vertex-b-id)
+    (.dispose vertices-map)
     (persistent! @res-chan)))
 
 (defn shortest-path [vertex-a vertex-b & params]
