@@ -129,6 +129,7 @@
                 (recur (inc level)))))))
     (swap! tasks-vertices dissoc task-id)
     (swap! tasks-level dissoc task-id)
+    (println "Parallel BFS completed for" (count vertices-map) "vertices")
     vertices-map))
 
 (defn path-to [vertex-a vertex-b & params]
