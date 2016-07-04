@@ -106,7 +106,7 @@
     (swap! tasks-vertices assoc task-id vertices-map)
     (proc-stack task-id initial-stack)
     (loop [level 1]
-      (let [vertices-list (.keyColl vertices-map)
+      (let [vertices-list (vec (.keyColl vertices-map))
             unvisited-tr (atom (transient []))
             stop-required? (atom false)]
         (loop [vl   vertices-list]
