@@ -61,7 +61,7 @@
 (defn edge-list* [[v-id field edge-schema-id]]
   (UUID.
     (.getMostSignificantBits v-id)
-    (neb/hash-str (str v-id "-" field "-" edge-schema-id) (Hashing/sha1))))
+    (first (neb/hash-str (str v-id "-" field "-" edge-schema-id)))))
 
 (defcache edge-list {:expire-after-access-secs 60
                      :soft-values? true} edge-list*)
