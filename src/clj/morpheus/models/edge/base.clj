@@ -10,7 +10,7 @@
             [neb.utils :refer [map-on-vals]])
   (:import (java.util UUID)
            (org.shisoft.neb Trunk)
-           (org.shisoft.neb.io type_lengths CellMeta Reader)
+           (org.shisoft.neb.io type_lengths Reader)
            (com.google.common.hash Hashing)))
 
 (def schema-fields
@@ -80,14 +80,14 @@
 (defmacro with-cid-list [& body]
   `(let [^Trunk ~'trunk neb-cell/*cell-trunk*
          ^Integer ~'hash neb-cell/*cell-hash*
-         ^CellMeta ~'meta neb-cell/*cell-meta*
+         ~'cell-addr neb-cell/*cell-addr*
          ~'next-cid (neb-cell/get-in-cell ~'trunk ~'hash [:next-list])
          ~'next-cid (when-not (= ~'next-cid empty-cid) ~'next-cid)]
      ~@body))
 
 (defn read-cid-list-len []
   (Reader/readInt
-    (+ (.getLocation neb-cell/*cell-meta*)
+    (+ neb-cell/*cell-addr*
        type_lengths/cidLen
        neb-header/cell-head-len)))
 
