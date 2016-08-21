@@ -45,11 +45,10 @@
 (def max-list-size
   (-> (Trunk/getMaxObjSize)
       (- neb-header/cell-head-len)
-      (- type_lengths/cidLen)
       (- type_lengths/intLen)
       (/ type_lengths/cidLen)
       (Math/floor) (int)
-      (dec)))
+      (- 2)))
 
 (defn extract-edge-cid-list [cid-lists edge-schema-id]
   (first (filter
@@ -131,7 +130,7 @@
   append-cids-to-list* [target-cids]
   (when (not (empty? target-cids))
     (if (< list-length max-list-size)
-      (let [cids-num-to-go (- max-list-size list-length)
+      (let [cids-num-to-go (- max-list-size list-length )
             cids-to-go (take cids-num-to-go target-cids)]
         (neb-cell/update-cell*
           trunk hash
