@@ -42,11 +42,14 @@
 
 (def vertex-fields #{:*start* :*end*})
 
-(def max-list-size (-> (Trunk/getMaxObjSize)
-                       (- neb-header/cell-head-len)
-                       (/ type_lengths/cidLen)
-                       (Math/floor) (int)
-                       (dec)))
+(def max-list-size
+  (-> (Trunk/getMaxObjSize)
+      (- neb-header/cell-head-len)
+      (- type_lengths/cidLen)
+      (- type_lengths/intLen)
+      (/ type_lengths/cidLen)
+      (Math/floor) (int)
+      (dec)))
 
 (defn extract-edge-cid-list [cid-lists edge-schema-id]
   (first (filter

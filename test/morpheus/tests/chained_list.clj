@@ -27,8 +27,8 @@
         (fact "Check list link - single"
               )
         (fact "Create edges that can fit in two list"
-              (apply link-group! v1 :rel (repeat (* 2 max-list-items) v2)))
+              (apply link-group! v1 :rel (repeat (* 10 max-list-items) v2)))
         (fact "Check Degree - duo"
-              (degree (reload-vertex v1) :direction :*outbounds*) => (* 3 max-list-items))
+              (degree (reload-vertex v1) :direction :*outbounds*) => (* 11 max-list-items))
         (fact "Check list link - duo"
               )))))
