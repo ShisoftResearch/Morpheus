@@ -11,7 +11,8 @@
   (:import (java.util UUID)
            (org.shisoft.neb Trunk)
            (org.shisoft.neb.io type_lengths Reader)
-           (com.google.common.hash Hashing)))
+           (com.google.common.hash Hashing)
+           (org.shisoft.neb.exceptions ObjectTooLargeException)))
 
 (def schema-fields
   [[:*start*  :cid]
@@ -130,12 +131,15 @@
   append-cids-to-list* [target-cids]
   (when (not (empty? target-cids))
     (if (< list-length max-list-size)
-      (let [cids-num-to-go (- max-list-size list-length )
+      (let [cids-num-to-go (- max-list-size list-length)
             cids-to-go (take cids-num-to-go target-cids)]
-        (neb-cell/update-cell*
-          trunk hash
-          (fn [list-cell]
-            (update list-cell :cid-array concat cids-to-go)))
+        (try
+          (neb-cell/update-cell*
+            trunk hash
+            (fn [list-cell]
+              (update list-cell :cid-array concat cids-to-go)))
+          (catch ObjectTooLargeException _
+            (move-to-list-with-params (or next-cid (new-list-cell)) [target-cids]))) ;Work around, fallback
         (when-not (= cids-to-go target-cids)
           (move-to-list-with-params (or next-cid (new-list-cell)) [(subvec (vec target-cids) cids-num-to-go)])))
       (move-to-list (or next-cid (new-list-cell))))))

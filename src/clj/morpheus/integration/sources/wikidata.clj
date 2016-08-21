@@ -140,7 +140,7 @@
 (defn import-entities [dump-path lang]
   (println "Import Vertices")
   (let [lang (keyword lang)
-        th-pool (cp/threadpool (cp/ncpus))]
+        th-pool (cp/threadpool (/ (cp/ncpus) 2))]
     (with-open [rdr (clojure.java.io/reader dump-path)]
       (cp/pdoseq
         th-pool [line (line-seq rdr)]
@@ -188,7 +188,7 @@
 (defn import-links [dump-path]
   (println "Import Edges")
   (with-open [rdr (clojure.java.io/reader dump-path)]
-    (let [th-parse-pool (cp/threadpool (cp/ncpus))]
+    (let [th-parse-pool (cp/threadpool (/ (cp/ncpus) 2))]
       (cp/pdoseq
         th-parse-pool [line (line-seq rdr)]
         (try
@@ -227,6 +227,7 @@
 
 (defn import-to-this-cluster []
   (start-server* {:server-name :morpheus
+                  :server-group :wikdata-import
                   :port 5124
                   :zk  "10.0.1.104:2181"
                   :trunks-size "5gb"
