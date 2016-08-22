@@ -140,7 +140,7 @@
 (defn import-entities [dump-path lang]
   (println "Import Vertices")
   (let [lang (keyword lang)
-        th-pool (cp/threadpool (/ (cp/ncpus) 2))]
+        th-pool (cp/threadpool (cp/ncpus))]
     (with-open [rdr (clojure.java.io/reader dump-path)]
       (cp/pdoseq
         th-pool [line (line-seq rdr)]
@@ -188,7 +188,7 @@
 (defn import-links [dump-path]
   (println "Import Edges")
   (with-open [rdr (clojure.java.io/reader dump-path)]
-    (let [th-parse-pool (cp/threadpool (/ (cp/ncpus) 2))]
+    (let [th-parse-pool (cp/threadpool (cp/ncpus))]
       (cp/pdoseq
         th-parse-pool [line (line-seq rdr)]
         (try
