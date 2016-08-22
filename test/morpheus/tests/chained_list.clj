@@ -35,7 +35,8 @@
                   [i (range 10)]
                   (apply link-group! v1 :rel (repeat max-list-items v2)) => anything)))
 
-        (fact "Check Degree - duo"
+        (fact "Check Degree"
               (degree (reload-vertex v1) :direction :*outbounds*) => (* 11 max-list-items))
-        (fact "Check list link - duo"
+
+        (fact "Check list link "
               )))))

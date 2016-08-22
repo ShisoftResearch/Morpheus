@@ -25,15 +25,20 @@
 
 (defn edge-group-props [group] (core/get-schema :e group))
 
-(defn link! [v1 group v2 & args]
-  (let [v1-id (:*id* v1)
-        v2-id (:*id* v2)
-        edge-schema (edge-group-props group)
-        edge-schema-id (:id edge-schema)
-        v1-e-field (eb/v1-vertex-field edge-schema)
-        v2-e-field (eb/v2-vertex-field edge-schema)
-        type-body-sticker (eb/type-stick-body edge-schema)
-        require-edge-cell? (eb/require-edge-cell? edge-schema)
+(defmacro deflink [n args & body]
+  `(defn ~n ~(vec (concat ['v1 'group] args))
+     (let [~'v1-id (:*id* ~'v1)
+           ~'edge-schema (edge-group-props ~'group)
+           ~'edge-schema-id (:id ~'edge-schema)
+           ~'v1-e-field (eb/v1-vertex-field ~'edge-schema)
+           ~'v2-e-field (eb/v2-vertex-field ~'edge-schema)
+           ~'type-body-sticker (eb/type-stick-body ~'edge-schema)
+           ~'require-edge-cell? (eb/require-edge-cell? ~'edge-schema)]
+       ~@body)))
+
+(deflink
+  link! [v2 & args]
+  (let [v2-id (:*id* v2)
         edge-cell-vertex-fields (eb/edge-cell-vertex-fields v1-id v2-id)]
     (assert v1-id "id for vertex 1 missing")
     (assert v2-id "id for vertex 2 missing")
@@ -45,52 +50,47 @@
                                 edge-cell-vertex-fields args))
           v1-remote (or edge-cell-id v2-id)
           v2-remote (or edge-cell-id v1-id)
-          v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])
-          v2-list-cell-row-id (eb/vertex-edge-list [v2-id v2-e-field edge-schema-id])]
+          v1-list-cell-row-id (eb/vertex-edge-list v1-id v1-e-field edge-schema-id)
+          v2-list-cell-row-id (eb/vertex-edge-list v2-id v2-e-field edge-schema-id)]
       (eb/append-cid-to-list v1-list-cell-row-id v1-remote)
       (eb/append-cid-to-list v2-list-cell-row-id v2-remote)
       (merge edge-cell-vertex-fields
              {:*id* edge-cell-id
               :*ep* edge-schema}))))
 
-(defn link-group! [v1 group & v2-list]
-  (let [v1-id (:*id* v1)
-        edge-schema (edge-group-props group)
-        edge-schema-id (:id edge-schema)
-        v1-e-field (eb/v1-vertex-field edge-schema)
-        v2-e-field (eb/v2-vertex-field edge-schema)
-        type-body-sticker (eb/type-stick-body edge-schema)
-        require-edge-cell? (eb/require-edge-cell? edge-schema)]
-    (assert v1-id "id for vertex 1 missing")
-    (when type-body-sticker (assert (= type-body-sticker (:body edge-schema))
-                                    (str type-body-sticker " cannot with body type " (:body edge-schema))))
-    (let [edges-group
-          (->> (map #(if (vector? %) % [%]) v2-list)
-               (map #(update % 0 :*id*))
-               (filter #(not (nil? (first %))))
-               (map (fn [[v2-id & args]]
-                      (let [edge-cell-vertex-fields (eb/edge-cell-vertex-fields v1-id v2-id)
-                            edge-cell-id (when require-edge-cell?
-                                           (apply eb/create-edge-cell
-                                                  edge-schema
-                                                  edge-cell-vertex-fields args))
-                            v1-remote (or edge-cell-id v2-id)
-                            v2-remote (or edge-cell-id v1-id)]
-                        [v2-id v1-remote v2-remote])))
-               (filter identity)
-               (doall)
-               (group-by first))
-          v1-remotes
-          (->> (for [[v2-id v2-edges] edges-group]
-                 (let [v2-list-cell-row-id (eb/vertex-edge-list [v2-id v2-e-field edge-schema-id])
-                       v1-remotes (map second v2-edges)
-                       v2-remotes (map #(% 2) v2-edges)]
-                   (when v2-list-cell-row-id (eb/append-cids-to-list v2-list-cell-row-id v2-remotes))
-                   v1-remotes))
-               (flatten)
-               (doall))
-          v1-list-cell-row-id (eb/vertex-edge-list [v1-id v1-e-field edge-schema-id])]
-      (eb/append-cids-to-list v1-list-cell-row-id v1-remotes))))
+(deflink
+  link-group! [& v2-list]
+  (assert v1-id "id for vertex 1 missing")
+  (when type-body-sticker
+    (assert (= type-body-sticker (:body edge-schema))
+            (str type-body-sticker " cannot with body type " (:body edge-schema))))
+  (let [edges-group
+        (->> (map #(if (vector? %) % [%]) v2-list)
+             (map #(update % 0 :*id*))
+             (filter #(not (nil? (first %))))
+             (map (fn [[v2-id & args]]
+                    (let [edge-cell-vertex-fields (eb/edge-cell-vertex-fields v1-id v2-id)
+                          edge-cell-id (when require-edge-cell?
+                                         (apply eb/create-edge-cell
+                                                edge-schema
+                                                edge-cell-vertex-fields args))
+                          v1-remote (or edge-cell-id v2-id)
+                          v2-remote (or edge-cell-id v1-id)]
+                      [v2-id v1-remote v2-remote])))
+             (filter identity)
+             (doall)
+             (group-by first))
+        v1-remotes
+        (->> (for [[v2-id v2-edges] edges-group]
+               (let [v2-list-cell-row-id (eb/vertex-edge-list v2-id v2-e-field edge-schema-id)
+                     v1-remotes (map second v2-edges)
+                     v2-remotes (map #(% 2) v2-edges)]
+                 (when v2-list-cell-row-id (eb/append-cids-to-list v2-list-cell-row-id v2-remotes))
+                 v1-remotes))
+             (flatten)
+             (doall))
+        v1-list-cell-row-id (eb/vertex-edge-list v1-id v1-e-field edge-schema-id)]
+    (eb/append-cids-to-list v1-list-cell-row-id v1-remotes)))
 
 (def opposite-direction-mapper
   {:*outbounds* #{:*end*}

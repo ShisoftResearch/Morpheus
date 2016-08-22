@@ -51,16 +51,6 @@
       (Math/floor) (int)
       (- 2)))
 
-(defn extract-edge-cid-list [cid-lists edge-schema-id]
-  (first (filter
-           (fn [item]
-             (= edge-schema-id (:sid item)))
-           cid-lists)))
-
-(defn extract-cell-list-id [vertex field edge-schema-id]
-  (let [cid-lists (get vertex field)]
-    (:list-cid (extract-edge-cid-list cid-lists edge-schema-id))))
-
 (defn edge-list* [[v-id field edge-schema-id]]
   (UUID.
     (.getMostSignificantBits v-id)
@@ -155,23 +145,24 @@
 (defn remove-cid-from-list [head-cid target-cid]
   (neb/write-lock-exec* head-cid 'morpheus.models.edge.base/remove-cid-from-list* target-cid))
 
-(defn record-edge-on-vertex [vertex edge-schema-id field & ]
-  (let [cid-list-row-id (extract-cell-list-id vertex field edge-schema-id)
-        list-cell-id (or cid-list-row-id
-                         (neb/new-cell-by-ids
-                           (cid-list-id-by-vertex (:*id* vertex) field edge-schema-id)
-                           @mb/cid-list-schema-id
-                           {:next-list empty-cid :cid-array []}))]
-    (if-not cid-list-row-id
-      (update vertex field conj {:sid edge-schema-id :list-cid list-cell-id})
+(defn record-edge-on-vertex [vertex edge-schema-id direction list-id & ]
+  (let [not-has-cid-list? (empty? (filter
+                                  #(= list-id (:list-cid %))
+                                  (get vertex direction)))]
+    (when not-has-cid-list?
+      (neb/new-cell-by-ids
+        list-id @mb/cid-list-schema-id
+        {:next-list empty-cid :cid-array []}))
+    (if not-has-cid-list?
+      (update vertex direction conj {:sid edge-schema-id :list-cid list-id})
       vertex)))
 
-(defn vertex-edge-list [[vertex-id direction schema-id]]
-  (let [id (cid-list-id-by-vertex vertex-id direction schema-id)]
-    (when-not (neb/cell-exists?* id)
+(defn vertex-edge-list [vertex-id direction schema-id]
+  (let [list-id (cid-list-id-by-vertex vertex-id direction schema-id)]
+    (when-not (neb/cell-exists?* list-id)
       (neb/update-cell* vertex-id 'morpheus.models.edge.base/record-edge-on-vertex
-                        schema-id direction))
-    id))
+                        schema-id direction list-id))
+    list-id))
 
 (defn rm-ve-relation [vertex direction es-id target-cid]
   (let [cid-list-cell-id (->> (get vertex direction)
