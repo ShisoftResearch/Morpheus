@@ -37,7 +37,7 @@
        ~@body)))
 
 (deflink
-  link! [v2 & args]
+  link!* [v2 & args]
   (let [v2-id (:*id* v2)
         edge-cell-vertex-fields (eb/edge-cell-vertex-fields v1-id v2-id)]
     (assert v1-id "id for vertex 1 missing")
@@ -58,8 +58,11 @@
              {:*id* edge-cell-id
               :*ep* edge-schema}))))
 
+(defn link! [v1 group v2 & args]
+  (apply link!* v1 group v2 args))
+
 (deflink
-  link-group! [& v2-list]
+  link-group!* [& v2-list]
   (assert v1-id "id for vertex 1 missing")
   (when type-body-sticker
     (assert (= type-body-sticker (:body edge-schema))
@@ -91,6 +94,9 @@
              (doall))
         v1-list-cell-row-id (eb/vertex-edge-list v1-id v1-e-field edge-schema-id)]
     (eb/append-cids-to-list v1-list-cell-row-id v1-remotes)))
+
+(defn link-group! [v1 group & v2-list]
+  (apply link-group!* v1 group v2-list))
 
 (def opposite-direction-mapper
   {:*outbounds* #{:*end*}
