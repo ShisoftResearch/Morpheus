@@ -4,7 +4,8 @@
             [morpheus.models.vertex.core :refer :all]
             [morpheus.models.edge.core :refer :all]
             [morpheus.models.edge.base :as eb]
-            [cluster-connector.utils.for-debug :refer [$ spy]]))
+            [cluster-connector.utils.for-debug :refer [$ spy]]
+            [com.climate.claypoole :as cp]))
 
 (facts
   "Chained Edge cid lists"
@@ -26,8 +27,14 @@
               (degree (reload-vertex v1) :direction :*outbounds*) => max-list-items)
         (fact "Check list link - single"
               )
+
         (fact "Create edges that can fit in two list"
-              (apply link-group! v1 :rel (repeat (* 10 max-list-items) v2)))
+              (let [pool (cp/threadpool 10)]
+                (cp/pdoseq
+                  pool
+                  [i (range 10)]
+                  (apply link-group! v1 :rel (repeat max-list-items v2)) => anything)))
+
         (fact "Check Degree - duo"
               (degree (reload-vertex v1) :direction :*outbounds*) => (* 11 max-list-items))
         (fact "Check list link - duo"

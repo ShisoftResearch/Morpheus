@@ -133,13 +133,10 @@
     (if (< list-length max-list-size)
       (let [cids-num-to-go (- max-list-size list-length)
             cids-to-go (take cids-num-to-go target-cids)]
-        (try
-          (neb-cell/update-cell*
-            trunk hash
-            (fn [list-cell]
-              (update list-cell :cid-array concat cids-to-go)))
-          (catch ObjectTooLargeException _
-            (move-to-list-with-params (or next-cid (new-list-cell)) [target-cids]))) ;Work around, fallback
+        (neb-cell/update-cell*
+          trunk hash
+          (fn [list-cell]
+            (update list-cell :cid-array concat cids-to-go)))
         (when-not (= cids-to-go target-cids)
           (move-to-list-with-params (or next-cid (new-list-cell)) [(subvec (vec target-cids) cids-num-to-go)])))
       (move-to-list (or next-cid (new-list-cell))))))
