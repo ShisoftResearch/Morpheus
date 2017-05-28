@@ -1,0 +1,7 @@
+[package]
+name = "morpheus"
+version = "0.1.0"
+authors = ["Hao Shi <shisoftgenius@gmail.com>"]
+
+[dependencies]
+
