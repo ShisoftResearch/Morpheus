@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Hao Shi <shisoftgenius@gmail.com>"]
 
 [dependencies]
-
+neb = { git = "https://github.com/ShisoftResearch/Nebuchadnezzar", branch = "develop" }
+lazy_static = "*"
