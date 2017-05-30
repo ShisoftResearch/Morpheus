@@ -3,6 +3,7 @@ extern crate neb;
 extern crate lazy_static;
 
 mod model;
+mod server;
 
 fn main() {
     println!("Hello, world!");
