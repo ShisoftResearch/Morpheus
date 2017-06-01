@@ -1,8 +1,8 @@
 use neb::ram::schema::Field;
 use neb::ram::types::TypeId;
 
-mod vertex;
-mod edge;
+pub mod vertex;
+pub mod edge;
 
 lazy_static! {
     pub static ref ID_LINKED_LIST: Vec<Field> = vec![

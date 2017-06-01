@@ -5,25 +5,25 @@ use super::ID_LINKED_LIST;
 lazy_static! {
     pub static ref VERTEX_TEMPLATE: Vec<Field> = vec![
             Field {
-                type_id: TypeId::Map as u32,
+                type_id: TypeId::Id as u32, // point to list cell
                 name: String::from("_inbound"),
                 nullable: true,
                 is_array: false,
-                sub_fields: Some(ID_LINKED_LIST.clone()),
+                sub_fields: None,
             },
             Field {
-                type_id: TypeId::Map as u32,
+                type_id: TypeId::Id as u32,
                 name: String::from("_outbound"),
                 nullable: true,
                 is_array: false,
-                sub_fields: Some(ID_LINKED_LIST.clone()),
+                sub_fields: None,
             },
             Field {
-                type_id: TypeId::Map as u32,
+                type_id: TypeId::Id as u32,
                 name: String::from("_indirected"),
                 nullable: true,
                 is_array: false,
-                sub_fields: Some(ID_LINKED_LIST.clone()),
+                sub_fields: None,
             },
         ];
 }

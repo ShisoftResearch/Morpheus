@@ -9,7 +9,7 @@ lazy_static! {
                 name: String::from("_vertices"),
                 nullable: false,
                 is_array: true,
-                sub_fields: Some(ID_LINKED_LIST.clone()),
+                sub_fields: None,
             }
         ];
 }
