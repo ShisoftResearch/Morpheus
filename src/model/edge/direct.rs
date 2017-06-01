@@ -4,19 +4,7 @@ use super::super::ID_LINKED_LIST;
 
 lazy_static! {
     pub static ref EDGE_TEMPLATE: Vec<Field> = vec![
-            Field {
-                type_id: TypeId::Id as u32,
-                name: String::from("_inbound"),
-                nullable: false,
-                is_array: false,
-                sub_fields: None,
-            },
-            Field {
-                type_id: TypeId::Id as u32,
-                name: String::from("_outbound"),
-                nullable: false,
-                is_array: false,
-                sub_fields: None,
-            }
+            Field::new(&String::from("_inbound"), TypeId::Id as u32, false, false, None),
+            Field::new(&String::from("_outbound"), TypeId::Id as u32, false, false, None),
         ];
 }
