@@ -15,7 +15,8 @@ pub enum MorpheusServerError {
 
 pub struct MorpheusServer {
     neb_server: Arc<NebServer>,
-    neb_client: Arc<NebClient>
+    neb_client: Arc<NebClient>,
+    schema_container: Arc<schema::SchemaContainer>
 }
 
 impl MorpheusServer {
@@ -45,6 +46,7 @@ impl MorpheusServer {
         Ok(Arc::new(MorpheusServer {
             neb_server: neb_server,
             neb_client: neb_client,
+            schema_container: schema_container
         }))
     }
 }
