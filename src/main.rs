@@ -15,6 +15,9 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate chashmap;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 mod model;
 mod server;
