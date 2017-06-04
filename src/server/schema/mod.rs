@@ -17,7 +17,8 @@ pub enum SchemaType {
 }
 
 pub struct SchemaContainer {
-    map: CHashMap<u32, SchemaType>
+    map: CHashMap<u32, SchemaType>,
+    sm_client: Arc<SMClient>
 }
 
 impl SchemaContainer {
@@ -29,13 +30,18 @@ impl SchemaContainer {
     }
 
     pub fn new_client(raft_client: &Arc<RaftClient>) -> Result<Arc<SchemaContainer>, ExecError> {
+        let sm_client = Arc::new(SMClient::new(sm::DEFAULT_RAFT_ID, &raft_client));
+        let sm_entries = sm_client.entries()?.unwrap();
         let container = SchemaContainer {
-            map: CHashMap::new()
+            map: CHashMap::new(),
+            sm_client: sm_client.clone()
         };
         let container_ref = Arc::new(container);
         let container_ref1 = container_ref.clone();
         let container_ref2 = container_ref.clone();
-        let sm_client = SMClient::new(sm::DEFAULT_RAFT_ID, &raft_client);
+        for (schema_id, schema_type) in sm_entries {
+            container_ref.map.insert(schema_id, schema_type);
+        }
         sm_client.on_inserted(move |res| {
             if let Ok((id, schema_type)) = res {
                 container_ref1.map.insert(id, schema_type);

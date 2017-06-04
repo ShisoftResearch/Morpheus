@@ -1,6 +1,5 @@
 use neb::ram::schema::Field;
 use neb::ram::types::TypeId;
-use super::ID_LINKED_LIST;
 
 lazy_static! {
     pub static ref VERTEX_TEMPLATE: Vec<Field> = vec![
