@@ -6,5 +6,6 @@ pub mod hyper;
 pub enum EdgeType {
     Direct,
     Indirect,
-    Hyper
+    Hyper,
+    Simple
 }
