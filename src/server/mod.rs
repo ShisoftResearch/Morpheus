@@ -39,7 +39,9 @@ impl MorpheusServer {
                 panic!("raft service should be ready for meta server");
             }
         }
-        let schema_container = match schema::SchemaContainer::new_client(&neb_client.raft_client) {
+        let schema_container = match schema::SchemaContainer::new_client(
+            &neb_client.raft_client, &neb_client
+        ) {
             Ok(container) => container,
             Err(e) => return Err(MorpheusServerError::InitSchemaError(e))
         };
