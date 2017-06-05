@@ -8,6 +8,7 @@ use chashmap::CHashMap;
 use std::sync::Arc;
 use neb::ram::schema::{Field, Schema};
 use neb::client::{Client as NebClient};
+use neb::server::{ServerMeta as NebServerMeta};
 use server::schema::sm::schema_types::client::SMClient;
 use model::vertex::VERTEX_TEMPLATE;
 
@@ -29,12 +30,14 @@ pub enum SchemaError {
 pub struct SchemaContainer {
     map: CHashMap<u32, SchemaType>,
     sm_client: Arc<SMClient>,
-    neb_client: Arc<NebClient>
+    neb_client: Arc<NebClient>,
+    neb_mata: Arc<NebServerMeta>,
 }
 
 pub struct MorpheusSchema {
     pub id: u32,
     pub name: String,
+    pub schema_type: SchemaType,
     pub key_field: Option<Vec<String>>,
     pub fields: Vec<Field>
 }
@@ -59,13 +62,18 @@ impl SchemaContainer {
         raft_service.register_state_machine(Box::new(container_sm));
     }
 
-    pub fn new_client(raft_client: &Arc<RaftClient>, neb_client: &Arc<NebClient>) -> Result<Arc<SchemaContainer>, ExecError> {
+    pub fn new_client(
+        raft_client: &Arc<RaftClient>,
+        neb_client: &Arc<NebClient>,
+        neb_meta: &Arc<NebServerMeta>
+    ) -> Result<Arc<SchemaContainer>, ExecError> {
         let sm_client = Arc::new(SMClient::new(sm::DEFAULT_RAFT_ID, &raft_client));
         let sm_entries = sm_client.entries()?.unwrap();
         let container = SchemaContainer {
             map: CHashMap::new(),
             sm_client: sm_client.clone(),
-            neb_client: neb_client.clone()
+            neb_client: neb_client.clone(),
+            neb_mata: neb_meta.clone()
         };
         let container_ref = Arc::new(container);
         let container_ref1 = container_ref.clone();
@@ -86,7 +94,8 @@ impl SchemaContainer {
         return Ok(container_ref);
     }
 
-    pub fn new_schema(&self, schema_type: SchemaType, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
+    pub fn new_schema(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
+        let schema_type = schema.schema_type;
         let mut schema_fields = head_fields(schema_type)?;
         schema_fields.append(&mut schema.fields);
         let mut neb_schema = Schema::new(
@@ -104,5 +113,30 @@ impl SchemaContainer {
         }
         schema.id = schema_id;
         Ok(())
+    }
+
+    pub fn schema_type(&self, schema_id: u32) -> Option<SchemaType> {
+        match self.map.get(&schema_id) {
+            Some(t) => Some(*t),
+            None => None
+        }
+    }
+
+    pub fn get_neb_schema(&self, schema_id: u32) -> Option<Arc<Schema>> {
+        self.neb_mata.schemas.get(&schema_id)
+    }
+
+    pub fn neb_to_morpheus_schema(&self, schema: &Arc<Schema>) -> Option<MorpheusSchema> {
+        if let Some(schema_type) = self.schema_type(schema.id) {
+            if let Some(ref fields) = schema.fields.sub_fields {
+                Some(MorpheusSchema {
+                    id: schema.id,
+                    name: schema.name.clone(),
+                    schema_type: schema_type,
+                    key_field: schema.str_key_field.clone(),
+                    fields: fields.clone(),
+                })
+            } else { None }
+        } else { None }
     }
 }

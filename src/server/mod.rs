@@ -40,7 +40,7 @@ impl MorpheusServer {
             }
         }
         let schema_container = match schema::SchemaContainer::new_client(
-            &neb_client.raft_client, &neb_client
+            &neb_client.raft_client, &neb_client, &neb_server.meta
         ) {
             Ok(container) => container,
             Err(e) => return Err(MorpheusServerError::InitSchemaError(e))
