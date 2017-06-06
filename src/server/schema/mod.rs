@@ -139,4 +139,12 @@ impl SchemaContainer {
             } else { None }
         } else { None }
     }
+    pub fn all_morpheus_schemas(&self) -> Result<Vec<MorpheusSchema>, ExecError> {
+        let neb_schemas = self.neb_client.get_all_schema()?;
+        Ok(neb_schemas
+            .into_iter()
+            .map(|schema| self.neb_to_morpheus_schema(&Arc::new(schema)))
+            .filter_map(|ms| ms)
+            .collect())
+    }
 }
