@@ -2,20 +2,21 @@ use bifrost::rpc::*;
 use bifrost::raft::RaftService;
 use bifrost::raft::client::RaftClient;
 use bifrost::raft::state_machine::master::ExecError;
-use model::edge::{EdgeType};
-use model::edge;
+use graph::edge::{EdgeType};
+use graph::edge;
 use chashmap::CHashMap;
 use std::sync::Arc;
 use neb::ram::schema::{Field, Schema};
 use neb::client::{Client as NebClient};
 use neb::server::{ServerMeta as NebServerMeta};
 use server::schema::sm::schema_types::client::SMClient;
-use model::vertex::VERTEX_TEMPLATE;
+use graph::vertex::VERTEX_TEMPLATE;
 
 mod sm;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum SchemaType {
+    Unspecified,
     Vertex,
     Edge(EdgeType)
 }
@@ -25,6 +26,7 @@ pub enum SchemaError {
     NewNebSchemaExecError(ExecError),
     NewMorpheusSchemaExecError(ExecError),
     SimpleEdgeShouldNotHaveSchema,
+    SchemaTypeUnspecified,
 }
 
 pub struct SchemaContainer {
@@ -42,6 +44,18 @@ pub struct MorpheusSchema {
     pub fields: Vec<Field>
 }
 
+impl MorpheusSchema {
+    pub fn new(id: u32, name: &String, key_field: Option<&Vec<String>>, fields: &Vec<Field>) -> MorpheusSchema {
+        MorpheusSchema {
+            id: id,
+            name: name.clone(),
+            key_field: key_field.cloned(),
+            fields: fields.clone(),
+            schema_type: SchemaType::Unspecified
+        }
+    }
+}
+
 pub fn head_fields(schema_type: SchemaType) -> Result<Vec<Field>, SchemaError> {
     Ok(match schema_type {
         SchemaType::Vertex => VERTEX_TEMPLATE.clone(),
@@ -50,7 +64,8 @@ pub fn head_fields(schema_type: SchemaType) -> Result<Vec<Field>, SchemaError> {
             EdgeType::Indirect => edge::indirect::EDGE_TEMPLATE.clone(),
             EdgeType::Hyper => edge::hyper::EDGE_TEMPLATE.clone(),
             EdgeType::Simple => return Err(SchemaError::SimpleEdgeShouldNotHaveSchema),
-        }
+        },
+        SchemaType::Unspecified => return Err(SchemaError::SchemaTypeUnspecified)
     })
 }
 

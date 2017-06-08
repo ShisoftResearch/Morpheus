@@ -19,7 +19,7 @@ extern crate chashmap;
 extern crate log;
 extern crate env_logger;
 
-mod model;
+mod graph;
 mod server;
 
 fn main() {
