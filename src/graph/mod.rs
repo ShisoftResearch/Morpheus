@@ -27,6 +27,9 @@ impl Graph {
         self.schema.new_schema(schema)
     }
     pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_type: edge::EdgeType) -> Result<(), SchemaError> {
+        if edge_type == edge::EdgeType::Simple {
+            return Err(SchemaError::SimpleEdgeShouldNotHaveSchema)
+        }
         schema.schema_type = SchemaType::Edge(edge_type);
         self.schema.new_schema(schema)
     }
