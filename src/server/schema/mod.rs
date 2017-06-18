@@ -14,7 +14,7 @@ use graph::vertex::VERTEX_TEMPLATE;
 
 mod sm;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SchemaType {
     Unspecified,
     Vertex,
