@@ -74,9 +74,10 @@ impl Graph {
         };
         let id = {match neb_schema.key_field {
                 Some(ref keys) => {
-                    match data.get_in_by_ids(keys.iter()) {
-                        Some(v) => Id::from_obj(&(schema_id, v)),
-                        None => return Err(NewVertexError::KeyFieldNotAvailable)
+                    let value = data.get_in_by_ids(keys.iter());
+                    match value {
+                        &Value::Null => return Err(NewVertexError::KeyFieldNotAvailable),
+                        _ => Id::from_obj(&(schema_id, value))
                     }
                 },
                 None => {
