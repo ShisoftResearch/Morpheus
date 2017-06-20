@@ -8,6 +8,7 @@ use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError};
 use graph::vertex::Vertex;
 
 use std::sync::Arc;
+use serde::Serialize;
 
 pub mod vertex;
 pub mod edge;
@@ -19,6 +20,16 @@ pub enum NewVertexError {
     DataNotMap,
     RPCError(RPCError),
     WriteError(WriteError),
+}
+pub enum RemoveVertexError {
+    WriteError(WriteError),
+    RPCError(RPCError)
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub enum CellType {
+    Vertex,
+    Edge(edge::EdgeType)
 }
 
 lazy_static! {
@@ -34,6 +45,11 @@ pub fn cell_to_vertex (cell: Cell) -> Vertex {
         schema: cell.header.schema,
         data: cell.data
     }
+}
+
+fn encode_cell_key<V>(schema_id: u32, value: &V) -> Id
+    where V: Serialize{
+    Id::from_obj(&(schema_id, value))
 }
 
 pub struct Graph {
@@ -77,7 +93,7 @@ impl Graph {
                     let value = data.get_in_by_ids(keys.iter());
                     match value {
                         &Value::Null => return Err(NewVertexError::KeyFieldNotAvailable),
-                        _ => Id::from_obj(&(schema_id, value))
+                        _ => encode_cell_key(schema_id, value)
                     }
                 },
                 None => {
@@ -100,5 +116,17 @@ impl Graph {
         };
         cell.header = header;
         Ok(cell_to_vertex(cell))
+    }
+    pub fn remove_vertex(&self, id: &Id) -> Result<(), RemoveVertexError> {
+        match self.neb_client.remove_cell(id) {
+            Err(e) => Err(RemoveVertexError::RPCError(e)),
+            Ok(Err(e)) => Err(RemoveVertexError::WriteError(e)),
+            Ok(Ok(())) => Ok(())
+        }
+    }
+    pub fn remove_vertex_by_key<K>(&self, schema_id: u32, key: &K) -> Result<(), RemoveVertexError>
+        where K: Serialize {
+        let id = encode_cell_key(schema_id, key);
+        self.remove_vertex(&id)
     }
 }
