@@ -2,6 +2,7 @@ use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Id, key_hash, Map, Value};
 use neb::ram::cell::{Cell, WriteError};
 use neb::client::{Client as NebClient};
+use neb::client::transaction::TxnError;
 use bifrost::rpc::RPCError;
 
 use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError};
@@ -39,12 +40,16 @@ lazy_static! {
         ];
 }
 
-pub fn cell_to_vertex (cell: Cell) -> Vertex {
+pub fn cell_to_vertex(cell: Cell) -> Vertex {
     Vertex {
         id: cell.header.id(),
         schema: cell.header.schema,
         data: cell.data
     }
+}
+
+pub fn vertex_to_cell(vertex: Vertex) -> Cell {
+    Cell::new_with_id(vertex.schema, &vertex.id, vertex.data)
 }
 
 pub struct Graph {
@@ -109,5 +114,26 @@ impl Graph {
         where K: Serialize {
         let id = Cell::encode_cell_key(schema_id, key);
         self.remove_vertex(&id)
+    }
+    pub fn update_vertex<U>(&self, id: &Id, update: U) -> Result<(), TxnError>
+        where U: Fn(Vertex) -> Option<Vertex> {
+        let update_cell = |cell| {
+            match update(cell_to_vertex(cell)) {
+                Some(vertex) => Some(vertex_to_cell(vertex)),
+                None => None
+            }
+        };
+        self.neb_client.transaction(|txn|{
+            let cell = txn.read(id)?;
+            match cell {
+                Some(cell) => {
+                    match update_cell(cell) {
+                        Some(cell) => txn.update(&cell),
+                        None => txn.abort()
+                    }
+                },
+                None => txn.abort()
+            }
+        })
     }
 }
