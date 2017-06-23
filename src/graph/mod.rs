@@ -16,7 +16,7 @@ pub mod edge;
 pub enum NewVertexError {
     SchemaNotFound,
     SchemaNotVertex,
-    KeyFieldNotAvailable,
+    CannotGenerateCellByData,
     DataNotMap,
     RPCError(RPCError),
     WriteError(WriteError),
@@ -45,11 +45,6 @@ pub fn cell_to_vertex (cell: Cell) -> Vertex {
         schema: cell.header.schema,
         data: cell.data
     }
-}
-
-fn encode_cell_key<V>(schema_id: u32, value: &V) -> Id
-    where V: Serialize{
-    Id::from_obj(&(schema_id, value))
 }
 
 pub struct Graph {
@@ -88,27 +83,13 @@ impl Graph {
                 _ => return Err(NewVertexError::DataNotMap)
             }
         };
-        let id = {match neb_schema.key_field {
-                Some(ref keys) => {
-                    let value = data.get_in_by_ids(keys.iter());
-                    match value {
-                        &Value::Null => return Err(NewVertexError::KeyFieldNotAvailable),
-                        _ => encode_cell_key(schema_id, value)
-                    }
-                },
-                None => {
-                    if vertex.id.is_unit_id() {
-                        Id::rand()
-                    } else {
-                        vertex.id
-                    }
-                }
-            }
-        };
         data.insert_key_id(*vertex::INBOUND_KEY_ID, Value::Id(Id::unit_id()));
         data.insert_key_id(*vertex::OUTBOUND_KEY_ID, Value::Id(Id::unit_id()));
         data.insert_key_id(*vertex::INDIRECTED_KEY_ID, Value::Id(Id::unit_id()));
-        let mut cell = Cell::new(schema_id, &id, Value::Map(data));
+        let mut cell = match Cell::new(&neb_schema, Value::Map(data)) {
+            Some(cell) => cell,
+            None => return Err(NewVertexError::CannotGenerateCellByData)
+        };
         let header = match self.neb_client.write_cell(&cell) {
             Ok(Ok(header)) => header,
             Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
@@ -126,7 +107,7 @@ impl Graph {
     }
     pub fn remove_vertex_by_key<K>(&self, schema_id: u32, key: &K) -> Result<(), RemoveVertexError>
         where K: Serialize {
-        let id = encode_cell_key(schema_id, key);
+        let id = Cell::encode_cell_key(schema_id, key);
         self.remove_vertex(&id)
     }
 }
