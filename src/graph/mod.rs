@@ -103,6 +103,7 @@ impl Graph {
         cell.header = header;
         Ok(cell_to_vertex(cell))
     }
+    // TODO: Update edge list
     pub fn remove_vertex(&self, id: &Id) -> Result<(), RemoveVertexError> {
         match self.neb_client.remove_cell(id) {
             Err(e) => Err(RemoveVertexError::RPCError(e)),
@@ -136,4 +137,11 @@ impl Graph {
             }
         })
     }
+    pub fn update_vertex_by_key<K, U>(&self, schema_id: u32, key: &K, update: U)
+        -> Result<(), TxnError>
+        where K: Serialize, U: Fn(Vertex) -> Option<Vertex>{
+        let id = Cell::encode_cell_key(schema_id, key);
+        self.update_vertex(&id, update)
+    }
+
 }
