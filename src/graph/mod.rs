@@ -22,10 +22,6 @@ pub enum NewVertexError {
     RPCError(RPCError),
     WriteError(WriteError),
 }
-pub enum RemoveVertexError {
-    WriteError(WriteError),
-    RPCError(RPCError)
-}
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum CellType {
@@ -104,14 +100,18 @@ impl Graph {
         Ok(cell_to_vertex(cell))
     }
     // TODO: Update edge list
-    pub fn remove_vertex(&self, id: &Id) -> Result<(), RemoveVertexError> {
-        match self.neb_client.remove_cell(id) {
-            Err(e) => Err(RemoveVertexError::RPCError(e)),
-            Ok(Err(e)) => Err(RemoveVertexError::WriteError(e)),
-            Ok(Ok(())) => Ok(())
-        }
+    pub fn remove_vertex(&self, id: &Id) -> Result<(), TxnError> {
+        self.neb_client.transaction(|txn| {
+            match txn.read(id)? {
+                Some(cell) => {
+                    let vertex = cell_to_vertex(cell); // for remove it from neighbourhoods
+                    txn.remove(id)
+                },
+                None => txn.abort()
+            }
+        })
     }
-    pub fn remove_vertex_by_key<K>(&self, schema_id: u32, key: &K) -> Result<(), RemoveVertexError>
+    pub fn remove_vertex_by_key<K>(&self, schema_id: u32, key: &K) -> Result<(), TxnError>
         where K: Serialize {
         let id = Cell::encode_cell_key(schema_id, key);
         self.remove_vertex(&id)
