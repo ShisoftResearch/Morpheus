@@ -48,49 +48,53 @@ pub fn vertex_to_cell(vertex: Vertex) -> Cell {
     Cell::new_with_id(vertex.schema, &vertex.id, vertex.data)
 }
 
+fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<Cell, NewVertexError> {
+    let schema_id = vertex.schema;
+    if let Some(stype) = schemas.schema_type(schema_id) {
+        if stype != SchemaType::Vertex {
+            return Err(NewVertexError::SchemaNotVertex)
+        }
+    } else {
+        return Err(NewVertexError::SchemaNotFound)
+    }
+    let neb_schema = match schemas.get_neb_schema(schema_id) {
+        Some(schema) => schema,
+        None => return Err(NewVertexError::SchemaNotFound)
+    };
+    let mut data = {
+        match vertex.data {
+            Value::Map(mut map) => map,
+            _ => return Err(NewVertexError::DataNotMap)
+        }
+    };
+    data.insert_key_id(*vertex::INBOUND_KEY_ID, Value::Id(Id::unit_id()));
+    data.insert_key_id(*vertex::OUTBOUND_KEY_ID, Value::Id(Id::unit_id()));
+    data.insert_key_id(*vertex::INDIRECTED_KEY_ID, Value::Id(Id::unit_id()));
+    match Cell::new(&neb_schema, Value::Map(data)) {
+        Some(cell) => Ok(cell),
+        None => return Err(NewVertexError::CannotGenerateCellByData)
+    }
+}
+
 pub struct Graph {
-    schema: Arc<SchemaContainer>,
+    schemas: Arc<SchemaContainer>,
     neb_client: Arc<NebClient>
 }
 
 impl Graph {
     pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
         schema.schema_type = SchemaType::Vertex;
-        self.schema.new_schema(schema)
+        self.schemas.new_schema(schema)
     }
     pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_type: edge::EdgeType) -> Result<(), SchemaError> {
         if edge_type == edge::EdgeType::Simple {
             return Err(SchemaError::SimpleEdgeShouldNotHaveSchema)
         }
         schema.schema_type = SchemaType::Edge(edge_type);
-        self.schema.new_schema(schema)
+        self.schemas.new_schema(schema)
     }
-    pub fn new_vertex(&self, mut vertex: Vertex) -> Result<Vertex, NewVertexError> {
-        let schema_id = vertex.schema;
-        if let Some(stype) = self.schema.schema_type(schema_id) {
-            if stype != SchemaType::Vertex {
-                return Err(NewVertexError::SchemaNotVertex)
-            }
-        } else {
-            return Err(NewVertexError::SchemaNotFound)
-        }
-        let neb_schema = match self.schema.get_neb_schema(schema_id) {
-            Some(schema) => schema,
-            None => return Err(NewVertexError::SchemaNotFound)
-        };
-        let mut data = {
-            match vertex.data {
-                Value::Map(mut map) => map,
-                _ => return Err(NewVertexError::DataNotMap)
-            }
-        };
-        data.insert_key_id(*vertex::INBOUND_KEY_ID, Value::Id(Id::unit_id()));
-        data.insert_key_id(*vertex::OUTBOUND_KEY_ID, Value::Id(Id::unit_id()));
-        data.insert_key_id(*vertex::INDIRECTED_KEY_ID, Value::Id(Id::unit_id()));
-        let mut cell = match Cell::new(&neb_schema, Value::Map(data)) {
-            Some(cell) => cell,
-            None => return Err(NewVertexError::CannotGenerateCellByData)
-        };
+    pub fn new_vertex(&self, vertex: Vertex) -> Result<Vertex, NewVertexError> {
+        let mut cell = vertex_to_cell_for_write(&self.schemas, vertex)?;
         let header = match self.neb_client.write_cell(&cell) {
             Ok(Ok(header)) => header,
             Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
