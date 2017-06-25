@@ -128,4 +128,10 @@ impl Graph {
             Ok(Ok(cell)) => Ok(Some(vertex::cell_to_vertex(cell)))
         }
     }
+
+    pub fn get_vertex<K>(&self, schema_id: u32, key: &K) -> Result<Option<Vertex>, ReadVertexError>
+        where K: Serialize {
+        let id = Cell::encode_cell_key(schema_id, key);
+        self.read_vertex(&id)
+    }
 }
