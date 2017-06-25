@@ -1,6 +1,6 @@
 use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Id, key_hash, Map, Value};
-use neb::ram::cell::{Cell, WriteError};
+use neb::ram::cell::{Cell, WriteError, ReadError};
 use neb::client::{Client as NebClient};
 use neb::client::transaction::TxnError;
 use bifrost::rpc::RPCError;
@@ -21,6 +21,11 @@ pub enum NewVertexError {
     DataNotMap,
     RPCError(RPCError),
     WriteError(WriteError),
+}
+
+pub enum ReadVertexError {
+    RPCError(RPCError),
+    ReadError(ReadError),
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -115,4 +120,12 @@ impl Graph {
         self.update_vertex(&id, update)
     }
 
+    pub fn read_vertex(&self, id: &Id) -> Result<Option<Vertex>, ReadVertexError> {
+        match self.neb_client.read_cell(id) {
+            Err(e) => Err(ReadVertexError::RPCError(e)),
+            Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
+            Ok(Err(e)) => Err(ReadVertexError::ReadError(e)),
+            Ok(Ok(cell)) => Ok(Some(vertex::cell_to_vertex(cell)))
+        }
+    }
 }
