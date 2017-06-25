@@ -36,18 +36,6 @@ lazy_static! {
         ];
 }
 
-pub fn cell_to_vertex(cell: Cell) -> Vertex {
-    Vertex {
-        id: cell.header.id(),
-        schema: cell.header.schema,
-        data: cell.data
-    }
-}
-
-pub fn vertex_to_cell(vertex: Vertex) -> Cell {
-    Cell::new_with_id(vertex.schema, &vertex.id, vertex.data)
-}
-
 fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<Cell, NewVertexError> {
     let schema_id = vertex.schema;
     if let Some(stype) = schemas.schema_type(schema_id) {
@@ -101,18 +89,12 @@ impl Graph {
             Err(e) => return Err(NewVertexError::RPCError(e))
         };
         cell.header = header;
-        Ok(cell_to_vertex(cell))
+        Ok(vertex::cell_to_vertex(cell))
     }
     // TODO: Update edge list
     pub fn remove_vertex(&self, id: &Id) -> Result<(), TxnError> {
-        self.neb_client.transaction(|txn| {
-            match txn.read(id)? {
-                Some(cell) => {
-                    let vertex = cell_to_vertex(cell); // for remove it from neighbourhoods
-                    txn.remove(id)
-                },
-                None => txn.abort()
-            }
+        self.neb_client.transaction(|mut txn| {
+            vertex::txn_remove(&mut txn, id)
         })
     }
     pub fn remove_vertex_by_key<K>(&self, schema_id: u32, key: &K) -> Result<(), TxnError>
@@ -122,23 +104,8 @@ impl Graph {
     }
     pub fn update_vertex<U>(&self, id: &Id, update: U) -> Result<(), TxnError>
         where U: Fn(Vertex) -> Option<Vertex> {
-        let update_cell = |cell| {
-            match update(cell_to_vertex(cell)) {
-                Some(vertex) => Some(vertex_to_cell(vertex)),
-                None => None
-            }
-        };
         self.neb_client.transaction(|txn|{
-            let cell = txn.read(id)?;
-            match cell {
-                Some(cell) => {
-                    match update_cell(cell) {
-                        Some(cell) => txn.update(&cell),
-                        None => txn.abort()
-                    }
-                },
-                None => txn.abort()
-            }
+            vertex::txn_update(txn, id, &update)
         })
     }
     pub fn update_vertex_by_key<K, U>(&self, schema_id: u32, key: &K, update: U)
