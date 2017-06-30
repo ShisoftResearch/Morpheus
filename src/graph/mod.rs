@@ -13,6 +13,7 @@ use serde::Serialize;
 
 pub mod vertex;
 pub mod edge;
+mod id_list;
 
 pub enum NewVertexError {
     SchemaNotFound,
@@ -32,13 +33,6 @@ pub enum ReadVertexError {
 pub enum CellType {
     Vertex,
     Edge(edge::EdgeType)
-}
-
-lazy_static! {
-    pub static ref ID_LINKED_LIST: Vec<Field> = vec![
-            Field::new(&String::from("next"), TypeId::Id as u32, true, false, None),
-            Field::new(&String::from("list"), TypeId::Id as u32, false, true, None)
-        ];
 }
 
 fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<Cell, NewVertexError> {
@@ -134,4 +128,6 @@ impl Graph {
         let id = Cell::encode_cell_key(schema_id, key);
         self.read_vertex(&id)
     }
+
+
 }
