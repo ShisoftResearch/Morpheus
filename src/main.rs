@@ -21,6 +21,7 @@ extern crate env_logger;
 
 mod graph;
 mod server;
+mod utils;
 
 fn main() {
     println!("Hello, world!");

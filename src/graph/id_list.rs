@@ -4,9 +4,18 @@ use neb::ram::types::{TypeId, Id, Map, Value, id_io, u32_io, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
 
 use graph::vertex::Vertex;
+use utils::transaction::set_map_by_key_id;
 
 pub const NEXT_KEY: &'static str = "_next";
 pub const LIST_KEY: &'static str = "_list";
+
+pub enum IdListError {
+    VertexNotFound,
+    FormatError,
+    TxnError(TxnError)
+}
+
+pub static ID_LIST_SCHEMA_ID: u32 = 100;
 
 lazy_static! {
     pub static ref ID_LINKED_LIST: Vec<Field> = vec![
@@ -21,35 +30,91 @@ lazy_static! {
 
 pub struct IdList<'a> {
     txn: &'a mut Transaction,
-    id: Id,
+    vertex_id: Id,
     field_id: u64
 }
 
+fn empty_list_segment(vertex_id: &Id, level: u32) -> (Id, Value) {
+    let str_id = format!("IDLIST-{},{}-{}", vertex_id.higher, vertex_id.lower, 1);
+    let list_id = Id::new(vertex_id.higher, key_hash(&str_id));
+    let mut list_map = Map::new();
+    list_map.insert_key_id(*NEXT_KEY_ID, Value::Id(Id::unit_id()));
+    list_map.insert_key_id(*LIST_KEY_ID, Value::Array(Vec::<Value>::new()));
+    return (list_id, Value::Map(list_map));
+}
+
 impl<'a> IdList <'a> {
-    pub fn from_txn_vertex(txn: &'a mut Transaction, id: &Id, field_id: u64) -> IdList<'a> {
+    pub fn from_txn_vertex(txn: &'a mut Transaction, vertex_id: &Id, field_id: u64) -> IdList<'a> {
         IdList {
             txn: txn,
-            id: *id,
+            vertex_id: *vertex_id,
             field_id: field_id,
         }
     }
+    fn get_root_list_id(&mut self, ensure_vertex: bool) -> Result<Id, IdListError> {
+        match self.txn.read_selected(&self.vertex_id, &vec![self.field_id]) {
+            Err(e) => Err(IdListError::TxnError(e)),
+            Ok(Some(fields)) => {
+                if let Some(&Value::Id(id)) = fields.get(0) {
+                    Ok(id)
+                } else {
+                    Err(IdListError::FormatError)
+                }
+            },
+            Ok(None) => {
+                if ensure_vertex {
+                    let (list_id, list_value) = empty_list_segment(&self.vertex_id, 0);
+                    let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
+                    self.txn.write(&list_cell);
+                    set_map_by_key_id(self.txn, &self.vertex_id, self.field_id, Value::Id(list_id));
+                    Ok(list_id)
+                } else {
+                    Err(IdListError::VertexNotFound)
+                }
+            }
+        }
+    }
+    pub fn iter(&mut self) -> Result<IdListIterator, IdListError> {
+        let list_root_id = self.get_root_list_id(false)?;
+        let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
+        let first_cell = segments.next();
+        Ok(IdListIterator {
+            segments: segments,
+            current_seg: first_cell,
+            current_pos: 0,
+        })
+    }
+    pub fn all(&mut self) -> Result<Vec<Id>, IdListError> {
+        Ok(self.iter()?.collect())
+    }
+    pub fn count(&mut self) -> Result<usize, IdListError> {
+        Ok(self.iter()?.count())
+    }
+    pub fn add(&mut self) -> Result<(), IdListError> {
+        let list_root_id = self.get_root_list_id(true)?;
+        let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
+        let last_seg = segments.last();
+        Ok(())
+    }
 }
 
-pub struct IdListSegmentIntoIterator<'a> {
+pub struct IdListSegmentIterator<'a> {
     txn: &'a mut Transaction,
-    next: Id
+    next: Id,
+    level: u32
 }
 
-impl <'a>IdListSegmentIntoIterator<'a> {
-    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIntoIterator<'a> {
-        IdListSegmentIntoIterator {
+impl <'a> IdListSegmentIterator<'a> {
+    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIterator<'a> {
+        IdListSegmentIterator {
             txn: txn,
-            next: head_id
+            next: head_id,
+            level: 1
         }
     }
 }
 
-impl <'a> Iterator for IdListSegmentIntoIterator<'a> {
+impl <'a> Iterator for IdListSegmentIterator<'a> {
 
     type Item = Cell;
 
@@ -65,6 +130,7 @@ impl <'a> Iterator for IdListSegmentIntoIterator<'a> {
                         }
                     }
                     if id_set {
+                        self.level += 1;
                         return Some(cell)
                     }
                 },
@@ -76,7 +142,7 @@ impl <'a> Iterator for IdListSegmentIntoIterator<'a> {
 }
 
 pub struct IdListIterator<'a> {
-    segments: IdListSegmentIntoIterator<'a>,
+    segments: IdListSegmentIterator<'a>,
     current_seg: Option<Cell>,
     current_pos: u32
 }
