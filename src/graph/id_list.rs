@@ -1,6 +1,6 @@
 use neb::ram::schema::Field;
-use neb::ram::cell::MAX_CELL_SIZE;
-use neb::ram::types::{TypeId, Id, id_io, u32_io, key_hash};
+use neb::ram::cell::{MAX_CELL_SIZE, Cell};
+use neb::ram::types::{TypeId, Id, Map, Value, id_io, u32_io, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
 
 use graph::vertex::Vertex;
@@ -16,6 +16,7 @@ lazy_static! {
     pub static ref LIST_CAPACITY: usize =
         ((MAX_CELL_SIZE - u32_io::size(0) - id_io::size(0)) / id_io::size(0));
     pub static ref NEXT_KEY_ID: u64 = key_hash(&String::from(NEXT_KEY));
+    pub static ref LIST_KEY_ID: u64 = key_hash(&String::from(LIST_KEY));
 }
 
 pub struct IdList<'a> {
@@ -29,40 +30,112 @@ impl<'a> IdList <'a> {
         IdList {
             txn: txn,
             id: *id,
-            field_id: field_id
-        }
-    }
-    pub fn into_iter(self) -> IdListIntoIterator<'a> {
-        IdListIntoIterator {
-            list: self,
-            index: 0
+            field_id: field_id,
         }
     }
 }
 
-pub struct IdListIntoIterator<'a> {
-    list: IdList<'a>,
-    index: usize,
+pub struct IdListSegmentIntoIterator<'a> {
+    txn: &'a mut Transaction,
+    next: Id
 }
 
-impl <'a>Iterator for IdListIntoIterator<'a> {
+impl <'a>IdListSegmentIntoIterator<'a> {
+    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIntoIterator<'a> {
+        IdListSegmentIntoIterator {
+            txn: txn,
+            next: head_id
+        }
+    }
+}
 
+impl <'a> Iterator for IdListSegmentIntoIterator<'a> {
+
+    type Item = Cell;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut id_set = false;
+        if !self.next.is_unit_id() {
+            match self.txn.read(&self.next) {
+                Ok(Some(cell)) => {
+                    if let Value::Map(ref map) = cell.data {
+                        if let &Value::Id(ref id) = map.get_by_key_id(*NEXT_KEY_ID) {
+                            self.next = *id;
+                            id_set = true;
+                        }
+                    }
+                    if id_set {
+                        return Some(cell)
+                    }
+                },
+                _ => {}
+            }
+        }
+        None
+    }
+}
+
+pub struct IdListIterator<'a> {
+    segments: IdListSegmentIntoIterator<'a>,
+    current_seg: Option<Cell>,
+    current_pos: u32
+}
+
+impl <'a> IdListIterator <'a> {
+    pub fn next_seg(&mut self) {
+        self.current_seg = self.segments.next();
+        self.current_pos = 0;
+    }
+}
+
+impl <'a> Iterator for IdListIterator<'a> {
     type Item = Id;
 
     fn next(&mut self) -> Option<Self::Item> {
-        unimplemented!()
-    }
-
-    fn count(self) -> usize where Self: Sized {
-        unimplemented!()
+        let mut need_next_seg = false;
+        if let Some(ref cell) = self.current_seg {
+            let pos = self.current_pos;
+            self.current_pos += 1;
+            if let &Value::Map(ref map) = &cell.data {
+                if let &Value::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
+                    if let Some(&Value::Id(id)) = list.get(pos as usize) {
+                        return Some(id);
+                    } else {
+                        need_next_seg = true
+                    }
+                }
+            }
+        };
+        if need_next_seg {
+            self.next_seg();
+            self.next()
+        } else {
+            None
+        }
     }
 
     fn last(self) -> Option<Self::Item> where Self: Sized {
-        unimplemented!()
+        if let Some(last_seg) = self.segments.last() {
+            if let &Value::Map(ref map) = &last_seg.data {
+                if let &Value::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
+                    if let Some(&Value::Id(id)) = list.last() {
+                        return Some(id);
+                    }
+                }
+            }
+        }
+        return None;
     }
-
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        unimplemented!()
+    fn count(self) -> usize where Self: Sized {
+        let mut count = 0;
+        for seg in self.segments {
+            if let &Value::Map(ref map) = &seg.data {
+                if let &Value::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
+                    count += list.len();
+                }
+            }
+        }
+        return count;
     }
 }
 
