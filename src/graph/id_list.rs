@@ -118,14 +118,18 @@ impl<'a> IdList <'a> {
     }
     pub fn add(&mut self, id: Id) -> Result<(), IdListError> {
         let list_root_id = self.get_root_list_id(true)?;
+        let mut list_level = 0;
         let mut last_seg = {
             let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
-            if let Some(cell) = segments.last() { cell } else {
-                return Err(IdListError::FormatError);
+            let mut last_seg = None;
+            for seg in segments {
+                list_level += 1;
+                last_seg = Some(seg);
             }
+            if let Some(seg) = last_seg { seg } else { return Err(IdListError::Unexpected); }
         };
         if count_cell_list(&mut last_seg)? >= *LIST_CAPACITY { // create new segment to prevent cell overflow
-            let list_level = IdListSegmentIterator::new(&mut self.txn, list_root_id).count();
+            list_level += 1;
             let (next_seg_id, next_seg_value) = empty_list_segment(&self.vertex_id, list_level);
             let next_seg_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &next_seg_id, next_seg_value);
             match self.txn.write(&next_seg_cell) {
