@@ -34,13 +34,25 @@ pub struct IdList<'a> {
     field_id: u64
 }
 
-fn empty_list_segment(vertex_id: &Id, level: u32) -> (Id, Value) {
+fn empty_list_segment(vertex_id: &Id, level: usize) -> (Id, Value) {
     let str_id = format!("IDLIST-{},{}-{}", vertex_id.higher, vertex_id.lower, 1);
     let list_id = Id::new(vertex_id.higher, key_hash(&str_id));
     let mut list_map = Map::new();
     list_map.insert_key_id(*NEXT_KEY_ID, Value::Id(Id::unit_id()));
     list_map.insert_key_id(*LIST_KEY_ID, Value::Array(Vec::<Value>::new()));
     return (list_id, Value::Map(list_map));
+}
+
+fn count_cell_list(seg: &Cell) -> Result<usize, IdListError> {
+    if let &Value::Map(ref map) = &seg.data {
+        if let &Value::Array(ref array) = map.get_by_key_id(*LIST_KEY_ID) {
+            Ok(array.len())
+        } else {
+            Err(IdListError::FormatError)
+        }
+    } else {
+        Err(IdListError::FormatError)
+    }
 }
 
 impl<'a> IdList <'a> {
@@ -65,7 +77,10 @@ impl<'a> IdList <'a> {
                 if ensure_vertex {
                     let (list_id, list_value) = empty_list_segment(&self.vertex_id, 0);
                     let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
-                    self.txn.write(&list_cell);
+                    match self.txn.write(&list_cell) {
+                        Ok(()) => {},
+                        Err(e) => return Err(IdListError::TxnError(e))
+                    }
                     set_map_by_key_id(self.txn, &self.vertex_id, self.field_id, Value::Id(list_id));
                     Ok(list_id)
                 } else {
@@ -90,11 +105,38 @@ impl<'a> IdList <'a> {
     pub fn count(&mut self) -> Result<usize, IdListError> {
         Ok(self.iter()?.count())
     }
-    pub fn add(&mut self) -> Result<(), IdListError> {
+    pub fn add(&mut self, id: Id) -> Result<(), IdListError> {
         let list_root_id = self.get_root_list_id(true)?;
-        let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
-        let last_seg = segments.last();
-        Ok(())
+        let mut last_seg = {
+            let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
+            if let Some(cell) = segments.last() { cell } else {
+                return Err(IdListError::FormatError);
+            }
+        };
+        if count_cell_list(&mut last_seg)? >= *LIST_CAPACITY { // create new segment to prevent cell overflow
+            let list_level = IdListSegmentIterator::new(&mut self.txn, list_root_id).count();
+            let (next_seg_id, next_seg_value) = empty_list_segment(&self.vertex_id, list_level);
+            let next_seg_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &next_seg_id, next_seg_value);
+            match self.txn.write(&next_seg_cell) {
+                Ok(()) => {},
+                Err(e) => return Err(IdListError::TxnError(e))
+            }
+            set_map_by_key_id(&mut self.txn, &last_seg.id(), *NEXT_KEY_ID, Value::Id(next_seg_id));
+            last_seg = next_seg_cell;
+        }
+        if let &mut Value::Map(ref mut map) = &mut last_seg.data {
+            if let Some(&mut Value::Array(ref mut array)) = map.get_mut_by_key_id(*LIST_KEY_ID) {
+                array.push(Value::Id(id));
+            } else {
+                return Err(IdListError::FormatError);
+            }
+        } else {
+            return Err(IdListError::FormatError);
+        }
+        match self.txn.update(&last_seg) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(IdListError::TxnError(e))
+        }
     }
 }
 
