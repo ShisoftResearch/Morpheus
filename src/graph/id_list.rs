@@ -3,6 +3,8 @@ use neb::ram::cell::{MAX_CELL_SIZE, Cell};
 use neb::ram::types::{TypeId, Id, Map, Value, id_io, u32_io, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
 
+use std::collections::BTreeSet;
+
 use graph::vertex::Vertex;
 use utils::transaction::set_map_by_key_id;
 
@@ -12,6 +14,7 @@ pub const LIST_KEY: &'static str = "_list";
 pub enum IdListError {
     VertexNotFound,
     FormatError,
+    Unexpected,
     TxnError(TxnError)
 }
 
@@ -52,6 +55,14 @@ fn count_cell_list(seg: &Cell) -> Result<usize, IdListError> {
         }
     } else {
         Err(IdListError::FormatError)
+    }
+}
+
+fn val_is_id(val: &Value, id: &Id) -> bool {
+    if let &Value::Id(ref val_id) = val {
+        return val_id != id;
+    } else {
+        return true;
     }
 }
 
@@ -137,6 +148,54 @@ impl<'a> IdList <'a> {
             Ok(()) => Ok(()),
             Err(e) => Err(IdListError::TxnError(e))
         }
+    }
+    pub fn remove(&mut self, id: Id, all: bool) -> Result<(), IdListError> {
+        let id_value = Value::Id(id);
+        let mut contained_segs = { // collect affected segment cell ids
+            let mut iter = self.iter()?;
+            let mut seg_ids = BTreeSet::new();
+            while true {
+                if let Some(iter_id) = iter.next() {
+                    if iter_id == id {
+                        if let Some(ref seg) = iter.current_seg {
+                            seg_ids.insert(seg.id());
+                        } else {
+                            return Err(IdListError::Unexpected);
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
+            seg_ids
+        };
+        for seg_id in &contained_segs { // mutate cell array
+            match self.txn.read(seg_id) {
+                Ok(Some(mut seg)) => {
+                    if let &mut Value::Map(ref mut map) = &mut seg.data {
+                        if let Some(&mut Value::Array(ref mut array)) = map.get_mut_by_key_id(*LIST_KEY_ID) {
+                            if all {
+                                array.retain(|v| { !val_is_id(v, &id) });
+                            } else {
+                                let index = match array.iter().position(|v| { val_is_id(v, &id) }) {
+                                    Some(pos) => pos, None => return Err(IdListError::Unexpected)
+                                };
+                                array.remove(index);
+                            }
+                        } else {
+                            return Err(IdListError::FormatError);
+                        }
+                    } else {
+                        return Err(IdListError::FormatError);
+                    }
+                    self.txn.update(&seg);
+                    if !all { break; }
+                },
+                Ok(None) => return Err(IdListError::Unexpected),
+                Err(e) => return Err(IdListError::TxnError(e)),
+            }
+        }
+        return Ok(());
     }
 }
 
