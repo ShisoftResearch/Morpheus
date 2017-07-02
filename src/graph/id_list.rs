@@ -29,6 +29,7 @@ lazy_static! {
         ((MAX_CELL_SIZE - u32_io::size(0) - id_io::size(0)) / id_io::size(0));
     pub static ref NEXT_KEY_ID: u64 = key_hash(&String::from(NEXT_KEY));
     pub static ref LIST_KEY_ID: u64 = key_hash(&String::from(LIST_KEY));
+    pub static ref NEXT_KEY_ID_VEC: Vec<u64> = vec![*NEXT_KEY_ID];
 }
 
 pub struct IdList<'a> {
@@ -66,6 +67,16 @@ fn val_is_id(val: &Value, id: &Id) -> bool {
     }
 }
 
+fn seg_cell_by_id(txn: &mut Transaction, id: Option<Id>) -> Result<Option<Cell>, IdListError> {
+    match id {
+        Some(id) => match txn.read(&id) {
+            Ok(cell) => Ok(cell),
+            Err(e) => Err(IdListError::TxnError(e))
+        },
+        None => Ok(None)
+    }
+}
+
 impl<'a> IdList <'a> {
     pub fn from_txn_vertex(txn: &'a mut Transaction, vertex_id: &Id, field_id: u64) -> IdList<'a> {
         IdList {
@@ -79,34 +90,34 @@ impl<'a> IdList <'a> {
             Err(e) => Err(IdListError::TxnError(e)),
             Ok(Some(fields)) => {
                 if let Some(&Value::Id(id)) = fields.get(0) {
-                    Ok(id)
+                    if id == Id::unit_id() && ensure_vertex {
+                        let (list_id, list_value) = empty_list_segment(&self.vertex_id, 0);
+                        let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
+                        match self.txn.write(&list_cell) {
+                            Ok(()) => {},
+                            Err(e) => return Err(IdListError::TxnError(e))
+                        }
+                        set_map_by_key_id(self.txn, &self.vertex_id, self.field_id, Value::Id(list_id));
+                        Ok(list_id)
+                    } else {
+                        Ok(id)
+                    }
                 } else {
                     Err(IdListError::FormatError)
                 }
             },
             Ok(None) => {
-                if ensure_vertex {
-                    let (list_id, list_value) = empty_list_segment(&self.vertex_id, 0);
-                    let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
-                    match self.txn.write(&list_cell) {
-                        Ok(()) => {},
-                        Err(e) => return Err(IdListError::TxnError(e))
-                    }
-                    set_map_by_key_id(self.txn, &self.vertex_id, self.field_id, Value::Id(list_id));
-                    Ok(list_id)
-                } else {
-                    Err(IdListError::VertexNotFound)
-                }
+                Err(IdListError::VertexNotFound)
             }
         }
     }
     pub fn iter(&mut self) -> Result<IdListIterator, IdListError> {
         let list_root_id = self.get_root_list_id(false)?;
         let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
-        let first_cell = segments.next();
+        let current_seg = segments.next();
         Ok(IdListIterator {
             segments: segments,
-            current_seg: first_cell,
+            current_seg: current_seg,
             current_pos: 0,
         })
     }
@@ -120,12 +131,16 @@ impl<'a> IdList <'a> {
         let list_root_id = self.get_root_list_id(true)?;
         let mut list_level = 0;
         let mut last_seg = {
-            let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
-            let mut last_seg = None;
-            for seg in segments {
-                list_level += 1;
-                last_seg = Some(seg);
-            }
+            let last_seg_id = {
+                let mut segments = IdListSegmentIdIterator::new(&mut self.txn, list_root_id);
+                let mut last_seg_id = None;
+                for seg in segments {
+                    list_level += 1;
+                    last_seg_id = Some(seg);
+                }
+                last_seg_id
+            };
+            let last_seg = seg_cell_by_id(&mut self.txn, last_seg_id)?;
             if let Some(seg) = last_seg { seg } else { return Err(IdListError::Unexpected); }
         };
         if count_cell_list(&mut last_seg)? >= *LIST_CAPACITY { // create new segment to prevent cell overflow
@@ -201,17 +216,29 @@ impl<'a> IdList <'a> {
         }
         return Ok(());
     }
+    pub fn clear(&mut self) -> Result<(), IdListError> {
+        let list_root_id = self.get_root_list_id(true)?;
+        let segments: Vec<_> = IdListSegmentIdIterator::new(&mut self.txn, list_root_id).collect();
+        for seg_id in segments {
+            match self.txn.remove(&seg_id) {
+                Ok(()) => {},
+                Err(e) => return Err(IdListError::TxnError(e))
+            }
+        }
+        set_map_by_key_id(self.txn, &self.vertex_id, self.field_id, Value::Id(Id::unit_id()));
+        return Ok(())
+    }
 }
 
-pub struct IdListSegmentIterator<'a> {
+pub struct IdListSegmentIdIterator<'a> {
     txn: &'a mut Transaction,
     next: Id,
     level: u32
 }
 
-impl <'a> IdListSegmentIterator<'a> {
-    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIterator<'a> {
-        IdListSegmentIterator {
+impl <'a> IdListSegmentIdIterator<'a> {
+    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIdIterator<'a> {
+        IdListSegmentIdIterator {
             txn: txn,
             next: head_id,
             level: 1
@@ -219,30 +246,50 @@ impl <'a> IdListSegmentIterator<'a> {
     }
 }
 
-impl <'a> Iterator for IdListSegmentIterator<'a> {
+impl <'a> Iterator for IdListSegmentIdIterator<'a> {
 
-    type Item = Cell;
+    type Item = Id;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut id_set = false;
         if !self.next.is_unit_id() {
-            match self.txn.read(&self.next) {
-                Ok(Some(cell)) => {
-                    if let Value::Map(ref map) = cell.data {
-                        if let &Value::Id(ref id) = map.get_by_key_id(*NEXT_KEY_ID) {
-                            self.next = *id;
-                            id_set = true;
-                        }
-                    }
-                    if id_set {
+            match self.txn.read_selected(&self.next, &*NEXT_KEY_ID_VEC) {
+                Ok(Some(fields)) => {
+                    let current_id = self.next;
+                    if let Some(&Value::Id(ref id)) = fields.get(0) {
+                        self.next = *id;
                         self.level += 1;
-                        return Some(cell)
+                        return Some(current_id);
                     }
                 },
                 _ => {}
             }
         }
         None
+    }
+}
+
+pub struct IdListSegmentIterator<'a> {
+    id_iter: IdListSegmentIdIterator<'a>
+}
+
+impl <'a>IdListSegmentIterator<'a> {
+    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIterator<'a> {
+        IdListSegmentIterator {
+            id_iter: IdListSegmentIdIterator::new(txn, head_id)
+        }
+    }
+}
+
+impl <'a> Iterator for IdListSegmentIterator <'a> {
+    type Item = Cell;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next_id = self.id_iter.next();
+        if let Ok(Some(cell)) = seg_cell_by_id(self.id_iter.txn, next_id) {
+            Some(cell)
+        } else {
+            None
+        }
     }
 }
 
