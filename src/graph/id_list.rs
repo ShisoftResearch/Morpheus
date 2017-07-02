@@ -5,14 +5,13 @@ use neb::client::transaction::{Transaction, TxnError};
 
 use std::collections::BTreeSet;
 
-use graph::vertex::Vertex;
 use utils::transaction::set_map_by_key_id;
 
 pub const NEXT_KEY: &'static str = "_next";
 pub const LIST_KEY: &'static str = "_list";
 
 pub enum IdListError {
-    VertexNotFound,
+    ContainerCellNotFound,
     FormatError,
     Unexpected,
     TxnError(TxnError)
@@ -34,13 +33,13 @@ lazy_static! {
 
 pub struct IdList<'a> {
     txn: &'a mut Transaction,
-    vertex_id: Id,
+    container_id: Id,
     field_id: u64
 }
 
-fn empty_list_segment(vertex_id: &Id, level: usize) -> (Id, Value) {
-    let str_id = format!("IDLIST-{},{}-{}", vertex_id.higher, vertex_id.lower, 1);
-    let list_id = Id::new(vertex_id.higher, key_hash(&str_id));
+fn empty_list_segment(container_id: &Id, level: usize) -> (Id, Value) {
+    let str_id = format!("IDLIST-{},{}-{}", container_id.higher, container_id.lower, 1);
+    let list_id = Id::new(container_id.higher, key_hash(&str_id));
     let mut list_map = Map::new();
     list_map.insert_key_id(*NEXT_KEY_ID, Value::Id(Id::unit_id()));
     list_map.insert_key_id(*LIST_KEY_ID, Value::Array(Vec::<Value>::new()));
@@ -78,26 +77,26 @@ fn seg_cell_by_id(txn: &mut Transaction, id: Option<Id>) -> Result<Option<Cell>,
 }
 
 impl<'a> IdList <'a> {
-    pub fn from_txn_vertex(txn: &'a mut Transaction, vertex_id: &Id, field_id: u64) -> IdList<'a> {
+    pub fn from_txn_and_container(txn: &'a mut Transaction, container_id: &Id, field_id: u64) -> IdList<'a> {
         IdList {
             txn: txn,
-            vertex_id: *vertex_id,
+            container_id: *container_id,
             field_id: field_id,
         }
     }
-    fn get_root_list_id(&mut self, ensure_vertex: bool) -> Result<Id, IdListError> {
-        match self.txn.read_selected(&self.vertex_id, &vec![self.field_id]) {
+    fn get_root_list_id(&mut self, ensure_container: bool) -> Result<Id, IdListError> {
+        match self.txn.read_selected(&self.container_id, &vec![self.field_id]) {
             Err(e) => Err(IdListError::TxnError(e)),
             Ok(Some(fields)) => {
                 if let Some(&Value::Id(id)) = fields.get(0) {
-                    if id == Id::unit_id() && ensure_vertex {
-                        let (list_id, list_value) = empty_list_segment(&self.vertex_id, 0);
+                    if id == Id::unit_id() && ensure_container {
+                        let (list_id, list_value) = empty_list_segment(&self.container_id, 0);
                         let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
                         match self.txn.write(&list_cell) {
                             Ok(()) => {},
                             Err(e) => return Err(IdListError::TxnError(e))
                         }
-                        set_map_by_key_id(self.txn, &self.vertex_id, self.field_id, Value::Id(list_id));
+                        set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(list_id));
                         Ok(list_id)
                     } else {
                         Ok(id)
@@ -107,7 +106,7 @@ impl<'a> IdList <'a> {
                 }
             },
             Ok(None) => {
-                Err(IdListError::VertexNotFound)
+                Err(IdListError::ContainerCellNotFound)
             }
         }
     }
@@ -145,7 +144,7 @@ impl<'a> IdList <'a> {
         };
         if count_cell_list(&mut last_seg)? >= *LIST_CAPACITY { // create new segment to prevent cell overflow
             list_level += 1;
-            let (next_seg_id, next_seg_value) = empty_list_segment(&self.vertex_id, list_level);
+            let (next_seg_id, next_seg_value) = empty_list_segment(&self.container_id, list_level);
             let next_seg_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &next_seg_id, next_seg_value);
             match self.txn.write(&next_seg_cell) {
                 Ok(()) => {},
@@ -225,7 +224,7 @@ impl<'a> IdList <'a> {
                 Err(e) => return Err(IdListError::TxnError(e))
             }
         }
-        set_map_by_key_id(self.txn, &self.vertex_id, self.field_id, Value::Id(Id::unit_id()));
+        set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(Id::unit_id()));
         return Ok(())
     }
 }
