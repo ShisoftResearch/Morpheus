@@ -9,9 +9,9 @@ pub const INDIRECTED_KEY: &'static str = "_indirected";
 
 lazy_static! {
     pub static ref VERTEX_TEMPLATE: Vec<Field> = vec![
-            Field::new(&String::from(INBOUND_KEY), TypeId::Id as u32, true, false, None),
-            Field::new(&String::from(OUTBOUND_KEY), TypeId::Id as u32, true, false, None),
-            Field::new(&String::from(INDIRECTED_KEY), TypeId::Id as u32, true, false, None)
+            Field::new(&String::from(INBOUND_KEY), TypeId::Id as u32, false, false, None),
+            Field::new(&String::from(OUTBOUND_KEY), TypeId::Id as u32, false, false, None),
+            Field::new(&String::from(INDIRECTED_KEY), TypeId::Id as u32, false, false, None)
         ];
     pub static ref INBOUND_KEY_ID: u64 = key_hash(&String::from(INBOUND_KEY));
     pub static ref OUTBOUND_KEY_ID: u64 = key_hash(&String::from(OUTBOUND_KEY));

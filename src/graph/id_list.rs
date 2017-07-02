@@ -22,7 +22,7 @@ pub static ID_LIST_SCHEMA_ID: u32 = 100;
 
 lazy_static! {
     pub static ref ID_LINKED_LIST: Vec<Field> = vec![
-            Field::new(&String::from(NEXT_KEY), TypeId::Id as u32, true, false, None),
+            Field::new(&String::from(NEXT_KEY), TypeId::Id as u32, false, false, None),
             Field::new(&String::from(LIST_KEY), TypeId::Id as u32, false, true, None)
           ];
     pub static ref LIST_CAPACITY: usize =
