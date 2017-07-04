@@ -17,12 +17,14 @@ extern crate serde_derive;
 extern crate chashmap;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
+extern crate log4rs;
 
 mod graph;
 mod server;
 mod utils;
 
 fn main() {
-    println!("Hello, world!");
+    log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
+    info!("Shisoft Morpheus is initializing...");
+
 }

@@ -1,0 +1,13 @@
+server:
+  address: "127.0.0.1:5400"
+  group-name: "Morpheus"
+  standalone: No
+  is-meta: Yes
+  meta-members:
+    - "127.0.0.1:5400"
+  meta-storage: Null
+
+store:
+  chunk-count: 64
+  memory-size: 8192 # 8GB
+  backup-storage: Null
