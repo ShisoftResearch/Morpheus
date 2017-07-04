@@ -38,7 +38,7 @@ pub struct IdList<'a> {
 }
 
 fn empty_list_segment(container_id: &Id, level: usize) -> (Id, Value) {
-    let str_id = format!("IDLIST-{},{}-{}", container_id.higher, container_id.lower, 1);
+    let str_id = format!("IDLIST-{},{}-{}", container_id.higher, container_id.lower, level);
     let list_id = Id::new(container_id.higher, key_hash(&str_id));
     let mut list_map = Map::new();
     list_map.insert_key_id(*NEXT_KEY_ID, Value::Id(Id::unit_id()));
