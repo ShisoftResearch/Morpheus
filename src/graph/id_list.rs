@@ -154,7 +154,7 @@ impl<'a> IdList <'a> {
             last_seg = next_seg_cell;
         }
         if let &mut Value::Map(ref mut map) = &mut last_seg.data {
-            if let Some(&mut Value::Array(ref mut array)) = map.get_mut_by_key_id(*LIST_KEY_ID) {
+            if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
                 array.push(Value::Id(id));
             } else {
                 return Err(IdListError::FormatError);
@@ -191,7 +191,7 @@ impl<'a> IdList <'a> {
             match self.txn.read(seg_id) {
                 Ok(Some(mut seg)) => {
                     if let &mut Value::Map(ref mut map) = &mut seg.data {
-                        if let Some(&mut Value::Array(ref mut array)) = map.get_mut_by_key_id(*LIST_KEY_ID) {
+                        if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
                             if all {
                                 array.retain(|v| { !val_is_id(v, &id) });
                             } else {
