@@ -5,10 +5,10 @@ authors = ["Hao Shi <shisoftgenius@gmail.com>"]
 
 [dependencies]
 neb = { git = "https://github.com/ShisoftResearch/Nebuchadnezzar", branch = "develop" }
-lazy_static = "*"
 bifrost = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
 bifrost_plugins = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
 bifrost_hasher = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
+lazy_static = "*"
 futures = "0.1"
 parking_lot = {version = "0.4", features = ["nightly"]}
 serde = "*"
@@ -16,3 +16,5 @@ serde_derive = "*"
 chashmap = "*"
 log = "0.3"
 log4rs = "*"
+yaml-rust = "*"
+serde_yaml = "0.6"

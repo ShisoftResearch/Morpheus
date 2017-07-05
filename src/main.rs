@@ -18,13 +18,15 @@ extern crate chashmap;
 #[macro_use]
 extern crate log;
 extern crate log4rs;
+extern crate yaml_rust;
+extern crate serde_yaml;
 
 mod graph;
 mod server;
 mod utils;
+mod config;
 
 fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
     info!("Shisoft Morpheus is initializing...");
-
 }
