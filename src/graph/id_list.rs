@@ -38,7 +38,7 @@ pub struct IdList<'a> {
 }
 
 fn empty_list_segment(container_id: &Id, level: usize) -> (Id, Value) {
-    let str_id = format!("IDLIST-{},{}-{}", container_id.higher, container_id.lower, 1);
+    let str_id = format!("IDLIST-{},{}-{}", container_id.higher, container_id.lower, level);
     let list_id = Id::new(container_id.higher, key_hash(&str_id));
     let mut list_map = Map::new();
     list_map.insert_key_id(*NEXT_KEY_ID, Value::Id(Id::unit_id()));
@@ -154,7 +154,7 @@ impl<'a> IdList <'a> {
             last_seg = next_seg_cell;
         }
         if let &mut Value::Map(ref mut map) = &mut last_seg.data {
-            if let Some(&mut Value::Array(ref mut array)) = map.get_mut_by_key_id(*LIST_KEY_ID) {
+            if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
                 array.push(Value::Id(id));
             } else {
                 return Err(IdListError::FormatError);
@@ -191,7 +191,7 @@ impl<'a> IdList <'a> {
             match self.txn.read(seg_id) {
                 Ok(Some(mut seg)) => {
                     if let &mut Value::Map(ref mut map) = &mut seg.data {
-                        if let Some(&mut Value::Array(ref mut array)) = map.get_mut_by_key_id(*LIST_KEY_ID) {
+                        if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
                             if all {
                                 array.retain(|v| { !val_is_id(v, &id) });
                             } else {
