@@ -7,6 +7,7 @@ pub mod general;
 pub mod schema;
 pub mod traversal;
 
+#[derive(Debug)]
 pub enum MorpheusServerError {
     ServerError(ServerError),
     ClientError(NebClientError),

@@ -26,7 +26,11 @@ mod server;
 mod utils;
 mod config;
 
+use neb::server::*;
+
 fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
     info!("Shisoft Morpheus is initializing...");
+    let neb_config = config::neb::options_from_file("config/neb.yaml");
+    let morpheus_server = server::MorpheusServer::new(&neb_config).unwrap();
 }

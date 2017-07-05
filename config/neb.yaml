@@ -1,10 +1,10 @@
-address: "127.0.0.1:5400"
-group-name: "Morpheus"
-standalone: No
-is-meta: Yes
-meta-members:
-  - "127.0.0.1:5400"
-meta-storage: Null
-chunk-count: 64
-memory-size: 8192 # 8GB
-backup-storage: Null
+address: 127.0.0.1:5400
+group_name: Morpheus
+standalone: false
+is_meta: true
+meta_members:
+  - 127.0.0.1:5400
+meta_storage: null
+chunk_count: 8
+memory_size: 8192 # 8GB
+backup_storage: null
