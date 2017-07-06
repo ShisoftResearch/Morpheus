@@ -3,6 +3,8 @@ use bifrost::raft::state_machine::master::ExecError;
 use neb::client::{Client as NebClient, NebClientError};
 use neb::server::{ServerOptions, NebServer, ServerError};
 
+use graph::Graph;
+
 pub mod general;
 pub mod schema;
 pub mod traversal;
@@ -17,7 +19,8 @@ pub enum MorpheusServerError {
 pub struct MorpheusServer {
     neb_server: Arc<NebServer>,
     neb_client: Arc<NebClient>,
-    schema_container: Arc<schema::SchemaContainer>
+    schema_container: Arc<schema::SchemaContainer>,
+    graph: Arc<Graph>
 }
 
 impl MorpheusServer {
@@ -46,10 +49,12 @@ impl MorpheusServer {
             Ok(container) => container,
             Err(e) => return Err(MorpheusServerError::InitSchemaError(e))
         };
+        let graph = Arc::new(Graph::new(&schema_container, &neb_client));
         Ok(Arc::new(MorpheusServer {
             neb_server: neb_server,
             neb_client: neb_client,
-            schema_container: schema_container
+            schema_container: schema_container,
+            graph: graph
         }))
     }
 }

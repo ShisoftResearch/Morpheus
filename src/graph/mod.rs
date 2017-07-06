@@ -69,6 +69,12 @@ pub struct Graph {
 }
 
 impl Graph {
+    pub fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> Graph {
+        Graph {
+            schemas: schemas.clone(),
+            neb_client: neb_client.clone()
+        }
+    }
     pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
         schema.schema_type = SchemaType::Vertex;
         self.schemas.new_schema(schema)
