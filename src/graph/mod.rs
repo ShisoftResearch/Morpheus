@@ -14,6 +14,8 @@ use serde::Serialize;
 pub mod vertex;
 pub mod edge;
 mod id_list;
+#[cfg(test)]
+mod test;
 
 pub enum NewVertexError {
     SchemaNotFound,
@@ -134,6 +136,5 @@ impl Graph {
         let id = Cell::encode_cell_key(schema_id, key);
         self.read_vertex(&id)
     }
-
-
+    
 }
