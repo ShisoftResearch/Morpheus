@@ -1,5 +1,6 @@
 #![feature(proc_macro)]
 #![feature(plugin)]
+#![feature(conservative_impl_trait)]
 #![plugin(bifrost_plugins)]
 
 extern crate neb;

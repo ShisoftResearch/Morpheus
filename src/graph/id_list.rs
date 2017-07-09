@@ -167,14 +167,14 @@ impl<'a> IdList <'a> {
             Err(e) => Err(IdListError::TxnError(e))
         }
     }
-    pub fn remove(&mut self, id: Id, all: bool) -> Result<(), IdListError> {
-        let id_value = Value::Id(id);
+    pub fn remove(&mut self, id: &Id, all: bool) -> Result<(), IdListError> {
+        let id_value = Value::Id(*id);
         let mut contained_segs = { // collect affected segment cell ids
             let mut iter = self.iter()?;
             let mut seg_ids = BTreeSet::new();
             while true {
                 if let Some(iter_id) = iter.next() {
-                    if iter_id == id {
+                    if iter_id == *id {
                         if let Some(ref seg) = iter.current_seg {
                             seg_ids.insert(seg.id());
                         } else {
@@ -193,9 +193,9 @@ impl<'a> IdList <'a> {
                     if let &mut Value::Map(ref mut map) = &mut seg.data {
                         if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
                             if all {
-                                array.retain(|v| { !val_is_id(v, &id) });
+                                array.retain(|v| { !val_is_id(v, id) });
                             } else {
-                                let index = match array.iter().position(|v| { val_is_id(v, &id) }) {
+                                let index = match array.iter().position(|v| { val_is_id(v, id) }) {
                                     Some(pos) => pos, None => return Err(IdListError::Unexpected)
                                 };
                                 array.remove(index);

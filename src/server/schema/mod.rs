@@ -10,7 +10,7 @@ use neb::ram::schema::{Field, Schema};
 use neb::client::{Client as NebClient};
 use neb::server::{ServerMeta as NebServerMeta};
 use server::schema::sm::schema_types::client::SMClient;
-use graph::vertex::VERTEX_TEMPLATE;
+use graph::fields::VERTEX_TEMPLATE;
 
 mod sm;
 
@@ -60,7 +60,7 @@ pub fn head_fields(schema_type: SchemaType) -> Result<Vec<Field>, SchemaError> {
     Ok(match schema_type {
         SchemaType::Vertex => VERTEX_TEMPLATE.clone(),
         SchemaType::Edge(edge_type) => match edge_type {
-            EdgeType::Direct => edge::direct::EDGE_TEMPLATE.clone(),
+            EdgeType::Directed => edge::directed::EDGE_TEMPLATE.clone(),
             EdgeType::Indirect => edge::indirect::EDGE_TEMPLATE.clone(),
             EdgeType::Hyper => edge::hyper::EDGE_TEMPLATE.clone(),
             EdgeType::Simple => return Err(SchemaError::SimpleEdgeShouldNotHaveSchema),

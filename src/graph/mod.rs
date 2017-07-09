@@ -13,6 +13,7 @@ use serde::Serialize;
 
 pub mod vertex;
 pub mod edge;
+pub mod fields;
 mod id_list;
 #[cfg(test)]
 mod test;
@@ -56,9 +57,9 @@ fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> R
             _ => return Err(NewVertexError::DataNotMap)
         }
     };
-    data.insert_key_id(*vertex::INBOUND_KEY_ID, Value::Id(Id::unit_id()));
-    data.insert_key_id(*vertex::OUTBOUND_KEY_ID, Value::Id(Id::unit_id()));
-    data.insert_key_id(*vertex::INDIRECTED_KEY_ID, Value::Id(Id::unit_id()));
+    data.insert_key_id(*fields::INBOUND_KEY_ID, Value::Id(Id::unit_id()));
+    data.insert_key_id(*fields::OUTBOUND_KEY_ID, Value::Id(Id::unit_id()));
+    data.insert_key_id(*fields::INDIRECTED_KEY_ID, Value::Id(Id::unit_id()));
     match Cell::new(&neb_schema, Value::Map(data)) {
         Some(cell) => Ok(cell),
         None => return Err(NewVertexError::CannotGenerateCellByData)
