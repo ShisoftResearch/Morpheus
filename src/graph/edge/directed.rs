@@ -1,14 +1,12 @@
 use neb::ram::schema::Field;
-use neb::ram::types::{TypeId, Id, Value};
+use neb::ram::types::{TypeId, Id};
 use neb::ram::cell::Cell;
-use neb::client::transaction::{Transaction, TxnError};
+use neb::client::transaction::{Transaction};
 use std::sync::Arc;
 
 use super::{TEdge, EdgeType, EdgeError};
 use super::bilateral::BilateralEdge;
-use super::super::vertex::{Vertex};
-use super::super::id_list::IdList;
-use server::schema::{SchemaContainer, SchemaType};
+use server::schema::{SchemaContainer};
 use graph::fields::*;
 
 
@@ -25,13 +23,27 @@ pub struct DirectedEdge {
     cell: Option<Cell>,
 }
 
-impl BilateralEdge for DirectedEdge {
+impl TEdge for DirectedEdge {
 
     type Edge = DirectedEdge;
 
     fn edge_type() -> EdgeType {
         EdgeType::Directed
     }
+    fn from_id(vertex_id: &Id, vertex_field: u64, schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id) -> Result<Self::Edge, EdgeError> {
+        Self::from_id_(vertex_id, vertex_field, schemas, txn, id)
+    }
+
+    fn link(vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Cell>, txn: &mut Transaction, schemas: &Arc<SchemaContainer>) -> Result<Self::Edge, EdgeError> {
+        Self::link_(vertex_a_id, vertex_b_id, body,txn, schemas)
+    }
+
+    fn delete_edge(&mut self, txn: &mut Transaction) -> Result<(), EdgeError> {
+        self.delete_edge_(txn)
+    }
+}
+
+impl BilateralEdge for DirectedEdge {
 
     fn vertex_a_field() -> u64 {
         *OUTBOUND_KEY_ID
@@ -57,7 +69,7 @@ impl BilateralEdge for DirectedEdge {
         *OUTBOUND_KEY_ID
     }
 
-    fn build_edge(a_field: Id, b_field: Id, cell: Option<Cell>) -> <Self as BilateralEdge>::Edge {
+    fn build_edge(a_field: Id, b_field: Id, cell: Option<Cell>) -> Self::Edge {
         DirectedEdge {
             inbound_id: a_field,
             outbound_id: b_field,

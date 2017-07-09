@@ -43,5 +43,5 @@ pub trait TEdge {
         txn: &mut Transaction,
         schemas: &Arc<SchemaContainer>
     ) -> Result<Self::Edge, EdgeError>;
-    fn delete_edge(self, txn: &mut Transaction) -> Result<(), EdgeError>;
+    fn delete_edge(&mut self, txn: &mut Transaction) -> Result<(), EdgeError>;
 }

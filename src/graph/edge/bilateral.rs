@@ -11,10 +11,6 @@ use server::schema::{SchemaContainer, SchemaType};
 
 pub trait BilateralEdge : TEdge {
 
-    type Edge : BilateralEdge;
-
-    fn edge_type() -> EdgeType;
-
     fn vertex_a_field() -> u64;
     fn vertex_b_field() -> u64;
 
@@ -27,7 +23,7 @@ pub trait BilateralEdge : TEdge {
     fn build_edge(a_field: Id, b_field: Id, cell: Option<Cell>) -> Self::Edge;
     fn edge_cell(&self) -> &Option<Cell>;
 
-    fn from_id(
+    fn from_id_(
         vertex_id: &Id, vertex_field: u64,
         schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
     ) -> Result<Self::Edge, EdgeError> {
@@ -75,7 +71,7 @@ pub trait BilateralEdge : TEdge {
         };
         Ok(Self::build_edge(a_id, b_id, edge_cell))
     }
-    fn link(
+    fn link_(
         vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Cell>,
         txn: &mut Transaction,
         schemas: &Arc<SchemaContainer>
@@ -103,7 +99,7 @@ pub trait BilateralEdge : TEdge {
             .add(&vertex_b_pointer).map_err(EdgeError::IdListError)?;
         Ok(Self::build_edge(*vertex_a_id, *vertex_b_id, edge_cell))
     }
-    fn delete_edge(&mut self, txn: &mut Transaction) -> Result<(), EdgeError> {
+    fn delete_edge_(&mut self, txn: &mut Transaction) -> Result<(), EdgeError> {
         let (v_a_removal, v_b_removal) = match self.edge_cell() {
             &Some(ref cell) => {
                 txn.remove(&cell.id()).map_err(EdgeError::TransactionError)?;
