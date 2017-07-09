@@ -1,6 +1,7 @@
 pub mod directed;
 pub mod indirect;
 pub mod hyper;
+pub mod bilateral;
 
 use neb::ram::types::Id;
 use neb::client::transaction::{Transaction, TxnError};
@@ -29,7 +30,8 @@ pub enum EdgeError {
 }
 
 pub trait TEdge {
-    type Edge;
+
+    type Edge : TEdge;
 
     fn edge_type() -> EdgeType;
     fn from_id(
@@ -37,7 +39,7 @@ pub trait TEdge {
         schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
     ) -> Result<Self::Edge, EdgeError>;
     fn link(
-        from_id: &Id, to_id: &Id, body: Option<Cell>,
+        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Cell>,
         txn: &mut Transaction,
         schemas: &Arc<SchemaContainer>
     ) -> Result<Self::Edge, EdgeError>;
