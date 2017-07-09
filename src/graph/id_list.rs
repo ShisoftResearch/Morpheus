@@ -126,7 +126,7 @@ impl<'a> IdList <'a> {
     pub fn count(&mut self) -> Result<usize, IdListError> {
         Ok(self.iter()?.count())
     }
-    pub fn add(&mut self, id: Id) -> Result<(), IdListError> {
+    pub fn add(&mut self, id: &Id) -> Result<(), IdListError> {
         let list_root_id = self.get_root_list_id(true)?;
         let mut list_level = 0;
         let mut last_seg = {
@@ -155,7 +155,7 @@ impl<'a> IdList <'a> {
         }
         if let &mut Value::Map(ref mut map) = &mut last_seg.data {
             if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
-                array.push(Value::Id(id));
+                array.push(Value::Id(*id));
             } else {
                 return Err(IdListError::FormatError);
             }

@@ -46,18 +46,14 @@ impl TEdge for DirectedEdge {
         let mut outbound_id = Id::unit_id();
         let edge_cell = match cell_schema_type {
             SchemaType::Vertex => {
-                let inbound_field = *INBOUND_KEY_ID;
-                let outbound_field = *OUTBOUND_KEY_ID;
-                match vertex_field {
-                    inbound_field => {
-                        inbound_id = *vertex_id;
-                        outbound_id = *id;
-                    },
-                    outbound_field => {
-                        outbound_id = *vertex_id;
-                        inbound_id = *id;
-                    },
-                    _ => return Err(EdgeError::WrongVertexField)
+                if vertex_field == *INBOUND_KEY_ID {
+                    inbound_id = *vertex_id;
+                    outbound_id = *id;
+                } else if vertex_field == *OUTBOUND_KEY_ID {
+                    outbound_id = *vertex_id;
+                    inbound_id = *id;
+                } else {
+                    return Err(EdgeError::WrongVertexField);
                 }
                 None
             },
@@ -106,9 +102,9 @@ impl TEdge for DirectedEdge {
             None
         };
         IdList::from_txn_and_container(txn, from_id, *OUTBOUND_KEY_ID)
-            .add(from_vertex_pointer).map_err(EdgeError::IdListError)?;
+            .add(&from_vertex_pointer).map_err(EdgeError::IdListError)?;
         IdList::from_txn_and_container(txn, to_id, *INBOUND_KEY_ID)
-            .add(to_vertex_pointer).map_err(EdgeError::IdListError)?;
+            .add(&to_vertex_pointer).map_err(EdgeError::IdListError)?;
         Ok(DirectedEdge {
             inbound_id: *from_id,
             outbound_id: *to_id,
