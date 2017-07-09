@@ -1,5 +1,5 @@
 pub mod directed;
-pub mod indirect;
+pub mod undirectd;
 pub mod hyper;
 pub mod bilateral;
 
@@ -14,7 +14,7 @@ use std::sync::Arc;
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub enum EdgeType {
     Directed,
-    Indirect,
+    Undirected,
     Hyper,
     Simple
 }

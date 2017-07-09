@@ -61,7 +61,7 @@ pub fn head_fields(schema_type: SchemaType) -> Result<Vec<Field>, SchemaError> {
         SchemaType::Vertex => VERTEX_TEMPLATE.clone(),
         SchemaType::Edge(edge_type) => match edge_type {
             EdgeType::Directed => edge::directed::EDGE_TEMPLATE.clone(),
-            EdgeType::Indirect => edge::indirect::EDGE_TEMPLATE.clone(),
+            EdgeType::Undirected => edge::undirectd::EDGE_TEMPLATE.clone(),
             EdgeType::Hyper => edge::hyper::EDGE_TEMPLATE.clone(),
             EdgeType::Simple => return Err(SchemaError::SimpleEdgeShouldNotHaveSchema),
         },
