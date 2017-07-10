@@ -10,6 +10,10 @@ use utils::transaction::set_map_by_key_id;
 pub const NEXT_KEY: &'static str = "_next";
 pub const LIST_KEY: &'static str = "_list";
 
+pub const ID_TYPES_MAP_KEY: &'static str = "_edges";
+pub const ID_TYPE_SCHEMA_ID_KEY: &'static str = "_type";
+pub const ID_TYPE_ID_LIST_KEY: &'static str = "_list";
+
 pub enum IdListError {
     ContainerCellNotFound,
     FormatError,
@@ -20,10 +24,17 @@ pub enum IdListError {
 pub static ID_LIST_SCHEMA_ID: u32 = 100;
 
 lazy_static! {
+    pub static ref ID_TYPE_LIST: Vec<Field> = vec![
+        Field::new(&String::from(ID_TYPES_MAP_KEY), TypeId::Map as u32, false, true,
+            Some(vec![
+                Field::new(&String::from(ID_TYPE_SCHEMA_ID_KEY), TypeId::U32 as u32, false, false, None),
+                Field::new(&String::from(ID_TYPE_ID_LIST_KEY), TypeId::Id as u32, false, true, None)
+            ]))
+    ];
     pub static ref ID_LINKED_LIST: Vec<Field> = vec![
-            Field::new(&String::from(NEXT_KEY), TypeId::Id as u32, false, false, None),
-            Field::new(&String::from(LIST_KEY), TypeId::Id as u32, false, true, None)
-          ];
+        Field::new(&String::from(NEXT_KEY), TypeId::Id as u32, false, false, None),
+        Field::new(&String::from(LIST_KEY), TypeId::Id as u32, false, true, None)
+    ];
     pub static ref LIST_CAPACITY: usize =
         ((MAX_CELL_SIZE - u32_io::size(0) - id_io::size(0)) / id_io::size(0));
     pub static ref NEXT_KEY_ID: u64 = key_hash(&String::from(NEXT_KEY));
