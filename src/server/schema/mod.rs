@@ -56,17 +56,24 @@ impl MorpheusSchema {
     }
 }
 
-pub fn head_fields(schema_type: SchemaType) -> Result<Vec<Field>, SchemaError> {
-    Ok(match schema_type {
+pub fn cell_fields(schema_type: SchemaType, body_fields: &mut Vec<Field>) -> Result<Vec<Field>, SchemaError> {
+    let mut fields = match schema_type {
         SchemaType::Vertex => VERTEX_TEMPLATE.clone(),
         SchemaType::Edge(edge_type) => match edge_type {
             EdgeType::Directed => edge::directed::EDGE_TEMPLATE.clone(),
             EdgeType::Undirected => edge::undirectd::EDGE_TEMPLATE.clone(),
             EdgeType::Hyper => edge::hyper::EDGE_TEMPLATE.clone(),
-            EdgeType::Simple => return Err(SchemaError::SimpleEdgeShouldNotHaveSchema),
+            EdgeType::Simple => Vec::new(),
         },
         SchemaType::Unspecified => return Err(SchemaError::SchemaTypeUnspecified)
-    })
+    };
+    match schema_type {
+        SchemaType::Edge(EdgeType::Simple) => {
+            if body_fields.len() > 0 {return Err(SchemaError::SimpleEdgeShouldNotHaveSchema);}
+        },
+        _ => {fields.append(body_fields);}
+    }
+    Ok(fields)
 }
 
 impl SchemaContainer {
@@ -111,8 +118,7 @@ impl SchemaContainer {
 
     pub fn new_schema(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
         let schema_type = schema.schema_type;
-        let mut schema_fields = head_fields(schema_type)?;
-        schema_fields.append(&mut schema.fields);
+        let mut schema_fields = cell_fields(schema_type, &mut schema.fields)?;
         let mut neb_schema = Schema::new(
             schema.name.clone(),
             schema.key_field.clone(),
