@@ -81,3 +81,10 @@ impl BilateralEdge for DirectedEdge {
         &self.cell
     }
 }
+
+pub struct DirectedHyperEdge {
+    inbound_ids: Vec<Id>,
+    outbound_ids: Vec<Id>,
+    cell: Cell,
+}
+
