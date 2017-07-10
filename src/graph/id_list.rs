@@ -96,7 +96,7 @@ impl<'a> IdList <'a> {
                             Ok(()) => {},
                             Err(e) => return Err(IdListError::TxnError(e))
                         }
-                        set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(list_id));
+                        set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(list_id)).map_err(IdListError::TxnError)?;
                         Ok(list_id)
                     } else {
                         Ok(id)
@@ -150,7 +150,7 @@ impl<'a> IdList <'a> {
                 Ok(()) => {},
                 Err(e) => return Err(IdListError::TxnError(e))
             }
-            set_map_by_key_id(&mut self.txn, &last_seg.id(), *NEXT_KEY_ID, Value::Id(next_seg_id));
+            set_map_by_key_id(&mut self.txn, &last_seg.id(), *NEXT_KEY_ID, Value::Id(next_seg_id)).map_err(IdListError::TxnError)?;
             last_seg = next_seg_cell;
         }
         if let &mut Value::Map(ref mut map) = &mut last_seg.data {
