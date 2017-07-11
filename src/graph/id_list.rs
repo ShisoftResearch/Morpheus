@@ -131,37 +131,34 @@ impl<'a> IdList <'a> {
                             .read(&type_list_id)
                             .map_err(IdListError::TxnError)?
                             { cell } else { return Err(IdListError::Unexpected); }; // in this time type list should existed
-
-                        let list_id = {
-                            if let &mut Value::Array(ref mut type_list) = &mut type_list_cell.data[*ID_TYPES_MAP_ID] {
-                                if let Some(id_list_pair) = type_list.iter().find(|val| { // trying to find schema list in the type list
-                                    match val[*ID_TYPES_SCHEMA_ID_ID] {
-                                        Value::U32(schema_id) => schema_id == self.schema_id,
-                                        _ => false
-                                    }
-                                }) { // if found, return it's id
-                                    if let Value::Id(list_id) = id_list_pair[*ID_TYPES_LIST_ID] {
-                                        return Ok(list_id);
-                                    } else {
-                                        return Err(IdListError::Unexpected)
-                                    }
+                        if let Value::Array(ref type_list) = type_list_cell.data[*ID_TYPES_MAP_ID] {
+                            if let Some(id_list_pair) = type_list.iter().find(|val| { // trying to find schema list in the type list
+                                match val[*ID_TYPES_SCHEMA_ID_ID] {
+                                    Value::U32(schema_id) => schema_id == self.schema_id,
+                                    _ => false
                                 }
-                                // if not, create the id list and add it into schema list
-                                let (list_id, list_value) = empty_list_segment(&self.container_id, self.field_id, self.schema_id, 0);
-                                let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
-                                self.txn.write(&list_cell).map_err(IdListError::TxnError)?; // create schema id list
+                            }) { // if found, return it's id
+                                if let Value::Id(list_id) = id_list_pair[*ID_TYPES_LIST_ID] {
+                                    return Ok(list_id);
+                                } else {
+                                    return Err(IdListError::Unexpected)
+                                }
+                            }
+                        } else { return Err(IdListError::Unexpected); }
+                        { // if not, create the id list and add it into schema list
+                            let (list_id, list_value) = empty_list_segment(&self.container_id, self.field_id, self.schema_id, 0);
+                            let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
+                            self.txn.write(&list_cell).map_err(IdListError::TxnError)?; // create schema id list
 
-                                let mut id_list_pair_map = Map::new();
-                                id_list_pair_map.insert_key_id(*ID_TYPES_SCHEMA_ID_ID, Value::U32(self.schema_id));
-                                id_list_pair_map.insert_key_id(*ID_TYPES_LIST_ID, Value::Id(list_id));
+                            let mut id_list_pair_map = Map::new();
+                            id_list_pair_map.insert_key_id(*ID_TYPES_SCHEMA_ID_ID, Value::U32(self.schema_id));
+                            id_list_pair_map.insert_key_id(*ID_TYPES_LIST_ID, Value::Id(list_id));
+                            if let &mut Value::Array(ref mut type_list) = &mut type_list_cell.data[*ID_TYPES_MAP_ID] {
                                 type_list.push(Value::Map(id_list_pair_map));
-                                list_id // have to break it due to ownership -----------------------------------------------
-                            } else { //                                                                                     |
-                                return Err(IdListError::Unexpected); //                                                     |
-                            } //                                                                                            |
-                        }; //                                                                                               |
-                        self.txn.update(&type_list_cell).map_err(IdListError::TxnError)?; // update type list               |
-                        return Ok(list_id); // <----------------------------------------------------------------------------
+                            } else { return Err(IdListError::Unexpected); }
+                            self.txn.update(&type_list_cell).map_err(IdListError::TxnError)?; // update type list               |
+                            return Ok(list_id);
+                        }
                     }
                 } else {
                     Err(IdListError::FormatError)
