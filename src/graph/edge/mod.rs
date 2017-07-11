@@ -36,12 +36,12 @@ pub trait TEdge {
     fn edge_type() -> EdgeType;
     fn from_id(
         vertex_id: &Id, vertex_field: u64,
-        schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
+        schema_id: u32, schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
     ) -> Result<Self::Edge, EdgeError>;
     fn link(
         vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Cell>,
         txn: &mut Transaction,
-        schemas: &Arc<SchemaContainer>
+        schema_id: u32, schemas: &Arc<SchemaContainer>
     ) -> Result<Self::Edge, EdgeError>;
     fn delete_edge(&mut self, txn: &mut Transaction) -> Result<(), EdgeError>;
 }

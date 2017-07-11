@@ -20,12 +20,13 @@ pub trait BilateralEdge : TEdge {
     fn edge_a_field() -> u64;
     fn edge_b_field() -> u64;
 
-    fn build_edge(a_field: Id, b_field: Id, cell: Option<Cell>) -> Self::Edge;
+    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<Cell>) -> Self::Edge;
     fn edge_cell(&self) -> &Option<Cell>;
+    fn schema_id(&self) -> u32;
 
     fn from_id_(
         vertex_id: &Id, vertex_field: u64,
-        schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
+        schema_id: u32, schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
     ) -> Result<Self::Edge, EdgeError> {
         let trace_cell = match txn.read(id) {
             Ok(Some(cell)) => cell,
@@ -69,12 +70,12 @@ pub trait BilateralEdge : TEdge {
             },
             _ => return Err(EdgeError::WrongSchema)
         };
-        Ok(Self::build_edge(a_id, b_id, edge_cell))
+        Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell))
     }
     fn link_(
         vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Cell>,
         txn: &mut Transaction,
-        schemas: &Arc<SchemaContainer>
+        schema_id: u32, schemas: &Arc<SchemaContainer>
     ) -> Result<Self::Edge, EdgeError> {
         let mut vertex_a_pointer = Id::unit_id();
         let mut vertex_b_pointer = Id::unit_id();
@@ -93,11 +94,11 @@ pub trait BilateralEdge : TEdge {
             vertex_b_pointer = *vertex_a_id;
             None
         };
-        IdList::from_txn_and_container(txn, vertex_a_id, Self::vertex_a_field())
+        IdList::from_txn_and_container(txn, vertex_a_id, Self::vertex_a_field(), schema_id)
             .add(&vertex_a_pointer).map_err(EdgeError::IdListError)?;
-        IdList::from_txn_and_container(txn, vertex_b_id, Self::vertex_b_field())
+        IdList::from_txn_and_container(txn, vertex_b_id, Self::vertex_b_field(), schema_id)
             .add(&vertex_b_pointer).map_err(EdgeError::IdListError)?;
-        Ok(Self::build_edge(*vertex_a_id, *vertex_b_id, edge_cell))
+        Ok(Self::build_edge(*vertex_a_id, *vertex_b_id, schema_id, edge_cell))
     }
     fn delete_edge_(&mut self, txn: &mut Transaction) -> Result<(), EdgeError> {
         let (v_a_removal, v_b_removal) = match self.edge_cell() {
@@ -109,9 +110,10 @@ pub trait BilateralEdge : TEdge {
                 (*self.vertex_b(), *self.vertex_a())
             }
         };
-        IdList::from_txn_and_container(txn, self.vertex_a(), Self::vertex_a_field())
+        let schema_id = self.schema_id();
+        IdList::from_txn_and_container(txn, self.vertex_a(), Self::vertex_a_field(), self.schema_id())
             .remove(&v_a_removal, false).map_err(EdgeError::IdListError)?;
-        IdList::from_txn_and_container(txn, self.vertex_b(), Self::vertex_b_field())
+        IdList::from_txn_and_container(txn, self.vertex_b(), Self::vertex_b_field(), self.schema_id())
             .remove(&v_b_removal, false).map_err(EdgeError::IdListError)?;
         Ok(())
     }
