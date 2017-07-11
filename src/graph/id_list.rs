@@ -145,7 +145,8 @@ impl<'a> IdList <'a> {
                                 }
                             }
                         } else { return Err(IdListError::Unexpected); }
-                        { // if not, create the id list and add it into schema list
+                        if ensure_container {
+                            // if not, create the id list and add it into schema list
                             let (list_id, list_value) = empty_list_segment(&self.container_id, self.field_id, self.schema_id, 0);
                             let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
                             self.txn.write(&list_cell).map_err(IdListError::TxnError)?; // create schema id list
@@ -158,6 +159,8 @@ impl<'a> IdList <'a> {
                             } else { return Err(IdListError::Unexpected); }
                             self.txn.update(&type_list_cell).map_err(IdListError::TxnError)?; // update type list               |
                             return Ok(list_id);
+                        } else {
+                            return Ok(Id::unit_id());
                         }
                     }
                 } else {
