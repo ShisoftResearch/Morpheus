@@ -119,7 +119,7 @@ impl<'a> IdList <'a> {
                         if id.is_unit_id() && ensure_container {
                             let (type_list_id, type_list) = empty_type_list(&self.container_id, self.field_id);
                             let type_list_cell = Cell::new_with_id(TYPE_LIST_SCHEMA_ID, &type_list_id, type_list);
-                            self.txn.write(&type_list_cell).map_err(IdListError::TxnError);
+                            self.txn.write(&type_list_cell).map_err(IdListError::TxnError)?;
                             set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(type_list_id)).map_err(IdListError::TxnError)?;
                             type_list_id
                         } else {id}
@@ -231,17 +231,13 @@ impl<'a> IdList <'a> {
         let mut contained_segs = { // collect affected segment cell ids
             let mut iter = self.iter()?;
             let mut seg_ids = BTreeSet::new();
-            while true {
-                if let Some(iter_id) = iter.next() {
-                    if iter_id == *id {
-                        if let Some(ref seg) = iter.current_seg {
-                            seg_ids.insert(seg.id());
-                        } else {
-                            return Err(IdListError::Unexpected);
-                        }
+            while let Some(iter_id) = iter.next() {
+                if iter_id == *id {
+                    if let Some(ref seg) = iter.current_seg {
+                        seg_ids.insert(seg.id());
+                    } else {
+                        return Err(IdListError::Unexpected);
                     }
-                } else {
-                    break;
                 }
             }
             seg_ids
