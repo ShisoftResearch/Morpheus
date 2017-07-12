@@ -39,7 +39,7 @@ pub enum CellType {
 }
 
 fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<Cell, NewVertexError> {
-    let schema_id = vertex.schema;
+    let schema_id = vertex.schema();
     if let Some(stype) = schemas.schema_type(schema_id) {
         if stype != SchemaType::Vertex {
             return Err(NewVertexError::SchemaNotVertex)
@@ -52,8 +52,8 @@ fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> R
         None => return Err(NewVertexError::SchemaNotFound)
     };
     let mut data = {
-        match vertex.data {
-            Value::Map(mut map) => map,
+        match vertex.cell.data {
+            Value::Map(map) => map,
             _ => return Err(NewVertexError::DataNotMap)
         }
     };

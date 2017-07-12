@@ -4,30 +4,27 @@ use neb::client::transaction::{Transaction, TxnError};
 use graph::fields::*;
 
 pub struct Vertex {
-    pub id: Id,
-    pub schema: u32,
-    pub data: Value,
+    pub cell: Cell
 }
 
 pub fn cell_to_vertex(cell: Cell) -> Vertex {
     Vertex {
-        id: cell.header.id(),
-        schema: cell.header.schema,
-        data: cell.data
+        cell: cell
     }
 }
 
 pub fn vertex_to_cell(vertex: Vertex) -> Cell {
-    Cell::new_with_id(vertex.schema, &vertex.id, vertex.data)
+    vertex.cell
 }
 
 impl Vertex {
     pub fn new(schema: u32, data: Map) -> Vertex {
         Vertex {
-            id: Id::unit_id(),
-            schema: schema,
-            data: Value::Map(data)
+            cell: Cell::new_with_id(schema, &Id::unit_id(), Value::Map(data))
         }
+    }
+    pub fn schema(&self) -> u32 {
+        self.cell.header.schema
     }
 }
 
