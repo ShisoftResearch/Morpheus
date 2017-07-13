@@ -3,7 +3,7 @@ use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction, TxnError};
 use std::sync::Arc;
 
-use super::{TEdge, EdgeType, EdgeError};
+use super::{TEdge, EdgeType, EdgeError, EdgeAttributes};
 use super::super::vertex::{Vertex};
 use super::super::id_list::IdList;
 use server::schema::{SchemaContainer, SchemaType};
@@ -51,8 +51,8 @@ pub trait BilateralEdge : TEdge {
                 }
                 None
             },
-            SchemaType::Edge(edge_type) => {
-                if edge_type == Self::edge_type() {
+            SchemaType::Edge(edge_attrs) => {
+                if edge_attrs.edge_type == Self::edge_type() {
                     if let (
                         &Value::Id(e_a_id),
                         &Value::Id(e_b_id)
@@ -79,20 +79,31 @@ pub trait BilateralEdge : TEdge {
     ) -> Result<Self::Edge, EdgeError> {
         let mut vertex_a_pointer = Id::unit_id();
         let mut vertex_b_pointer = Id::unit_id();
-        let edge_cell = if let Some(mut body_cell) = body {
-            if schemas.schema_type(body_cell.header.schema) == Some(SchemaType::Edge(Self::edge_type())) {
-                body_cell.header.set_id(&Id::rand());
-                body_cell.data[Self::edge_a_field()] = Value::Id(*vertex_a_id);
-                body_cell.data[Self::edge_b_field()] = Value::Id(*vertex_b_id);
-                txn.write(&body_cell).map_err(EdgeError::TransactionError)?;
-                vertex_a_pointer = body_cell.id();
-                vertex_b_pointer = body_cell.id();
-                Some(body_cell)
+        let edge_cell = {
+            if let Some(SchemaType::Edge(ea)) = schemas.schema_type(schema_id) {
+                if ea.edge_type != Self::edge_type() { return Err(EdgeError::WrongSchema); }
+                if ea.has_body {
+                    if let Some(mut body_cell) = body {
+                        body_cell.header.set_id(&Id::rand());
+                        body_cell.data[Self::edge_a_field()] = Value::Id(*vertex_a_id);
+                        body_cell.data[Self::edge_b_field()] = Value::Id(*vertex_b_id);
+                        txn.write(&body_cell).map_err(EdgeError::TransactionError)?;
+                        vertex_a_pointer = body_cell.id();
+                        vertex_b_pointer = body_cell.id();
+                        Some(body_cell)
+                    } else {
+                        return Err(EdgeError::NormalEdgeShouldHaveBody);
+                    }
+                } else {
+                    if body.is_none() {
+                        vertex_a_pointer = *vertex_b_id;
+                        vertex_b_pointer = *vertex_a_id;
+                        None
+                    } else {
+                        return Err(EdgeError::SimpleEdgeShouldHaveNoBody);
+                    }
+                }
             } else { return Err(EdgeError::WrongSchema) }
-        } else {
-            vertex_a_pointer = *vertex_b_id;
-            vertex_b_pointer = *vertex_a_id;
-            None
         };
         IdList::from_txn_and_container(txn, vertex_a_id, Self::vertex_a_field(), schema_id)
             .add(&vertex_a_pointer).map_err(EdgeError::IdListError)?;

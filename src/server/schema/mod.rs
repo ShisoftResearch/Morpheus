@@ -2,7 +2,7 @@ use bifrost::rpc::*;
 use bifrost::raft::RaftService;
 use bifrost::raft::client::RaftClient;
 use bifrost::raft::state_machine::master::ExecError;
-use graph::edge::{EdgeType};
+use graph::edge::{EdgeAttributes, EdgeType};
 use graph::edge;
 use chashmap::CHashMap;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ mod sm;
 pub enum SchemaType {
     Unspecified,
     Vertex,
-    Edge(EdgeType)
+    Edge(EdgeAttributes)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -59,20 +59,17 @@ impl MorpheusSchema {
 pub fn cell_fields(schema_type: SchemaType, body_fields: &mut Vec<Field>) -> Result<Vec<Field>, SchemaError> {
     let mut fields = match schema_type {
         SchemaType::Vertex => VERTEX_TEMPLATE.clone(),
-        SchemaType::Edge(edge_type) => match edge_type {
-            EdgeType::Directed => edge::directed::EDGE_TEMPLATE.clone(),
-            EdgeType::Undirected => edge::undirectd::EDGE_TEMPLATE.clone(),
-            EdgeType::Hyper => edge::hyper::EDGE_TEMPLATE.clone(),
-            EdgeType::Simple => Vec::new(),
+        SchemaType::Edge(edge_attr) => {
+            if !edge_attr.has_body && body_fields.len() > 0 {
+                return Err(SchemaError::SimpleEdgeShouldNotHaveSchema);
+            }
+            match edge_attr.edge_type {
+                EdgeType::Directed => edge::directed::EDGE_TEMPLATE.clone(),
+                EdgeType::Undirected => edge::undirectd::EDGE_TEMPLATE.clone(),
+            }
         },
         SchemaType::Unspecified => return Err(SchemaError::SchemaTypeUnspecified)
     };
-    match schema_type {
-        SchemaType::Edge(EdgeType::Simple) => {
-            if body_fields.len() > 0 {return Err(SchemaError::SimpleEdgeShouldNotHaveSchema);}
-        },
-        _ => {fields.append(body_fields);}
-    }
     Ok(fields)
 }
 

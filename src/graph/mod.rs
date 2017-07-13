@@ -32,6 +32,11 @@ pub enum ReadVertexError {
     ReadError(ReadError),
 }
 
+pub enum LinkVerticesError {
+    EdgeSchemaNotFound,
+    SchemaNotEdge,
+}
+
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum CellType {
     Vertex,
@@ -82,11 +87,12 @@ impl Graph {
         schema.schema_type = SchemaType::Vertex;
         self.schemas.new_schema(schema)
     }
-    pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_type: edge::EdgeType) -> Result<(), SchemaError> {
-        schema.schema_type = SchemaType::Edge(edge_type);
+    pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_attrs: edge::EdgeAttributes) -> Result<(), SchemaError> {
+        schema.schema_type = SchemaType::Edge(edge_attrs);
         self.schemas.new_schema(schema)
     }
-    pub fn new_vertex(&self, vertex: Vertex) -> Result<Vertex, NewVertexError> {
+    pub fn new_vertex(&self, schema_id: u32, data: Map) -> Result<Vertex, NewVertexError> {
+        let vertex = Vertex::new(schema_id, data);
         let mut cell = vertex_to_cell_for_write(&self.schemas, vertex)?;
         let header = match self.neb_client.write_cell(&cell) {
             Ok(Ok(header)) => header,
@@ -134,5 +140,14 @@ impl Graph {
         let id = Cell::encode_cell_key(schema_id, key);
         self.read_vertex(&id)
     }
+
+//    pub fn link(&self, schema_id: u32, from_id: &Id, to_id: &Id) -> Result<impl edge::TEdge, LinkVerticesError> {
+//        let edge_type = match self.schemas.schema_type(schema_id) {
+//            Some(SchemaType::Edge(et)) => et,
+//            Some(_) => return Err(LinkVerticesError::SchemaNotEdge),
+//            None => return Err(LinkVerticesError::EdgeSchemaNotFound)
+//        };
+//
+//    }
     
 }

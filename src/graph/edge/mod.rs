@@ -14,9 +14,13 @@ use std::sync::Arc;
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub enum EdgeType {
     Directed,
-    Undirected,
-    Hyper,
-    Simple
+    Undirected
+}
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
+pub struct EdgeAttributes {
+    pub edge_type: EdgeType,
+    pub has_body: bool
 }
 
 pub enum EdgeError {
@@ -26,7 +30,9 @@ pub enum EdgeError {
     CellNotFound,
     WrongVertexField,
     WrongEdgeType,
-    IdListError(IdListError)
+    IdListError(IdListError),
+    SimpleEdgeShouldHaveNoBody,
+    NormalEdgeShouldHaveBody
 }
 
 pub trait TEdge {
