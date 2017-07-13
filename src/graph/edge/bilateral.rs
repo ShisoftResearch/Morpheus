@@ -1,11 +1,10 @@
 use neb::ram::types::{Id, Value};
 use neb::ram::cell::Cell;
-use neb::client::transaction::{Transaction, TxnError};
+use neb::client::transaction::Transaction;
 use neb::utils::rand;
 use std::sync::Arc;
 
-use super::{TEdge, EdgeType, EdgeError, EdgeAttributes};
-use super::super::vertex::{Vertex};
+use super::{TEdge, EdgeError};
 use super::super::id_list::IdList;
 use server::schema::{SchemaContainer, SchemaType};
 
@@ -103,7 +102,7 @@ pub trait BilateralEdge : TEdge {
                             vertex_b_pointer = *vertex_a_id;
                             None
                         } else {
-                            return Err(EdgeError::SimpleEdgeShouldHaveNoBody);
+                            return Err(EdgeError::SimpleEdgeShouldNotHaveBody);
                         }
                     }
                 },
@@ -127,7 +126,6 @@ pub trait BilateralEdge : TEdge {
                 (*self.vertex_b(), *self.vertex_a())
             }
         };
-        let schema_id = self.schema_id();
         IdList::from_txn_and_container(txn, self.vertex_a(), Self::vertex_a_field(), self.schema_id())
             .remove(&v_a_removal, false).map_err(EdgeError::IdListError)?;
         IdList::from_txn_and_container(txn, self.vertex_b(), Self::vertex_b_field(), self.schema_id())

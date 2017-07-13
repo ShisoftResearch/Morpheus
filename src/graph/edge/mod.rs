@@ -31,7 +31,7 @@ pub enum EdgeError {
     WrongVertexField,
     WrongEdgeType,
     IdListError(IdListError),
-    SimpleEdgeShouldHaveNoBody,
+    SimpleEdgeShouldNotHaveBody,
     NormalEdgeShouldHaveBody
 }
 
