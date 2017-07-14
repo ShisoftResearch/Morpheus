@@ -17,8 +17,7 @@ pub const ID_TYPE_ID_LIST_KEY: &'static str = "_list";
 pub enum IdListError {
     ContainerCellNotFound,
     FormatError,
-    Unexpected,
-    TxnError(TxnError),
+    Unexpected
 }
 
 pub static ID_LIST_SCHEMA_ID: u32 = 100;
@@ -91,12 +90,9 @@ fn val_is_id(val: &Value, id: &Id) -> bool {
     }
 }
 
-fn seg_cell_by_id(txn: &mut Transaction, id: Option<Id>) -> Result<Option<Cell>, IdListError> {
+fn seg_cell_by_id(txn: &mut Transaction, id: Option<Id>) -> Result<Option<Cell>, TxnError> {
     match id {
-        Some(id) => match txn.read(&id) {
-            Ok(cell) => Ok(cell),
-            Err(e) => Err(IdListError::TxnError(e))
-        },
+        Some(id) => txn.read(&id),
         None => Ok(None)
     }
 }
@@ -110,27 +106,24 @@ impl<'a> IdList <'a> {
             schema_id: schema_id
         }
     }
-    fn get_root_list_id(&mut self, ensure_container: bool) -> Result<Id, IdListError> {
-        match self.txn.read_selected(&self.container_id, &vec![self.field_id]) {
-            Err(e) => Err(IdListError::TxnError(e)),
-            Ok(Some(fields)) => {
+    fn get_root_list_id(&mut self, ensure_container: bool) -> Result<Result<Id, IdListError>, TxnError> {
+        match self.txn.read_selected(&self.container_id, &vec![self.field_id])? {
+            Some(fields) => {
                 if let Some(&Value::Id(id)) = fields.get(0) {
                     let type_list_id = {
                         if id.is_unit_id() && ensure_container {
                             let (type_list_id, type_list) = empty_type_list(&self.container_id, self.field_id);
                             let type_list_cell = Cell::new_with_id(TYPE_LIST_SCHEMA_ID, &type_list_id, type_list);
-                            self.txn.write(&type_list_cell).map_err(IdListError::TxnError)?;
-                            set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(type_list_id)).map_err(IdListError::TxnError)?;
+                            self.txn.write(&type_list_cell)?;
+                            set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(type_list_id))?;
                             type_list_id
                         } else {id}
                     };
                     if type_list_id.is_unit_id() {
-                        return Ok(type_list_id); // return unit id as not assigned
+                        return Ok(Ok(type_list_id)); // return unit id as not assigned
                     } else {
-                        let mut type_list_cell = if let Some(cell) = self.txn
-                            .read(&type_list_id)
-                            .map_err(IdListError::TxnError)?
-                            { cell } else { return Err(IdListError::Unexpected); }; // in this time type list should existed
+                        let mut type_list_cell = if let Some(cell) = self.txn.read(&type_list_id)?
+                            { cell } else { return Ok(Err(IdListError::Unexpected)); }; // in this time type list should existed
                         if let Value::Array(ref type_list) = type_list_cell.data[*ID_TYPES_MAP_ID] {
                             if let Some(id_list_pair) = type_list.iter().find(|val| { // trying to find schema list in the type list
                                 match val[*ID_TYPES_SCHEMA_ID_ID] {
@@ -139,61 +132,69 @@ impl<'a> IdList <'a> {
                                 }
                             }) { // if found, return it's id
                                 if let Value::Id(list_id) = id_list_pair[*ID_TYPES_LIST_ID] {
-                                    return Ok(list_id);
+                                    return Ok(Ok(list_id));
                                 } else {
-                                    return Err(IdListError::Unexpected)
+                                    return Ok(Err(IdListError::Unexpected))
                                 }
                             }
-                        } else { return Err(IdListError::Unexpected); }
+                        } else { return Ok(Err(IdListError::Unexpected)); }
                         if ensure_container {
                             // if not, create the id list and add it into schema list
                             let (list_id, list_value) = empty_list_segment(&self.container_id, self.field_id, self.schema_id, 0);
                             let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
-                            self.txn.write(&list_cell).map_err(IdListError::TxnError)?; // create schema id list
+                            self.txn.write(&list_cell)?; // create schema id list
 
                             let mut id_list_pair_map = Map::new();
                             id_list_pair_map.insert_key_id(*ID_TYPES_SCHEMA_ID_ID, Value::U32(self.schema_id));
                             id_list_pair_map.insert_key_id(*ID_TYPES_LIST_ID, Value::Id(list_id));
                             if let &mut Value::Array(ref mut type_list) = &mut type_list_cell.data[*ID_TYPES_MAP_ID] {
                                 type_list.push(Value::Map(id_list_pair_map));
-                            } else { return Err(IdListError::Unexpected); }
-                            self.txn.update(&type_list_cell).map_err(IdListError::TxnError)?; // update type list               |
-                            return Ok(list_id);
+                            } else { return Ok(Err(IdListError::Unexpected)); }
+                            self.txn.update(&type_list_cell)?; // update type list               |
+                            return Ok(Ok(list_id));
                         } else {
-                            return Ok(Id::unit_id());
+                            return Ok(Ok(Id::unit_id()));
                         }
                     }
                 } else {
-                    Err(IdListError::FormatError)
+                    Ok(Err(IdListError::FormatError))
                 }
             },
-            Ok(None) => {
-                Err(IdListError::ContainerCellNotFound)
+            None => {
+                Ok(Err(IdListError::ContainerCellNotFound))
             }
         }
     }
-    pub fn iter(&mut self) -> Result<IdListIterator, IdListError> {
-        let list_root_id = self.get_root_list_id(false)?;
+    pub fn iter(&mut self) -> Result<Result<IdListIterator, IdListError>, TxnError> {
+        let list_root_id = match self.get_root_list_id(false)? {
+            Err(e) => return Ok(Err(e)), Ok(id) => id
+        };
         let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
         let current_seg = segments.next();
-        Ok(IdListIterator {
+        Ok(Ok(IdListIterator {
             segments: segments,
             current_seg: current_seg,
             current_pos: 0,
-        })
+        }))
     }
-    pub fn all(&mut self) -> Result<Vec<Id>, IdListError> {
-        Ok(self.iter()?.collect())
+    pub fn all(&mut self)
+               -> Result<Result<Vec<Id>, IdListError>, TxnError> {
+        Ok(self.iter()?.map(|l| l.collect()))
     }
-    pub fn count(&mut self) -> Result<usize, IdListError> {
-        Ok(self.iter()?.count())
+    pub fn count(&mut self)
+                 -> Result<Result<usize, IdListError>, TxnError> {
+        Ok(self.iter()?.map(|l| l.count()))
     }
-    pub fn add(&mut self, id: &Id) -> Result<(), IdListError> {
+    pub fn add(&mut self, id: &Id) -> Result<Result<(), IdListError>, TxnError> {
         let list_root_id = self.get_root_list_id(true)?;
         let mut list_level = 0;
         let mut last_seg = {
             let last_seg_id = {
-                let mut segments = IdListSegmentIdIterator::new(&mut self.txn, list_root_id);
+                let mut segments = IdListSegmentIdIterator::new(
+                    &mut self.txn,
+                    match list_root_id {
+                        Ok(v) => v, Err(e) => return Ok(Err(e))
+                    });
                 let mut last_seg_id = None;
                 for seg in segments {
                     list_level += 1;
@@ -202,88 +203,84 @@ impl<'a> IdList <'a> {
                 last_seg_id
             };
             let last_seg = seg_cell_by_id(&mut self.txn, last_seg_id)?;
-            if let Some(seg) = last_seg { seg } else { return Err(IdListError::Unexpected); }
+            if let Some(seg) = last_seg { seg } else { return Ok(Err(IdListError::Unexpected)); }
         };
-        if count_cell_list(&mut last_seg)? >= *LIST_CAPACITY { // create new segment to prevent cell overflow
+        if match count_cell_list(&mut last_seg) {
+            Ok(c) => c, Err(e) => return Ok(Err(e))
+        } >= *LIST_CAPACITY { // create new segment to prevent cell overflow
             list_level += 1;
             let (next_seg_id, next_seg_value) = empty_list_segment(&self.container_id, self.field_id, self.schema_id, list_level);
             let next_seg_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &next_seg_id, next_seg_value);
-            match self.txn.write(&next_seg_cell) {
-                Ok(()) => {},
-                Err(e) => return Err(IdListError::TxnError(e))
-            }
-            set_map_by_key_id(&mut self.txn, &last_seg.id(), *NEXT_KEY_ID, Value::Id(next_seg_id)).map_err(IdListError::TxnError)?;
+            self.txn.write(&next_seg_cell)?;
+            set_map_by_key_id(&mut self.txn, &last_seg.id(), *NEXT_KEY_ID, Value::Id(next_seg_id))?;
             last_seg = next_seg_cell;
         }
         if let &mut Value::Map(ref mut map) = &mut last_seg.data {
             if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
                 array.push(Value::Id(*id));
             } else {
-                return Err(IdListError::FormatError);
+                return Ok(Err(IdListError::FormatError));
             }
         } else {
-            return Err(IdListError::FormatError);
+            return Ok(Err(IdListError::FormatError));
         }
-        match self.txn.update(&last_seg) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(IdListError::TxnError(e))
-        }
+        Ok(Ok(self.txn.update(&last_seg)?))
     }
-    pub fn remove(&mut self, id: &Id, all: bool) -> Result<(), IdListError> {
+    pub fn remove(&mut self, id: &Id, all: bool) -> Result<Result<(), IdListError>, TxnError> {
         let id_value = Value::Id(*id);
         let mut contained_segs = { // collect affected segment cell ids
-            let mut iter = self.iter()?;
+            let mut iter = match self.iter()? {
+                Ok(v) => v, Err(e) => return Ok(Err(e))
+            };
             let mut seg_ids = BTreeSet::new();
             while let Some(iter_id) = iter.next() {
                 if iter_id == *id {
                     if let Some(ref seg) = iter.current_seg {
                         seg_ids.insert(seg.id());
                     } else {
-                        return Err(IdListError::Unexpected);
+                        return Ok(Err(IdListError::Unexpected));
                     }
                 }
             }
             seg_ids
         };
         for seg_id in &contained_segs { // mutate cell array
-            match self.txn.read(seg_id) {
-                Ok(Some(mut seg)) => {
+            match self.txn.read(seg_id)? {
+                Some(mut seg) => {
                     if let &mut Value::Map(ref mut map) = &mut seg.data {
                         if let &mut Value::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
                             if all {
                                 array.retain(|v| { !val_is_id(v, id) });
                             } else {
                                 let index = match array.iter().position(|v| { val_is_id(v, id) }) {
-                                    Some(pos) => pos, None => return Err(IdListError::Unexpected)
+                                    Some(pos) => pos, None => return Ok(Err(IdListError::Unexpected))
                                 };
                                 array.remove(index);
                             }
                         } else {
-                            return Err(IdListError::FormatError);
+                            return Ok(Err(IdListError::FormatError));
                         }
                     } else {
-                        return Err(IdListError::FormatError);
+                        return Ok(Err(IdListError::FormatError));
                     }
                     self.txn.update(&seg);
                     if !all { break; }
                 },
-                Ok(None) => return Err(IdListError::Unexpected),
-                Err(e) => return Err(IdListError::TxnError(e)),
+                None => return Ok(Err(IdListError::Unexpected))
             }
         }
-        return Ok(());
+        return Ok(Ok(()));
     }
-    pub fn clear(&mut self) -> Result<(), IdListError> {
-        let list_root_id = self.get_root_list_id(true)?;
+    pub fn clear(&mut self) -> Result<Result<(), IdListError>, TxnError> {
+        let list_root_id = match self.get_root_list_id(true)? {
+            Ok(v) => v, Err(e) => return Ok(Err(e))
+        };
         let segments: Vec<_> = IdListSegmentIdIterator::new(&mut self.txn, list_root_id).collect();
         for seg_id in segments {
-            match self.txn.remove(&seg_id) {
-                Ok(()) => {},
-                Err(e) => return Err(IdListError::TxnError(e))
-            }
+            self.txn.remove(&seg_id)?;
         }
         set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(Id::unit_id()));
-        return Ok(())
+        return Ok(Ok(()))
     }
 }
 

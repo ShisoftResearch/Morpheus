@@ -2,11 +2,12 @@ use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Id, key_hash, Map, Value};
 use neb::ram::cell::{Cell, WriteError, ReadError};
 use neb::client::{Client as NebClient};
-use neb::client::transaction::TxnError;
+use neb::client::transaction::{Transaction, TxnError};
 use bifrost::rpc::RPCError;
 
 use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError};
 use graph::vertex::Vertex;
+use graph::edge::bilateral::BilateralEdge;
 
 use std::sync::Arc;
 use serde::Serialize;
@@ -24,7 +25,7 @@ pub enum NewVertexError {
     CannotGenerateCellByData,
     DataNotMap,
     RPCError(RPCError),
-    WriteError(WriteError),
+    WriteError(WriteError)
 }
 
 pub enum ReadVertexError {
@@ -35,6 +36,9 @@ pub enum ReadVertexError {
 pub enum LinkVerticesError {
     EdgeSchemaNotFound,
     SchemaNotEdge,
+    BodyRequired,
+    BodyShouldNotExisted,
+    EdgeError(edge::EdgeError),
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -102,7 +106,6 @@ impl Graph {
         cell.header = header;
         Ok(vertex::cell_to_vertex(cell))
     }
-    // TODO: Update edge list
     pub fn remove_vertex(&self, id: &Id) -> Result<(), TxnError> {
         self.neb_client.transaction(|mut txn| {
             vertex::txn_remove(&mut txn, id)
@@ -141,13 +144,79 @@ impl Graph {
         self.read_vertex(&id)
     }
 
-//    pub fn link(&self, schema_id: u32, from_id: &Id, to_id: &Id) -> Result<impl edge::TEdge, LinkVerticesError> {
-//        let edge_type = match self.schemas.schema_type(schema_id) {
-//            Some(SchemaType::Edge(et)) => et,
-//            Some(_) => return Err(LinkVerticesError::SchemaNotEdge),
-//            None => return Err(LinkVerticesError::EdgeSchemaNotFound)
-//        };
-//
-//    }
-    
+    pub fn graph_transaction<TFN>(&self, func: TFN) -> Result<(), TxnError>
+        where TFN: Fn(&mut GraphTransaction) -> Result<(), TxnError>
+    {
+        let wrapper = |neb_txn: &mut Transaction| {
+            func(&mut GraphTransaction {
+                neb_txn: neb_txn,
+                schemas: self.schemas.clone()
+            })
+        };
+        self.neb_client.transaction(wrapper)
+    }
+}
+
+pub struct GraphTransaction<'a> {
+    pub neb_txn: & 'a mut Transaction,
+    schemas: Arc<SchemaContainer>
+}
+
+impl <'a>GraphTransaction<'a> {
+    pub fn new_vertex(&mut self, schema_id: u32, data: Map)
+        -> Result<Result<Vertex, NewVertexError>, TxnError> {
+        let vertex = Vertex::new(schema_id, data);
+        let mut cell = match vertex_to_cell_for_write(&self.schemas, vertex) {
+            Ok(cell) => cell, Err(e) => return Ok(Err(e))
+        };
+        self.neb_txn.write(&cell)?;
+        Ok(Ok(vertex::cell_to_vertex(cell)))
+    }
+    // TODO: Update edge list
+    pub fn remove_vertex(&mut self, id: &Id) -> Result<(), TxnError> {
+        vertex::txn_remove(self.neb_txn, id)
+    }
+    pub fn remove_vertex_by_key<K>(&mut self, schema_id: u32, key: &K) -> Result<(), TxnError>
+        where K: Serialize {
+        let id = Cell::encode_cell_key(schema_id, key);
+        self.remove_vertex(&id)
+    }
+
+    pub fn link(&mut self, schema_id: u32, from_id: &Id, to_id: &Id, body: Option<Map>)
+        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError> {
+        let edge_attr = match self.schemas.schema_type(schema_id) {
+            Some(SchemaType::Edge(ea)) => ea,
+            Some(_) => return Ok(Err(LinkVerticesError::SchemaNotEdge)),
+            None => return Ok(Err(LinkVerticesError::EdgeSchemaNotFound))
+        };
+        match edge_attr.edge_type {
+            edge::EdgeType::Directed =>
+                Ok(edge::directed::DirectedEdge::link(from_id, to_id, body, &mut self.neb_txn, schema_id, &self.schemas)?
+                    .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Directed)),
+
+            edge::EdgeType::Undirected =>
+                Ok(edge::undirectd::UndirectedEdge::link(from_id, to_id, body, &mut self.neb_txn, schema_id, &self.schemas)?
+                    .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Undirected))
+        }
+    }
+    pub fn update_vertex<U>(&mut self, id: &Id, update: U) -> Result<(), TxnError>
+        where U: Fn(Vertex) -> Option<Vertex> {
+        vertex::txn_update(self.neb_txn, id, &update)
+    }
+    pub fn update_vertex_by_key<K, U>(&mut self, schema_id: u32, key: &K, update: U)
+        -> Result<(), TxnError>
+        where K: Serialize, U: Fn(Vertex) -> Option<Vertex>{
+        let id = Cell::encode_cell_key(schema_id, key);
+        self.update_vertex(&id, update)
+    }
+
+    pub fn read_vertex(&mut self, id: &Id) -> Result<Option<Vertex>, TxnError> {
+        self.neb_txn.read(id).map(|c| c.map(vertex::cell_to_vertex))
+    }
+
+    pub fn get_vertex<K>(&mut self, schema_id: u32, key: &K) -> Result<Option<Vertex>, TxnError>
+        where K: Serialize {
+        let id = Cell::encode_cell_key(schema_id, key);
+        self.read_vertex(&id)
+    }
 }

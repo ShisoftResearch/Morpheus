@@ -25,22 +25,9 @@ pub struct DirectedEdge {
 }
 
 impl TEdge for DirectedEdge {
-
     type Edge = DirectedEdge;
-
     fn edge_type() -> EdgeType {
         EdgeType::Directed
-    }
-    fn from_id(vertex_id: &Id, vertex_field: u64, schema_id: u32, schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id) -> Result<Self::Edge, EdgeError> {
-        Self::from_id_(vertex_id, vertex_field, schema_id, schemas, txn, id)
-    }
-
-    fn link(vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Cell>, txn: &mut Transaction, schema_id: u32, schemas: &Arc<SchemaContainer>) -> Result<Self::Edge, EdgeError> {
-        Self::link_(vertex_a_id, vertex_b_id, body, txn, schema_id, schemas)
-    }
-
-    fn delete_edge(&mut self, txn: &mut Transaction) -> Result<(), EdgeError> {
-        self.delete_edge_(txn)
     }
 }
 
