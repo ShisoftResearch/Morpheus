@@ -106,6 +106,26 @@ impl<'a> IdList <'a> {
             schema_id: schema_id
         }
     }
+    fn cell_types(&mut self, container_id: u64, field_id: u64) -> Result<Option<Vec<u32>>, TxnError> {
+        if let Some(fields) = self.txn.read_selected(&self.container_id, &vec![self.field_id])? {
+            if let Some(&Value::Id(id)) = fields.get(0) {
+                if !id.is_unit_id() {
+                    if let Some(cell) = self.txn.read(&id)? {
+                        if let Value::Array(ref type_list) = cell.data[*ID_TYPES_MAP_ID] {
+                            let mut res = Vec::new();
+                            for value in type_list {
+                                if let Value::U32(ref schema_id) = value[*ID_TYPES_SCHEMA_ID_ID] {
+                                    res.push(*schema_id);
+                                }
+                            }
+                            return Ok(Some(res))
+                        }
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
     fn get_root_list_id(&mut self, ensure_container: bool) -> Result<Result<Id, IdListError>, TxnError> {
         match self.txn.read_selected(&self.container_id, &vec![self.field_id])? {
             Some(fields) => {
