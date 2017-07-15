@@ -124,9 +124,7 @@ impl Graph {
         Ok(vertex::cell_to_vertex(cell))
     }
     pub fn remove_vertex(&self, id: &Id) -> Result<(), TxnError> {
-        self.neb_client.transaction(|mut txn| {
-            vertex::txn_remove(&mut txn, id)
-        })
+        self.graph_transaction(|txn| txn.remove_vertex(id))
     }
     pub fn remove_vertex_by_key<K>(&self, schema_id: u32, key: &K) -> Result<(), TxnError>
         where K: Serialize {
