@@ -177,18 +177,16 @@ impl<'a> IdList <'a> {
             current_pos: 0,
         }))
     }
-    pub fn all(&mut self)
-               -> Result<Result<Vec<Id>, IdListError>, TxnError> {
+    pub fn all(&mut self) -> Result<Result<Vec<Id>, IdListError>, TxnError> {
         Ok(self.iter()?.map(|l| l.collect()))
     }
-    pub fn count(&mut self)
-                 -> Result<Result<usize, IdListError>, TxnError> {
+    pub fn count(&mut self) -> Result<Result<usize, IdListError>, TxnError> {
         Ok(self.iter()?.map(|l| l.count()))
     }
     pub fn add(&mut self, id: &Id) -> Result<Result<(), IdListError>, TxnError> {
         let list_root_id = self.get_root_list_id(true)?;
         let mut list_level = 0;
-        let mut last_seg = {
+        let mut last_seg = { // TODO: refill segment under capacity
             let last_seg_id = {
                 let mut segments = IdListSegmentIdIterator::new(
                     &mut self.txn,
@@ -237,6 +235,7 @@ impl<'a> IdList <'a> {
                 if iter_id == *id {
                     if let Some(ref seg) = iter.current_seg {
                         seg_ids.insert(seg.id());
+                        if !all { break; }
                     } else {
                         return Ok(Err(IdListError::Unexpected));
                     }

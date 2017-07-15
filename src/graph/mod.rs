@@ -47,6 +47,23 @@ pub enum CellType {
     Edge(edge::EdgeType)
 }
 
+#[derive(Clone, Copy)]
+pub enum EdgeDirection {
+    Inbound,
+    Outbound,
+    Undirected
+}
+
+impl EdgeDirection {
+    pub fn as_field(&self) -> u64 {
+        match self {
+            &EdgeDirection::Inbound => *fields::INBOUND_KEY_ID,
+            &EdgeDirection::Outbound => *fields::OUTBOUND_KEY_ID,
+            &EdgeDirection::Undirected => *fields::UNDIRECTED_KEY_ID,
+        }
+    }
+}
+
 fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<Cell, NewVertexError> {
     let schema_id = vertex.schema();
     if let Some(stype) = schemas.schema_type(schema_id) {
@@ -123,7 +140,7 @@ impl Graph {
         })
     }
     pub fn update_vertex_by_key<K, U>(&self, schema_id: u32, key: &K, update: U)
-        -> Result<(), TxnError>
+                                      -> Result<(), TxnError>
         where K: Serialize, U: Fn(Vertex) -> Option<Vertex>{
         let id = Cell::encode_cell_key(schema_id, key);
         self.update_vertex(&id, update)
@@ -164,7 +181,7 @@ pub struct GraphTransaction<'a> {
 
 impl <'a>GraphTransaction<'a> {
     pub fn new_vertex(&mut self, schema_id: u32, data: Map)
-        -> Result<Result<Vertex, NewVertexError>, TxnError> {
+                      -> Result<Result<Vertex, NewVertexError>, TxnError> {
         let vertex = Vertex::new(schema_id, data);
         let mut cell = match vertex_to_cell_for_write(&self.schemas, vertex) {
             Ok(cell) => cell, Err(e) => return Ok(Err(e))
@@ -183,7 +200,7 @@ impl <'a>GraphTransaction<'a> {
     }
 
     pub fn link(&mut self, schema_id: u32, from_id: &Id, to_id: &Id, body: Option<Map>)
-        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError> {
+                -> Result<Result<edge::Edge, LinkVerticesError>, TxnError> {
         let edge_attr = match self.schemas.schema_type(schema_id) {
             Some(SchemaType::Edge(ea)) => ea,
             Some(_) => return Ok(Err(LinkVerticesError::SchemaNotEdge)),
@@ -204,7 +221,7 @@ impl <'a>GraphTransaction<'a> {
         vertex::txn_update(self.neb_txn, id, &update)
     }
     pub fn update_vertex_by_key<K, U>(&mut self, schema_id: u32, key: &K, update: U)
-        -> Result<(), TxnError>
+                                      -> Result<(), TxnError>
         where K: Serialize, U: Fn(Vertex) -> Option<Vertex>{
         let id = Cell::encode_cell_key(schema_id, key);
         self.update_vertex(&id, update)
@@ -218,5 +235,26 @@ impl <'a>GraphTransaction<'a> {
         where K: Serialize {
         let id = Cell::encode_cell_key(schema_id, key);
         self.read_vertex(&id)
+    }
+
+    pub fn linkage(&mut self, vertex_id: &Id, schema_id: u32, ed: EdgeDirection)
+                   -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError> {
+        let vertex_field = ed.as_field();
+        match id_list::IdList::from_txn_and_container
+            (self.neb_txn, vertex_id, vertex_field, schema_id).all()? {
+            Err(e) => Ok(Err(edge::EdgeError::IdListError(e))),
+            Ok(ids) => Ok(Ok({
+                let mut edges = Vec::new();
+                for id in ids {
+                    match edge::from_id(
+                        vertex_id, vertex_field, schema_id, &self.schemas, self.neb_txn, &id
+                    )? {
+                        Ok(e) => edges.push(e),
+                        Err(er) => return Ok(Err(er))
+                    }
+                }
+                edges
+            }))
+        }
     }
 }

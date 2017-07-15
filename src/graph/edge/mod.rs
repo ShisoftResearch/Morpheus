@@ -7,7 +7,8 @@ use neb::ram::types::Id;
 use neb::client::transaction::{Transaction, TxnError};
 use neb::ram::cell::Cell;
 use graph::vertex::Vertex;
-use server::schema::{MorpheusSchema, SchemaContainer};
+use graph::edge::bilateral::BilateralEdge;
+use server::schema::{MorpheusSchema, SchemaContainer, SchemaType};
 use super::id_list::IdListError;
 use std::sync::Arc;
 
@@ -42,4 +43,24 @@ pub trait TEdge {
 pub enum Edge {
     Directed(directed::DirectedEdge),
     Undirected(undirectd::UndirectedEdge)
+}
+
+pub fn from_id(
+    vertex_id: &Id, vertex_field: u64, schema_id: u32,
+    schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
+) -> Result<Result<Edge, EdgeError>, TxnError> {
+    match schemas.schema_type(schema_id) {
+        Some(SchemaType::Edge(ea)) => {
+            match ea.edge_type {
+                EdgeType::Directed => directed::DirectedEdge::from_id(
+                    vertex_id, vertex_field, schema_id, schemas, txn, id
+                ).map(|r| r.map(Edge::Directed)),
+                EdgeType::Undirected => undirectd::UndirectedEdge::from_id(
+                    vertex_id, vertex_field, schema_id, schemas, txn, id
+                ).map(|r| r.map(Edge::Undirected))
+            }
+        },
+        Some(_) => return Ok(Err(EdgeError::WrongSchema)),
+        None => return Ok(Err(EdgeError::CannotFindSchema))
+    }
 }
