@@ -74,9 +74,15 @@ pub fn txn_remove(txn: &mut Transaction, schemas: &Arc<SchemaContainer>, id: &Id
                 txn.remove(&type_list_id)?; // remove field schema list cell
                 Ok(Ok(()))
             };
-            remove_field_lists(id, txn, EdgeDirection::Undirected.as_field());
-            remove_field_lists(id, txn, EdgeDirection::Outbound.as_field());
-            remove_field_lists(id, txn, EdgeDirection::Inbound.as_field());
+            match remove_field_lists(id, txn, EdgeDirection::Undirected.as_field())? {
+                Ok(()) => {}, Err(e) => return Ok(Err(e))
+            }
+            match remove_field_lists(id, txn, EdgeDirection::Inbound.as_field())? {
+                Ok(()) => {}, Err(e) => return Ok(Err(e))
+            }
+            match remove_field_lists(id, txn, EdgeDirection::Outbound.as_field())? {
+                Ok(()) => {}, Err(e) => return Ok(Err(e))
+            }
             txn.remove(id).map(|_| Ok(())) // remove vertex cell
         },
         None => Ok(Err(RemoveError::NotFound))
