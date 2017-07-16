@@ -45,6 +45,16 @@ pub enum Edge {
     Undirected(undirectd::UndirectedEdge)
 }
 
+impl Edge {
+    pub fn remove (self, txn: &mut Transaction)
+        -> Result<Result<(), EdgeError>, TxnError> {
+        match self {
+            Edge::Directed(mut e) => e.remove(txn),
+            Edge::Undirected(mut e) => e.remove(txn),
+        }
+    }
+}
+
 pub fn from_id(
     vertex_id: &Id, vertex_field: u64, schema_id: u32,
     schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id

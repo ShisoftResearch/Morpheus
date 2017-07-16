@@ -122,7 +122,7 @@ pub trait BilateralEdge : TEdge {
         }
         Ok(Ok(Self::build_edge(*vertex_a_id, *vertex_b_id, schema_id, edge_cell)))
     }
-    fn delete_edge(&mut self, txn: &mut Transaction) -> Result<Result<(), EdgeError>, TxnError> {
+    fn remove(&mut self, txn: &mut Transaction) -> Result<Result<(), EdgeError>, TxnError> {
         let (v_a_removal, v_b_removal) = match self.edge_cell() {
             &Some(ref cell) => {
                 txn.remove(&cell.id())?;

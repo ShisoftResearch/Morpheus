@@ -47,7 +47,7 @@ lazy_static! {
 }
 
 pub struct IdList<'a> {
-    txn: &'a mut Transaction,
+    pub txn: &'a mut Transaction,
     container_id: Id,
     field_id: u64,
     schema_id: u32
@@ -106,11 +106,11 @@ impl<'a> IdList <'a> {
             schema_id: schema_id
         }
     }
-    fn cell_types(&mut self, container_id: u64, field_id: u64) -> Result<Option<Vec<u32>>, TxnError> {
-        if let Some(fields) = self.txn.read_selected(&self.container_id, &vec![self.field_id])? {
+    pub fn cell_types(txn: &mut Transaction, container_id: &Id, field_id: u64) -> Result<Option<(Id, Vec<u32>)>, TxnError> {
+        if let Some(fields) = txn.read_selected(container_id, &vec![field_id])? {
             if let Some(&Value::Id(id)) = fields.get(0) {
                 if !id.is_unit_id() {
-                    if let Some(cell) = self.txn.read(&id)? {
+                    if let Some(cell) = txn.read(&id)? {
                         if let Value::Array(ref type_list) = cell.data[*ID_TYPES_MAP_ID] {
                             let mut res = Vec::new();
                             for value in type_list {
@@ -118,7 +118,7 @@ impl<'a> IdList <'a> {
                                     res.push(*schema_id);
                                 }
                             }
-                            return Ok(Some(res))
+                            return Ok(Some((id, res)))
                         }
                     }
                 }
@@ -290,7 +290,7 @@ impl<'a> IdList <'a> {
         }
         return Ok(Ok(()));
     }
-    pub fn clear(&mut self) -> Result<Result<(), IdListError>, TxnError> {
+    pub fn clear_segments(&mut self) -> Result<Result<(), IdListError>, TxnError> {
         let list_root_id = match self.get_root_list_id(true)? {
             Ok(v) => v, Err(e) => return Ok(Err(e))
         };
@@ -298,13 +298,12 @@ impl<'a> IdList <'a> {
         for seg_id in segments {
             self.txn.remove(&seg_id)?;
         }
-        set_map_by_key_id(self.txn, &self.container_id, self.field_id, Value::Id(Id::unit_id()));
         return Ok(Ok(()))
     }
 }
 
 pub struct IdListSegmentIdIterator<'a> {
-    txn: &'a mut Transaction,
+    pub txn: &'a mut Transaction,
     next: Id,
     level: u32
 }
@@ -342,7 +341,7 @@ impl <'a> Iterator for IdListSegmentIdIterator<'a> {
 }
 
 pub struct IdListSegmentIterator<'a> {
-    id_iter: IdListSegmentIdIterator<'a>
+    pub id_iter: IdListSegmentIdIterator<'a>
 }
 
 impl <'a>IdListSegmentIterator<'a> {
@@ -367,7 +366,7 @@ impl <'a> Iterator for IdListSegmentIterator <'a> {
 }
 
 pub struct IdListIterator<'a> {
-    segments: IdListSegmentIterator<'a>,
+    pub segments: IdListSegmentIterator<'a>,
     current_seg: Option<Cell>,
     current_pos: u32
 }

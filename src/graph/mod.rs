@@ -124,7 +124,7 @@ impl Graph {
         Ok(vertex::cell_to_vertex(cell))
     }
     pub fn remove_vertex(&self, id: &Id) -> Result<(), TxnError> {
-        self.graph_transaction(|txn| txn.remove_vertex(id))
+        self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted))
     }
     pub fn remove_vertex_by_key<K>(&self, schema_id: u32, key: &K) -> Result<(), TxnError>
         where K: Serialize {
@@ -188,10 +188,11 @@ impl <'a>GraphTransaction<'a> {
         Ok(Ok(vertex::cell_to_vertex(cell)))
     }
     // TODO: Update edge list
-    pub fn remove_vertex(&mut self, id: &Id) -> Result<(), TxnError> {
-        vertex::txn_remove(self.neb_txn, id)
+    pub fn remove_vertex(&mut self, id: &Id) -> Result<Result<(), vertex::RemoveError>, TxnError> {
+        vertex::txn_remove(self.neb_txn, &self.schemas, id)
     }
-    pub fn remove_vertex_by_key<K>(&mut self, schema_id: u32, key: &K) -> Result<(), TxnError>
+    pub fn remove_vertex_by_key<K>(&mut self, schema_id: u32, key: &K)
+        -> Result<Result<(), vertex::RemoveError>, TxnError>
         where K: Serialize {
         let id = Cell::encode_cell_key(schema_id, key);
         self.remove_vertex(&id)
