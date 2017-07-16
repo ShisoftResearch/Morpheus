@@ -187,7 +187,6 @@ impl <'a>GraphTransaction<'a> {
         self.neb_txn.write(&cell)?;
         Ok(Ok(vertex::cell_to_vertex(cell)))
     }
-    // TODO: Update edge list
     pub fn remove_vertex(&mut self, id: &Id) -> Result<Result<(), vertex::RemoveError>, TxnError> {
         vertex::txn_remove(self.neb_txn, &self.schemas, id)
     }
