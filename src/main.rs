@@ -26,8 +26,9 @@ mod graph;
 mod server;
 mod utils;
 mod config;
+#[cfg(test)]
+mod tests;
 
-use neb::server::*;
 use std::thread;
 
 fn main() {

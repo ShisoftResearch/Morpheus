@@ -17,10 +17,10 @@ pub enum MorpheusServerError {
 }
 
 pub struct MorpheusServer {
-    neb_server: Arc<NebServer>,
-    neb_client: Arc<NebClient>,
-    schema_container: Arc<schema::SchemaContainer>,
-    graph: Arc<Graph>
+    pub neb_server: Arc<NebServer>,
+    pub neb_client: Arc<NebClient>,
+    pub schema_container: Arc<schema::SchemaContainer>,
+    pub graph: Arc<Graph>
 }
 
 impl MorpheusServer {
@@ -49,7 +49,8 @@ impl MorpheusServer {
             Ok(container) => container,
             Err(e) => return Err(MorpheusServerError::InitSchemaError(e))
         };
-        let graph = Arc::new(Graph::new(&schema_container, &neb_client));
+        let graph = Arc::new(Graph::new(&schema_container, &neb_client)
+            .map_err(MorpheusServerError::InitSchemaError)?);
         Ok(Arc::new(MorpheusServer {
             neb_server: neb_server,
             neb_client: neb_client,

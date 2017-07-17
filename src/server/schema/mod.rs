@@ -30,12 +30,13 @@ pub enum SchemaError {
 }
 
 pub struct SchemaContainer {
+    pub neb_client: Arc<NebClient>,
     map: CHashMap<u32, SchemaType>,
     sm_client: Arc<SMClient>,
-    neb_client: Arc<NebClient>,
     neb_mata: Arc<NebServerMeta>,
 }
 
+#[derive(Clone)]
 pub struct MorpheusSchema {
     pub id: u32,
     pub name: String,
@@ -45,10 +46,10 @@ pub struct MorpheusSchema {
 }
 
 impl MorpheusSchema {
-    pub fn new(id: u32, name: &String, key_field: Option<&Vec<String>>, fields: &Vec<Field>) -> MorpheusSchema {
+    pub fn new<'a>(name: & 'a str, key_field: Option<&Vec<String>>, fields: &Vec<Field>) -> MorpheusSchema {
         MorpheusSchema {
-            id: id,
-            name: name.clone(),
+            id: 0,
+            name: name.to_string(),
             key_field: key_field.cloned(),
             fields: fields.clone(),
             schema_type: SchemaType::Unspecified
@@ -164,5 +165,8 @@ impl SchemaContainer {
             .map(|schema| self.neb_to_morpheus_schema(&Arc::new(schema)))
             .filter_map(|ms| ms)
             .collect())
+    }
+    pub fn count(&self) -> Result<usize, ExecError> {
+        Ok(self.all_morpheus_schemas()?.len())
     }
 }

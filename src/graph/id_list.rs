@@ -1,4 +1,4 @@
-use neb::ram::schema::Field;
+use neb::ram::schema::{Field, Schema};
 use neb::ram::cell::{MAX_CELL_SIZE, Cell};
 use neb::ram::types::{TypeId, Id, Map, Value, id_io, u32_io, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
@@ -24,17 +24,17 @@ pub static ID_LIST_SCHEMA_ID: u32 = 100;
 pub static TYPE_LIST_SCHEMA_ID: u32 = 150;
 
 lazy_static! {
-    pub static ref ID_TYPE_LIST: Vec<Field> = vec![
+    pub static ref ID_TYPE_LIST: Field = Field::new("*", TypeId::Map as u32, false, false, Some(vec![
         Field::new(&String::from(ID_TYPES_MAP_KEY), TypeId::Map as u32, false, true,
             Some(vec![
                 Field::new(&String::from(ID_TYPE_SCHEMA_ID_KEY), TypeId::U32 as u32, false, false, None),
                 Field::new(&String::from(ID_TYPE_ID_LIST_KEY), TypeId::Id as u32, false, true, None)
             ]))
-    ];
-    pub static ref ID_LINKED_LIST: Vec<Field> = vec![
+    ]));
+    pub static ref ID_LINKED_LIST: Field = Field::new("*", TypeId::Map as u32, false, false, Some(vec![
         Field::new(&String::from(NEXT_KEY), TypeId::Id as u32, false, false, None),
         Field::new(&String::from(LIST_KEY), TypeId::Id as u32, false, true, None)
-    ];
+    ]));
     pub static ref LIST_CAPACITY: usize =
         ((MAX_CELL_SIZE - u32_io::size(0) - id_io::size(0)) / id_io::size(0));
     pub static ref NEXT_KEY_ID: u64 = key_hash(&String::from(NEXT_KEY));

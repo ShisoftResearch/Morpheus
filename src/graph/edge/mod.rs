@@ -24,6 +24,15 @@ pub struct EdgeAttributes {
     pub has_body: bool
 }
 
+impl EdgeAttributes {
+    pub fn new(edge_type: EdgeType, has_body: bool) -> EdgeAttributes {
+        EdgeAttributes {
+            edge_type: edge_type,
+            has_body: has_body
+        }
+    }
+}
+
 pub enum EdgeError {
     WrongSchema,
     CannotFindSchema,

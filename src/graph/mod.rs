@@ -1,8 +1,9 @@
-use neb::ram::schema::Field;
+use neb::ram::schema::{Field, Schema};
 use neb::ram::types::{TypeId, Id, key_hash, Map, Value};
 use neb::ram::cell::{Cell, WriteError, ReadError};
 use neb::client::{Client as NebClient};
 use neb::client::transaction::{Transaction, TxnError};
+use bifrost::raft::state_machine::master::ExecError;
 use bifrost::rpc::RPCError;
 
 use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError};
@@ -16,8 +17,6 @@ pub mod vertex;
 pub mod edge;
 pub mod fields;
 mod id_list;
-#[cfg(test)]
-mod test;
 
 pub enum NewVertexError {
     SchemaNotFound,
@@ -98,11 +97,30 @@ pub struct Graph {
 }
 
 impl Graph {
-    pub fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> Graph {
-        Graph {
+    pub fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> Result<Graph, ExecError> {
+        Graph::check_base_schemas(schemas)?;
+        Ok(Graph {
             schemas: schemas.clone(),
             neb_client: neb_client.clone()
+        })
+    }
+    fn check_schema<'a>(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'a str, fields: &Field) -> Result<(), ExecError> {
+        match schemas.get_neb_schema(schema_id) {
+            None => {
+                schemas.neb_client.new_schema_with_id(
+                    &Schema::new_with_id(
+                        schema_id, schema_name.to_string(), None, fields.clone()
+                    )
+                )?
+            },
+            _ => {}
         }
+        Ok(())
+    }
+    fn check_base_schemas(schemas: &Arc<SchemaContainer>) -> Result<(), ExecError> {
+        Graph::check_schema(schemas, id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST)?;
+        Graph::check_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST)?;
+        Ok(())
     }
     pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
         schema.schema_type = SchemaType::Vertex;
