@@ -1,8 +1,9 @@
 use super::start_server;
 use graph;
+use graph::*;
 use server::schema::{MorpheusSchema, SchemaError};
 use neb::ram::schema::Field;
-use neb::ram::types::TypeId;
+use neb::ram::types::{TypeId, Value, Map};
 
 #[test]
 pub fn schemas() {
@@ -11,7 +12,7 @@ pub fn schemas() {
     let mut edge_schema = MorpheusSchema::new(
         "test_edge_schema",
         None,
-        &vec![Field::new(&"test_field".to_string(), TypeId::String as u32, false, false, None)]
+        &vec![Field::new(&"test_field".to_string(), TypeId::U32 as u32, false, false, None)]
     );
     assert_eq!(edge_schema.id, 0);
     assert!(
@@ -30,4 +31,8 @@ pub fn schemas() {
     graph.new_vertex_group(&mut vertex_schema).unwrap();
     assert!(edge_schema.id > 0);
     assert!(vertex_schema.id > 0);
+    let mut test_data = Map::new();
+    test_data.insert("test_field", Value::U32(1));
+    graph.new_vertex(vertex_schema.id, test_data.clone()).unwrap();
+    graph.new_vertex(edge_schema.id, test_data.clone()).unwrap();
 }

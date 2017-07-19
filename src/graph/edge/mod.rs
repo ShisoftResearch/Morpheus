@@ -33,6 +33,7 @@ impl EdgeAttributes {
     }
 }
 
+#[derive(Debug)]
 pub enum EdgeError {
     WrongSchema,
     CannotFindSchema,

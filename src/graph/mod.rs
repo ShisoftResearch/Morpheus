@@ -18,6 +18,7 @@ pub mod edge;
 pub mod fields;
 mod id_list;
 
+#[derive(Debug)]
 pub enum NewVertexError {
     SchemaNotFound,
     SchemaNotVertex,
@@ -27,11 +28,13 @@ pub enum NewVertexError {
     WriteError(WriteError)
 }
 
+#[derive(Debug)]
 pub enum ReadVertexError {
     RPCError(RPCError),
     ReadError(ReadError),
 }
 
+#[derive(Debug)]
 pub enum LinkVerticesError {
     EdgeSchemaNotFound,
     SchemaNotEdge,
@@ -253,8 +256,8 @@ impl <'a>GraphTransaction<'a> {
         self.read_vertex(&id)
     }
 
-    pub fn linkage(&mut self, vertex_id: &Id, schema_id: u32, ed: EdgeDirection)
-                   -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError> {
+    pub fn neighbourhoods(&mut self, vertex_id: &Id, schema_id: u32, ed: EdgeDirection)
+        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError> {
         let vertex_field = ed.as_field();
         match id_list::IdList::from_txn_and_container
             (self.neb_txn, vertex_id, vertex_field, schema_id).all()? {

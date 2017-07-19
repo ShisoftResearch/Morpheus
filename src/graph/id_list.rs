@@ -14,6 +14,7 @@ pub const ID_TYPES_MAP_KEY: &'static str = "_edges";
 pub const ID_TYPE_SCHEMA_ID_KEY: &'static str = "_type";
 pub const ID_TYPE_ID_LIST_KEY: &'static str = "_list";
 
+#[derive(Debug)]
 pub enum IdListError {
     ContainerCellNotFound,
     FormatError,
