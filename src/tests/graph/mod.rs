@@ -34,5 +34,6 @@ pub fn schemas() {
     let mut test_data = Map::new();
     test_data.insert("test_field", Value::U32(1));
     graph.new_vertex(vertex_schema.id, test_data.clone()).unwrap();
-    graph.new_vertex(edge_schema.id, test_data.clone()).unwrap();
+    graph.new_vertex(edge_schema.id, test_data.clone()).is_err();
 }
+
