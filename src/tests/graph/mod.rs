@@ -37,3 +37,7 @@ pub fn schemas() {
     graph.new_vertex(edge_schema.id, test_data.clone()).is_err();
 }
 
+#[test]
+pub fn relationship() {
+    
+}

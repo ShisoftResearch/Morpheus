@@ -172,23 +172,5 @@ impl SchemaContainer {
 }
 
 pub trait ToSchemaId {
-    fn to_id(&self) -> u32;
-}
-
-impl ToSchemaId for MorpheusSchema {
-    fn to_id(&self) -> u32 {
-        self.id
-    }
-}
-
-impl ToSchemaId for u32 {
-    fn to_id(&self) -> u32 {
-        *self
-    }
-}
-
-impl ToSchemaId for Schema {
-    fn to_id(&self) -> u32 {
-        self.id
-    }
+    fn into_schema_id(&self) -> u32;
 }
