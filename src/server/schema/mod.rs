@@ -1,4 +1,3 @@
-use bifrost::rpc::*;
 use bifrost::raft::RaftService;
 use bifrost::raft::client::RaftClient;
 use bifrost::raft::state_machine::master::ExecError;
@@ -54,6 +53,9 @@ impl MorpheusSchema {
             fields: fields.clone(),
             schema_type: SchemaType::Unspecified
         }
+    }
+    pub fn into_ref(self) -> Arc<MorpheusSchema> {
+        Arc::new(self)
     }
 }
 
@@ -205,6 +207,24 @@ impl ToSchemaId for Schema {
 }
 
 impl ToSchemaId for Arc<Schema> {
+    fn to_id(&self) -> u32 {
+        self.id
+    }
+}
+
+impl ToSchemaId for Arc<MorpheusSchema> {
+    fn to_id(&self) -> u32 {
+        self.id
+    }
+}
+
+impl <'a>ToSchemaId for &'a MorpheusSchema {
+    fn to_id(&self) -> u32 {
+        self.id
+    }
+}
+
+impl <'a>ToSchemaId for &'a Schema {
     fn to_id(&self) -> u32 {
         self.id
     }

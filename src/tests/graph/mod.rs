@@ -33,8 +33,8 @@ pub fn schemas() {
     assert!(vertex_schema.id > 0);
     let mut test_data = Map::new();
     test_data.insert("test_field", Value::U32(1));
-    graph.new_vertex(vertex_schema.id, test_data.clone()).unwrap();
-    graph.new_vertex(edge_schema.id, test_data.clone()).is_err();
+    graph.new_vertex(&vertex_schema, test_data.clone()).unwrap();
+    graph.new_vertex(&edge_schema, test_data.clone()).is_err();
 }
 
 #[test]
