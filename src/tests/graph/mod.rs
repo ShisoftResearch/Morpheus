@@ -1,6 +1,8 @@
 use super::start_server;
 use graph;
 use graph::*;
+use graph::edge::*;
+use graph::vertex::*;
 use server::schema::{MorpheusSchema, SchemaError};
 use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Value, Map};
@@ -34,10 +36,12 @@ pub fn schemas() {
     let mut test_data = Map::new();
     test_data.insert("test_field", Value::U32(1));
     graph.new_vertex(&vertex_schema, test_data.clone()).unwrap();
-    graph.new_vertex(&edge_schema, test_data.clone()).is_err();
+    graph.new_vertex("test_edge_schema", test_data.clone()).is_err();
 }
 
 #[test]
 pub fn relationship() {
-    
+    let server = start_server(4002);
+    let graph = &server.graph;
+    //let people_schema = MorpheusSchema::new()
 }

@@ -185,47 +185,54 @@ impl SchemaContainer {
 }
 
 pub trait ToSchemaId {
-    fn to_id(&self) -> u32;
+    fn to_id(&self, schemas: &Arc<SchemaContainer>) -> u32;
 }
 
 impl ToSchemaId for MorpheusSchema {
-    fn to_id(&self) -> u32 {
+    fn to_id(&self, _: &Arc<SchemaContainer>) -> u32 {
         self.id
     }
 }
 
 impl ToSchemaId for u32 {
-    fn to_id(&self) -> u32 {
+    fn to_id(&self, _: &Arc<SchemaContainer>) -> u32 {
         *self
     }
 }
 
 impl ToSchemaId for Schema {
-    fn to_id(&self) -> u32 {
+    fn to_id(&self, _: &Arc<SchemaContainer>) -> u32 {
         self.id
     }
 }
 
 impl ToSchemaId for Arc<Schema> {
-    fn to_id(&self) -> u32 {
+    fn to_id(&self, _: &Arc<SchemaContainer>) -> u32 {
         self.id
     }
 }
 
 impl ToSchemaId for Arc<MorpheusSchema> {
-    fn to_id(&self) -> u32 {
+    fn to_id(&self, _: &Arc<SchemaContainer>) -> u32 {
         self.id
     }
 }
 
 impl <'a>ToSchemaId for &'a MorpheusSchema {
-    fn to_id(&self) -> u32 {
+    fn to_id(&self, _: &Arc<SchemaContainer>) -> u32 {
         self.id
     }
 }
 
 impl <'a>ToSchemaId for &'a Schema {
-    fn to_id(&self) -> u32 {
+    fn to_id(&self, _: &Arc<SchemaContainer>) -> u32 {
         self.id
     }
 }
+
+impl <'a>ToSchemaId for &'a str {
+    fn to_id(&self, schemas: &Arc<SchemaContainer>) -> u32 {
+        schemas.id_from_name(self).unwrap_or(0)
+    }
+}
+

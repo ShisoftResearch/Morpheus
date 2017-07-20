@@ -135,7 +135,7 @@ impl Graph {
     }
     pub fn new_vertex<S>(&self, schema: S, data: Map) -> Result<Vertex, NewVertexError>
         where S: ToSchemaId {
-        let vertex = Vertex::new(schema.to_id(), data);
+        let vertex = Vertex::new(schema.to_id(&self.schemas), data);
         let mut cell = vertex_to_cell_for_write(&self.schemas, vertex)?;
         let header = match self.neb_client.write_cell(&cell) {
             Ok(Ok(header)) => header,
@@ -150,7 +150,7 @@ impl Graph {
     }
     pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: &K) -> Result<(), TxnError>
         where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(), key);
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
         self.remove_vertex(&id)
     }
     pub fn update_vertex<U>(&self, id: &Id, update: U) -> Result<(), TxnError>
@@ -162,7 +162,7 @@ impl Graph {
     pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: &K, update: U)
         -> Result<(), TxnError>
         where K: Serialize, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>{
-        let id = Cell::encode_cell_key(schema.to_id(), key);
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
         self.update_vertex(&id, update)
     }
 
@@ -177,7 +177,7 @@ impl Graph {
 
     pub fn get_vertex<K, S>(&self, schema: S, key: &K) -> Result<Option<Vertex>, ReadVertexError>
         where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(), key);
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
         self.read_vertex(&id)
     }
 
@@ -203,7 +203,7 @@ impl <'a>GraphTransaction<'a> {
     pub fn new_vertex<S>(&mut self, schema: S, data: Map)
         -> Result<Result<Vertex, NewVertexError>, TxnError>
         where S: ToSchemaId{
-        let vertex = Vertex::new(schema.to_id(), data);
+        let vertex = Vertex::new(schema.to_id(&self.schemas), data);
         let mut cell = match vertex_to_cell_for_write(&self.schemas, vertex) {
             Ok(cell) => cell, Err(e) => return Ok(Err(e))
         };
@@ -216,13 +216,13 @@ impl <'a>GraphTransaction<'a> {
     pub fn remove_vertex_by_key<K, S>(&mut self, schema: S, key: &K)
         -> Result<Result<(), vertex::RemoveError>, TxnError>
         where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(), key);
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
         self.remove_vertex(&id)
     }
 
     pub fn link<S>(&mut self, schema: S, from_id: &Id, to_id: &Id, body: Option<Map>)
         -> Result<Result<edge::Edge, LinkVerticesError>, TxnError> where S: ToSchemaId {
-        let schema_id = schema.to_id();
+        let schema_id = schema.to_id(&self.schemas);
         let edge_attr = match self.schemas.schema_type(schema_id) {
             Some(SchemaType::Edge(ea)) => ea,
             Some(_) => return Ok(Err(LinkVerticesError::SchemaNotEdge)),
@@ -245,7 +245,7 @@ impl <'a>GraphTransaction<'a> {
     pub fn update_vertex_by_key<K, U, S>(&mut self, schema: S, key: &K, update: U)
         -> Result<(), TxnError>
         where K: Serialize, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>{
-        let id = Cell::encode_cell_key(schema.to_id(), key);
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
         self.update_vertex(&id, update)
     }
 
@@ -255,14 +255,14 @@ impl <'a>GraphTransaction<'a> {
 
     pub fn get_vertex<K, S>(&mut self, schema: u32, key: &K) -> Result<Option<Vertex>, TxnError>
         where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(), key);
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
         self.read_vertex(&id)
     }
 
     pub fn neighbourhoods<S>(&mut self, vertex_id: &Id, schema: S, ed: EdgeDirection)
         -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError> where S: ToSchemaId {
         let vertex_field = ed.as_field();
-        let schema_id = schema.to_id();
+        let schema_id = schema.to_id(&self.schemas);
         match id_list::IdList::from_txn_and_container
             (self.neb_txn, vertex_id, vertex_field, schema_id).all()? {
             Err(e) => Ok(Err(edge::EdgeError::IdListError(e))),
