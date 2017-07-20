@@ -141,6 +141,17 @@ impl SchemaContainer {
         }
     }
 
+    pub fn id_from_name<'a>(&self, name : &'a str) -> Option<u32> {
+        self.neb_mata.schemas.name_to_id(name)
+    }
+
+    pub fn from_name<'a>(&self, name: &'a str) -> Option<MorpheusSchema> {
+        let schema_id = self.id_from_name(name).unwrap_or(0);
+        match self.get_neb_schema(schema_id) {
+            Some(neb_schema) => self.neb_to_morpheus_schema(&neb_schema), None => None
+        }
+    }
+
     pub fn get_neb_schema(&self, schema_id: u32) -> Option<Arc<Schema>> {
         self.neb_mata.schemas.get(&schema_id)
     }
@@ -188,6 +199,12 @@ impl ToSchemaId for u32 {
 }
 
 impl ToSchemaId for Schema {
+    fn to_id(&self) -> u32 {
+        self.id
+    }
+}
+
+impl ToSchemaId for Arc<Schema> {
     fn to_id(&self) -> u32 {
         self.id
     }
