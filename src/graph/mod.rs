@@ -7,7 +7,7 @@ use bifrost::raft::state_machine::master::ExecError;
 use bifrost::rpc::RPCError;
 
 use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError, ToSchemaId};
-use graph::vertex::Vertex;
+use graph::vertex::{Vertex, ToVertexId};
 use graph::edge::bilateral::BilateralEdge;
 
 use std::sync::Arc;
@@ -145,7 +145,9 @@ impl Graph {
         cell.header = header;
         Ok(vertex::cell_to_vertex(cell))
     }
-    pub fn remove_vertex(&self, id: &Id) -> Result<(), TxnError> {
+    pub fn remove_vertex<V>(&self, vertex: V)
+        -> Result<(), TxnError> where V: ToVertexId {
+        let id = vertex.to_id();
         self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted))
     }
     pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: &K) -> Result<(), TxnError>
@@ -153,8 +155,9 @@ impl Graph {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
         self.remove_vertex(&id)
     }
-    pub fn update_vertex<U>(&self, id: &Id, update: U) -> Result<(), TxnError>
-        where U: Fn(Vertex) -> Option<Vertex> {
+    pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
+        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
+        let id = vertex.to_id();
         self.neb_client.transaction(|txn|{
             vertex::txn_update(txn, id, &update)
         })
@@ -166,8 +169,9 @@ impl Graph {
         self.update_vertex(&id, update)
     }
 
-    pub fn read_vertex(&self, id: &Id) -> Result<Option<Vertex>, ReadVertexError> {
-        match self.neb_client.read_cell(id) {
+    pub fn read_vertex<V>(&self, vertex: V)
+        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId {
+        match self.neb_client.read_cell(&vertex.to_id()) {
             Err(e) => Err(ReadVertexError::RPCError(e)),
             Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
             Ok(Err(e)) => Err(ReadVertexError::ReadError(e)),
@@ -210,8 +214,9 @@ impl <'a>GraphTransaction<'a> {
         self.neb_txn.write(&cell)?;
         Ok(Ok(vertex::cell_to_vertex(cell)))
     }
-    pub fn remove_vertex(&mut self, id: &Id) -> Result<Result<(), vertex::RemoveError>, TxnError> {
-        vertex::txn_remove(self.neb_txn, &self.schemas, id)
+    pub fn remove_vertex<V>(&mut self, vertex: V)
+        -> Result<Result<(), vertex::RemoveError>, TxnError> where V: ToVertexId{
+        vertex::txn_remove(self.neb_txn, &self.schemas, vertex)
     }
     pub fn remove_vertex_by_key<K, S>(&mut self, schema: S, key: &K)
         -> Result<Result<(), vertex::RemoveError>, TxnError>
@@ -220,8 +225,11 @@ impl <'a>GraphTransaction<'a> {
         self.remove_vertex(&id)
     }
 
-    pub fn link<S>(&mut self, schema: S, from_id: &Id, to_id: &Id, body: Option<Map>)
-        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError> where S: ToSchemaId {
+    pub fn link<V, S>(&mut self, schema: S, from: V, to: V, body: Option<Map>)
+        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId {
+        let from_id = &from.to_id();
+        let to_id = &to.to_id();
         let schema_id = schema.to_id(&self.schemas);
         let edge_attr = match self.schemas.schema_type(schema_id) {
             Some(SchemaType::Edge(ea)) => ea,
@@ -238,9 +246,9 @@ impl <'a>GraphTransaction<'a> {
                     .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Undirected))
         }
     }
-    pub fn update_vertex<U>(&mut self, id: &Id, update: U) -> Result<(), TxnError>
-        where U: Fn(Vertex) -> Option<Vertex> {
-        vertex::txn_update(self.neb_txn, id, &update)
+    pub fn update_vertex<V, U>(&mut self, vertex: V, update: U) -> Result<(), TxnError>
+        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
+        vertex::txn_update(self.neb_txn, vertex, &update)
     }
     pub fn update_vertex_by_key<K, U, S>(&mut self, schema: S, key: &K, update: U)
         -> Result<(), TxnError>
@@ -249,8 +257,9 @@ impl <'a>GraphTransaction<'a> {
         self.update_vertex(&id, update)
     }
 
-    pub fn read_vertex(&mut self, id: &Id) -> Result<Option<Vertex>, TxnError> {
-        self.neb_txn.read(id).map(|c| c.map(vertex::cell_to_vertex))
+    pub fn read_vertex<V>(&mut self, vertex: V)
+        -> Result<Option<Vertex>, TxnError> where V: ToVertexId {
+        self.neb_txn.read(&vertex.to_id()).map(|c| c.map(vertex::cell_to_vertex))
     }
 
     pub fn get_vertex<K, S>(&mut self, schema: u32, key: &K) -> Result<Option<Vertex>, TxnError>
@@ -259,10 +268,11 @@ impl <'a>GraphTransaction<'a> {
         self.read_vertex(&id)
     }
 
-    pub fn neighbourhoods<S>(&mut self, vertex_id: &Id, schema: S, ed: EdgeDirection)
-        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError> where S: ToSchemaId {
+    pub fn neighbourhoods<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
+        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError> where V: ToVertexId, S: ToSchemaId {
         let vertex_field = ed.as_field();
         let schema_id = schema.to_id(&self.schemas);
+        let vertex_id = &vertex.to_id();
         match id_list::IdList::from_txn_and_container
             (self.neb_txn, vertex_id, vertex_field, schema_id).all()? {
             Err(e) => Ok(Err(edge::EdgeError::IdListError(e))),

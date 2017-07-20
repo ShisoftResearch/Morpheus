@@ -41,7 +41,9 @@ impl Vertex {
     }
 }
 
-pub fn txn_remove(txn: &mut Transaction, schemas: &Arc<SchemaContainer>, id: &Id) -> Result<Result<(), RemoveError>, TxnError> {
+pub fn txn_remove<V>(txn: &mut Transaction, schemas: &Arc<SchemaContainer>, vertex: V)
+    -> Result<Result<(), RemoveError>, TxnError> where V: ToVertexId {
+    let id = &vertex.to_id();
     match txn.read(id)? {
         Some(cell) => {
             let remove_field_lists = |id: &Id, txn: &mut Transaction, field_id: u64|
@@ -89,8 +91,9 @@ pub fn txn_remove(txn: &mut Transaction, schemas: &Arc<SchemaContainer>, id: &Id
     }
 }
 
-pub fn txn_update<U>(txn: &mut Transaction, id: &Id, update: &U) -> Result<(), TxnError>
-    where U: Fn(Vertex) -> Option<Vertex> {
+pub fn txn_update<U, V>(txn: &mut Transaction, vertex: V, update: &U) -> Result<(), TxnError>
+    where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
+    let id = &vertex.to_id();
     let update_cell = |cell: Cell| {
         match update(cell_to_vertex(cell)) {
             Some(vertex) => Some(vertex_to_cell(vertex)),
@@ -106,5 +109,33 @@ pub fn txn_update<U>(txn: &mut Transaction, id: &Id, update: &U) -> Result<(), T
             }
         },
         None => txn.abort()
+    }
+}
+
+pub trait ToVertexId {
+    fn to_id(&self) -> Id;
+}
+
+impl ToVertexId for Vertex {
+    fn to_id(&self) -> Id {
+        self.cell.id()
+    }
+}
+
+impl ToVertexId for Id {
+    fn to_id(&self) -> Id {
+        *self
+    }
+}
+
+impl <'a> ToVertexId for &'a Id {
+    fn to_id(&self) -> Id {
+        **self
+    }
+}
+
+impl <'a> ToVertexId for &'a Vertex {
+    fn to_id(&self) -> Id {
+        self.cell.id()
     }
 }
