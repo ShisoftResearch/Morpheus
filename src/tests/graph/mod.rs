@@ -3,7 +3,7 @@ use graph;
 use graph::*;
 use graph::edge::*;
 use graph::vertex::*;
-use server::schema::{MorpheusSchema, SchemaError};
+use server::schema::{MorpheusSchema, SchemaError, EMPTY_FIELDS};
 use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Value, Map};
 
@@ -43,8 +43,32 @@ pub fn schemas() {
 pub fn relationship() {
     let server = start_server(4002);
     let graph = &server.graph;
-    let people_schema = MorpheusSchema::new("people", Some(&vec!["name".to_string()]), &vec! [
+    let mut people_schema = MorpheusSchema::new("people", Some(&vec!["name".to_string()]), &vec! [
         Field::new("name", TypeId::String as u32, false, false, None)
     ], true);
+    let mut movie_schema = MorpheusSchema::new("movie", Some(&vec!["name".to_string()]), &vec! [
+        Field::new("name", TypeId::String as u32, false, false, None),
+        Field::new("year", TypeId::U32 as u32, false, false, None)
+    ], true);
+    let mut acted_in_schema = MorpheusSchema::new("acted-in", None, &vec! [
+        Field::new("role", TypeId::String as u32, false, false, None)
+    ], true);
+    let mut spouse_schema = MorpheusSchema::new("spouse", None, &EMPTY_FIELDS, false);
+    graph.new_vertex_group(&mut people_schema).unwrap();
+    graph.new_vertex_group(&mut movie_schema).unwrap();
+    graph.new_edge_group(
+        &mut acted_in_schema,
+        EdgeAttributes::new(
+            EdgeType::Directed,
+            true
+        )
+    ).unwrap();
+    graph.new_edge_group(
+        &mut spouse_schema,
+        EdgeAttributes::new(
+            EdgeType::Undirected,
+            false
+        )
+    ).unwrap();
 
 }

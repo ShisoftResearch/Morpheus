@@ -45,6 +45,10 @@ pub struct MorpheusSchema {
     pub is_dynamic: bool
 }
 
+lazy_static! {
+    pub static ref EMPTY_FIELDS: Vec<Field> = Vec::new();
+}
+
 impl MorpheusSchema {
     pub fn new<'a>(name: & 'a str, key_field: Option<&Vec<String>>, fields: &Vec<Field>, is_dynamic: bool) -> MorpheusSchema {
         MorpheusSchema {
