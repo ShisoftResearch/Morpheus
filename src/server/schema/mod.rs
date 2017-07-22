@@ -41,17 +41,19 @@ pub struct MorpheusSchema {
     pub name: String,
     pub schema_type: SchemaType,
     pub key_field: Option<Vec<String>>,
-    pub fields: Vec<Field>
+    pub fields: Vec<Field>,
+    pub is_dynamic: bool
 }
 
 impl MorpheusSchema {
-    pub fn new<'a>(name: & 'a str, key_field: Option<&Vec<String>>, fields: &Vec<Field>) -> MorpheusSchema {
+    pub fn new<'a>(name: & 'a str, key_field: Option<&Vec<String>>, fields: &Vec<Field>, is_dynamic: bool) -> MorpheusSchema {
         MorpheusSchema {
             id: 0,
             name: name.to_string(),
             key_field: key_field.cloned(),
             fields: fields.clone(),
-            schema_type: SchemaType::Unspecified
+            schema_type: SchemaType::Unspecified,
+            is_dynamic: is_dynamic
         }
     }
     pub fn into_ref(self) -> Arc<MorpheusSchema> {
@@ -120,9 +122,11 @@ impl SchemaContainer {
         let schema_type = schema.schema_type;
         let mut schema_fields = cell_fields(schema_type, &mut schema.fields)?;
         let mut neb_schema = Schema::new(
-            schema.name.clone(),
+            &schema.name,
             schema.key_field.clone(),
-            Field::new(&String::from("*"), 0, false, false, Some(schema_fields)));
+            Field::new(&String::from("*"), 0, false, false, Some(schema_fields)),
+            schema.is_dynamic
+        );
         match self.neb_client.new_schema(&mut neb_schema) {
             Ok(()) => {},
             Err(e) => return Err(SchemaError::NewNebSchemaExecError(e))
@@ -167,6 +171,7 @@ impl SchemaContainer {
                     schema_type: schema_type,
                     key_field: schema.str_key_field.clone(),
                     fields: fields.clone(),
+                    is_dynamic: schema.is_dynamic
                 })
             } else { None }
         } else { None }

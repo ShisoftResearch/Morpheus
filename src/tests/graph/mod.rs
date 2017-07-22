@@ -14,7 +14,7 @@ pub fn schemas() {
     let mut edge_schema = MorpheusSchema::new(
         "test_edge_schema",
         None,
-        &vec![Field::new(&"test_field".to_string(), TypeId::U32 as u32, false, false, None)]
+        &vec![Field::new(&"test_field", TypeId::U32 as u32, false, false, None)], false
     );
     assert_eq!(edge_schema.id, 0);
     assert!(
@@ -43,5 +43,8 @@ pub fn schemas() {
 pub fn relationship() {
     let server = start_server(4002);
     let graph = &server.graph;
-    //let people_schema = MorpheusSchema::new()
+    let people_schema = MorpheusSchema::new("people", Some(&vec!["name".to_string()]), &vec! [
+        Field::new("name", TypeId::String as u32, false, false, None)
+    ], true);
+
 }

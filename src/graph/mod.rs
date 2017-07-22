@@ -112,7 +112,7 @@ impl Graph {
             None => {
                 schemas.neb_client.new_schema_with_id(
                     &Schema::new_with_id(
-                        schema_id, schema_name.to_string(), None, fields.clone()
+                        schema_id, schema_name, None, fields.clone(), false
                     )
                 )?
             },
@@ -169,8 +169,8 @@ impl Graph {
         self.update_vertex(&id, update)
     }
 
-    pub fn read_vertex<V>(&self, vertex: V)
-        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId {
+    pub fn vertex_by<V>(&self, vertex: V)
+                        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId {
         match self.neb_client.read_cell(&vertex.to_id()) {
             Err(e) => Err(ReadVertexError::RPCError(e)),
             Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
@@ -179,10 +179,10 @@ impl Graph {
         }
     }
 
-    pub fn get_vertex<K, S>(&self, schema: S, key: &K) -> Result<Option<Vertex>, ReadVertexError>
+    pub fn vertex_by_key<K, S>(&self, schema: S, key: &K) -> Result<Option<Vertex>, ReadVertexError>
         where K: Serialize, S: ToSchemaId {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
-        self.read_vertex(&id)
+        self.vertex_by(&id)
     }
 
     pub fn graph_transaction<TFN>(&self, func: TFN) -> Result<(), TxnError>
