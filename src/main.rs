@@ -3,6 +3,7 @@
 #![feature(conservative_impl_trait)]
 #![plugin(bifrost_plugins)]
 
+#[macro_use]
 extern crate neb;
 #[macro_use]
 extern crate lazy_static;

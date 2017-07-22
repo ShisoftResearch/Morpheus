@@ -70,5 +70,23 @@ pub fn relationship() {
             false
         )
     ).unwrap();
+    graph.new_vertex("people", data_map!{
+        name: "Morgan Freeman", age: 78 as u8
+    }).unwrap();
+    graph.new_vertex("movie", data_map!{
+        name: "Batman Begins", year: 2005 as u32
+    }).unwrap();
+    graph.new_vertex("movie", data_map!{
+        name: "The Dark Knight", year: 2008 as u32
+    }).unwrap();
+    graph.new_vertex("movie", data_map!{
+        name: "The Dark Knight Rises", year: 2012 as u32
+    }).unwrap();
+    graph.new_vertex("movie", data_map!{
+        name: "Oblivion", year: 2010 as u32
+    }).unwrap();
+    graph.new_vertex("people", data_map!{
+        name: "Jeanette Adair Bradshaw"
+    }).unwrap();
 
 }
