@@ -25,14 +25,15 @@ pub fn schemas() {
                 graph::edge::EdgeType::Directed,
                 false
             )).is_err());
+    assert_eq!(edge_schema.id, 0);
     graph.new_edge_group(
         &mut edge_schema,
         graph::edge::EdgeAttributes::new(graph::edge::EdgeType::Directed, true)).unwrap();
     let mut vertex_schema = edge_schema.clone();
     vertex_schema.name = "test_vertex_schema".to_string();
     graph.new_vertex_group(&mut vertex_schema).unwrap();
-    assert!(edge_schema.id > 0);
-    assert!(vertex_schema.id > 0);
+    assert_eq!(edge_schema.id, 1);
+    assert_eq!(vertex_schema.id, 2);
     let mut test_data = Map::new();
     test_data.insert("test_field", Value::U32(1));
     graph.new_vertex(&vertex_schema, test_data.clone()).unwrap();
@@ -70,6 +71,10 @@ pub fn relationship() {
             false
         )
     ).unwrap();
+    assert_eq!(people_schema.id, 1);
+    assert_eq!(movie_schema.id, 2);
+    assert_eq!(acted_in_schema.id, 3);
+    assert_eq!(spouse_schema.id, 4);
     graph.new_vertex("people", data_map!{
         name: "Morgan Freeman", age: 78 as u8
     }).unwrap();
