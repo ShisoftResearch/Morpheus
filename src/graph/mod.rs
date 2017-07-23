@@ -21,7 +21,7 @@ mod id_list;
 #[derive(Debug)]
 pub enum NewVertexError {
     SchemaNotFound,
-    SchemaNotVertex,
+    SchemaNotVertex(SchemaType),
     CannotGenerateCellByData,
     DataNotMap,
     RPCError(RPCError),
@@ -70,7 +70,7 @@ fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> R
     let schema_id = vertex.schema();
     if let Some(stype) = schemas.schema_type(schema_id) {
         if stype != SchemaType::Vertex {
-            return Err(NewVertexError::SchemaNotVertex)
+            return Err(NewVertexError::SchemaNotVertex(stype))
         }
     } else {
         return Err(NewVertexError::SchemaNotFound)

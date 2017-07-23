@@ -88,5 +88,5 @@ pub fn relationship() {
     graph.new_vertex("people", data_map!{
         name: "Jeanette Adair Bradshaw"
     }).unwrap();
-
+    
 }

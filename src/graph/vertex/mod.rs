@@ -6,6 +6,7 @@ use graph::id_list::{IdList, IdListError};
 use graph::edge;
 use server::schema::SchemaContainer;
 
+use std::ops::{Index, IndexMut};
 use std::sync::Arc;
 use super::EdgeDirection;
 
@@ -137,5 +138,33 @@ impl <'a> ToVertexId for &'a Id {
 impl <'a> ToVertexId for &'a Vertex {
     fn to_id(&self) -> Id {
         self.cell.id()
+    }
+}
+
+impl Index<u64> for Vertex {
+    type Output = Value;
+
+    fn index(&self, index: u64) -> &Self::Output {
+        &self.cell.data[index]
+    }
+}
+
+impl <'a> Index<&'a str> for Vertex {
+    type Output = Value;
+
+    fn index(&self, index: &'a str) -> &Self::Output {
+        &self.cell.data[index]
+    }
+}
+
+impl <'a> IndexMut <&'a str> for Vertex {
+    fn index_mut<'b>(&'b mut self, index: &'a str) -> &'b mut Self::Output {
+        &mut self.cell.data[index]
+    }
+}
+
+impl IndexMut<u64> for Vertex {
+    fn index_mut<'a>(&'a mut self, index: u64) -> &'a mut Self::Output {
+        &mut self.cell.data[index]
     }
 }
