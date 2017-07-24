@@ -132,7 +132,7 @@ impl SchemaContainer {
             schema.is_dynamic
         );
         match self.neb_client.new_schema(&mut neb_schema) {
-            Ok(()) => {},
+            Ok(_) => {},
             Err(e) => return Err(SchemaError::NewNebSchemaExecError(e))
         };
         let schema_id = neb_schema.id;

@@ -114,7 +114,7 @@ impl Graph {
                     &Schema::new_with_id(
                         schema_id, schema_name, None, fields.clone(), false
                     )
-                )?
+                )?;
             },
             _ => {}
         }
@@ -131,7 +131,8 @@ impl Graph {
     }
     pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_attrs: edge::EdgeAttributes) -> Result<(), SchemaError> {
         schema.schema_type = SchemaType::Edge(edge_attrs);
-        self.schemas.new_schema(schema)
+        self.schemas.new_schema(schema)?;
+        Ok(())
     }
     pub fn new_vertex<S>(&self, schema: S, data: Map) -> Result<Vertex, NewVertexError>
         where S: ToSchemaId {
