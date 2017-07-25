@@ -32,13 +32,13 @@ impl MorpheusServer {
             &opts.group_name).map_err(MorpheusServerError::ClientError)?);
         if opts.is_meta {
             if let &Some(ref raft_service) = &neb_server.raft_service {
-                schema::SchemaContainer::new_meta_service(raft_service);
+                schema::SchemaContainer::new_meta_service(&opts.group_name, raft_service);
             } else {
                 panic!("raft service should be ready for meta server");
             }
         }
         let schema_container = schema::SchemaContainer::new_client(
-            &neb_client.raft_client, &neb_client, &neb_server.meta
+            &opts.group_name, &neb_client.raft_client, &neb_client, &neb_server.meta
         ).map_err(MorpheusServerError::InitSchemaError)?;
         let graph = Arc::new(Graph::new(&schema_container, &neb_client)
             .map_err(MorpheusServerError::InitSchemaError)?);

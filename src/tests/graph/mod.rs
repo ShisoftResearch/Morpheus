@@ -9,7 +9,7 @@ use neb::ram::types::{TypeId, Value, Map};
 
 #[test]
 pub fn schemas() {
-    let server = start_server(4001);
+    let server = start_server(4001, "schemas");
     let graph = &server.graph;
     let mut edge_schema = MorpheusSchema::new(
         "test_edge_schema",
@@ -42,7 +42,7 @@ pub fn schemas() {
 
 #[test]
 pub fn relationship() {
-    let server = start_server(4002);
+    let server = start_server(4002, "relationship");
     let graph = &server.graph;
     let mut people_schema = MorpheusSchema::new("people", Some(&vec!["name".to_string()]), &vec! [
         Field::new("name", TypeId::String as u32, false, false, None)

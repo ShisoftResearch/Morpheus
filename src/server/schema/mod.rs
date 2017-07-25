@@ -1,6 +1,7 @@
 use bifrost::raft::RaftService;
 use bifrost::raft::client::RaftClient;
 use bifrost::raft::state_machine::master::ExecError;
+use bifrost_hasher::hash_str;
 use graph::edge::{EdgeAttributes, EdgeType};
 use graph::edge;
 use chashmap::CHashMap;
@@ -82,20 +83,25 @@ pub fn cell_fields(schema_type: SchemaType, body_fields: &mut Vec<Field>) -> Res
     Ok(fields)
 }
 
+pub fn generate_sm_id<'a>(group: &'a str) -> u64 {
+    hash_str(&format!("{}-{}", sm::DEFAULT_RAFT_PREFIX, group))
+}
+
 impl SchemaContainer {
 
-    pub fn new_meta_service(raft_service: &Arc<RaftService>) {
-        let mut container_sm = sm::schema_types::Map::new(sm::DEFAULT_RAFT_ID);
+    pub fn new_meta_service<'a>(group: &'a str, raft_service: &Arc<RaftService>) {
+        let mut container_sm = sm::schema_types::Map::new(generate_sm_id(group));
         container_sm.init_callback(raft_service);
         raft_service.register_state_machine(Box::new(container_sm));
     }
 
-    pub fn new_client(
+    pub fn new_client<'a>(
+        group: &'a str,
         raft_client: &Arc<RaftClient>,
         neb_client: &Arc<NebClient>,
         neb_meta: &Arc<NebServerMeta>
     ) -> Result<Arc<SchemaContainer>, ExecError> {
-        let sm_client = Arc::new(SMClient::new(sm::DEFAULT_RAFT_ID, &raft_client));
+        let sm_client = Arc::new(SMClient::new(generate_sm_id(group), &raft_client));
         let sm_entries = sm_client.entries()?.unwrap();
         let container = SchemaContainer {
             map: CHashMap::new(),
