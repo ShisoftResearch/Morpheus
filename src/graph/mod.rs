@@ -186,8 +186,8 @@ impl Graph {
         self.vertex_by(&id)
     }
 
-    pub fn graph_transaction<TFN>(&self, func: TFN) -> Result<(), TxnError>
-        where TFN: Fn(&mut GraphTransaction) -> Result<(), TxnError>
+    pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> Result<TR, TxnError>
+        where TFN: Fn(&mut GraphTransaction) -> Result<TR, TxnError>
     {
         let wrapper = |neb_txn: &mut Transaction| {
             func(&mut GraphTransaction {
@@ -196,6 +196,16 @@ impl Graph {
             })
         };
         self.neb_client.transaction(wrapper)
+    }
+    pub fn link<V, S>(&mut self, from: V, schema: S, to: V, body: Option<&Map>)
+        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId {
+        let from_id = from.to_id();
+        let to_id = to.to_id();
+        let schema_id = schema.to_id(&self.schemas);
+        self.graph_transaction(|txn| {
+            txn.link(from_id, schema_id, to_id, body)
+        })
     }
 }
 
@@ -226,7 +236,7 @@ impl <'a>GraphTransaction<'a> {
         self.remove_vertex(&id)
     }
 
-    pub fn link<V, S>(&mut self, schema: S, from: V, to: V, body: Option<Map>)
+    pub fn link<V, S>(&mut self, from: V, schema: S, to: V, body: Option<&Map>)
         -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let from_id = &from.to_id();

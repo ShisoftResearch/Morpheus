@@ -136,6 +136,4 @@ pub fn relationship() {
             .unwrap().unwrap()["age"].U8().unwrap(),
         78u8
     );
-
-
 }
