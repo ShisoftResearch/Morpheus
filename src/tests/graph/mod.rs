@@ -75,23 +75,28 @@ pub fn relationship() {
     assert_eq!(movie_schema.id, 2);
     assert_eq!(acted_in_schema.id, 3);
     assert_eq!(spouse_schema.id, 4);
+    let morgan_freeman = "Morgan Freeman";
+    let batman_begins = "Batman Begins";
+    let the_dark_knight = "The Dark Knight";
+    let the_dark_knight_rises = "The Dark Knight Rises";
+    let oblivion = "Oblivion";
+    let jeanette = "Jeanette Adair Bradshaw";
     graph.new_vertex("people", data_map!{
-        name: "Morgan Freeman", age: 78 as u8
+        name: morgan_freeman, age: 78 as u8
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: "Batman Begins", year: 2005 as u32
+        name: batman_begins, year: 2005 as u32
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: "The Dark Knight", year: 2008 as u32
+        name: the_dark_knight, year: 2008 as u32
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: "The Dark Knight Rises", year: 2012 as u32
+        name: the_dark_knight_rises, year: 2012 as u32
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: "Oblivion", year: 2010 as u32
+        name: oblivion, year: 2010 as u32
     }).unwrap();
     graph.new_vertex("people", data_map!{
-        name: "Jeanette Adair Bradshaw"
+        name: jeanette
     }).unwrap();
-    
 }

@@ -180,9 +180,9 @@ impl Graph {
         }
     }
 
-    pub fn vertex_by_key<K, S>(&self, schema: S, key: &K) -> Result<Option<Vertex>, ReadVertexError>
+    pub fn vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<Option<Vertex>, ReadVertexError>
         where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key);
         self.vertex_by(&id)
     }
 
