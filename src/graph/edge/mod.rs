@@ -1,14 +1,17 @@
+#[macro_use]
+mod macros;
+
 pub mod directed;
 pub mod undirectd;
 pub mod hyper;
 pub mod bilateral;
 
+use std::ops::{Index, IndexMut};
 use neb::ram::types::Id;
 use neb::client::transaction::{Transaction, TxnError};
-use neb::ram::cell::Cell;
-use graph::vertex::Vertex;
+use neb::ram::types::Value;
 use graph::edge::bilateral::BilateralEdge;
-use server::schema::{MorpheusSchema, SchemaContainer, SchemaType};
+use server::schema::{SchemaContainer, SchemaType};
 use super::id_list::IdListError;
 use std::sync::Arc;
 
@@ -61,6 +64,44 @@ impl Edge {
         match self {
             Edge::Directed(mut e) => e.remove(txn),
             Edge::Undirected(mut e) => e.remove(txn),
+        }
+    }
+}
+
+impl Index<u64> for Edge {
+    type Output = Value;
+    fn index(&self, index: u64) -> &Self::Output {
+        match self {
+            &Edge::Directed(ref e) => &e[index],
+            &Edge::Undirected(ref e) => &e[index],
+        }
+    }
+}
+
+impl <'a> Index<&'a str> for Edge {
+    type Output = Value;
+    fn index(&self, index: &'a str) -> &Self::Output {
+        match self {
+            &Edge::Directed(ref e) => &e[index],
+            &Edge::Undirected(ref e) => &e[index],
+        }
+    }
+}
+
+impl <'a> IndexMut <&'a str> for Edge {
+    fn index_mut<'b>(&'b mut self, index: &'a str) -> &'b mut Self::Output {
+        match self {
+            &mut Edge::Directed(ref mut e) => &mut e[index],
+            &mut Edge::Undirected(ref mut e) => &mut e[index],
+        }
+    }
+}
+
+impl IndexMut<u64> for Edge {
+    fn index_mut<'a>(&'a mut self, index: u64) -> &'a mut Self::Output {
+        match self {
+            &mut Edge::Directed(ref mut e) => &mut e[index],
+            &mut Edge::Undirected(ref mut e) => &mut e[index],
         }
     }
 }

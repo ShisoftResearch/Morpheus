@@ -142,7 +142,6 @@ impl <'a> ToVertexId for &'a Vertex {
 
 impl Index<u64> for Vertex {
     type Output = Value;
-
     fn index(&self, index: u64) -> &Self::Output {
         &self.cell.data[index]
     }
@@ -150,7 +149,6 @@ impl Index<u64> for Vertex {
 
 impl <'a> Index<&'a str> for Vertex {
     type Output = Value;
-
     fn index(&self, index: &'a str) -> &Self::Output {
         &self.cell.data[index]
     }
@@ -158,12 +156,12 @@ impl <'a> Index<&'a str> for Vertex {
 
 impl <'a> IndexMut <&'a str> for Vertex {
     fn index_mut<'b>(&'b mut self, index: &'a str) -> &'b mut Self::Output {
-        &mut self.cell.data[index]
+        &mut self.cell[index]
     }
 }
 
 impl IndexMut<u64> for Vertex {
     fn index_mut<'a>(&'a mut self, index: u64) -> &'a mut Self::Output {
-        &mut self.cell.data[index]
+        &mut self.cell[index]
     }
 }

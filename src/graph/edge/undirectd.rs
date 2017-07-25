@@ -78,3 +78,5 @@ impl BilateralEdge for UndirectedEdge {
         self.schema_id
     }
 }
+
+edge_index!(UndirectedEdge);
