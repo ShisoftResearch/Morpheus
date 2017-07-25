@@ -101,5 +101,41 @@ pub fn relationship() {
         name: jeanette
     }).unwrap();
 
-    graph.vertex_by_key("people", morgan_freeman).unwrap().unwrap();
+    assert_eq!(
+        graph.vertex_by_key("people", morgan_freeman)
+            .unwrap().unwrap()["name"].String().unwrap(),
+        morgan_freeman
+    );
+    assert_eq!(
+        graph.vertex_by_key("movie", batman_begins)
+            .unwrap().unwrap()["name"].String().unwrap(),
+        batman_begins
+    );
+    assert_eq!(
+        graph.vertex_by_key("movie", the_dark_knight)
+            .unwrap().unwrap()["name"].String().unwrap(),
+        the_dark_knight
+    );
+    assert_eq!(
+        graph.vertex_by_key("movie", the_dark_knight_rises)
+            .unwrap().unwrap()["name"].String().unwrap(),
+        the_dark_knight_rises
+    );
+    assert_eq!(
+        graph.vertex_by_key("movie", oblivion)
+            .unwrap().unwrap()["name"].String().unwrap(),
+        oblivion
+    );
+    assert_eq!(
+        graph.vertex_by_key("people", jeanette)
+            .unwrap().unwrap()["name"].String().unwrap(),
+        jeanette
+    );
+    assert_eq!(
+        graph.vertex_by_key("people", morgan_freeman)
+            .unwrap().unwrap()["age"].U8().unwrap(),
+        78u8
+    );
+
+
 }
