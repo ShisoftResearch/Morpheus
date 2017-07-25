@@ -102,5 +102,4 @@ pub fn relationship() {
     }).unwrap();
 
     graph.vertex_by_key("people", morgan_freeman).unwrap().unwrap();
-
 }

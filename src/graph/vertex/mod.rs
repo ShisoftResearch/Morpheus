@@ -1,7 +1,6 @@
 use neb::ram::cell::Cell;
-use neb::ram::types::{TypeId, Id, key_hash, Map, Value};
+use neb::ram::types::{Id, key_hash, Map, Value};
 use neb::client::transaction::{Transaction, TxnError};
-use graph::fields::*;
 use graph::id_list::{IdList, IdListError};
 use graph::edge;
 use server::schema::SchemaContainer;
