@@ -6,6 +6,7 @@ use graph::vertex::*;
 use server::schema::{MorpheusSchema, SchemaError, EMPTY_FIELDS};
 use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Value, Map};
+use neb::ram::cell::Cell;
 
 #[test]
 pub fn schemas() {
@@ -81,7 +82,7 @@ pub fn relationship() {
     let the_dark_knight_rises = "The Dark Knight Rises";
     let oblivion = "Oblivion";
     let jeanette = "Jeanette Adair Bradshaw";
-    graph.new_vertex("people", data_map!{
+    let morgan_vertex = graph.new_vertex("people", data_map!{
         name: morgan_freeman, age: 78 as u8
     }).unwrap();
     graph.new_vertex("movie", data_map!{
@@ -99,4 +100,7 @@ pub fn relationship() {
     graph.new_vertex("people", data_map!{
         name: jeanette
     }).unwrap();
+
+    graph.vertex_by_key("people", morgan_freeman).unwrap().unwrap();
+
 }

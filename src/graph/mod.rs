@@ -1,5 +1,5 @@
 use neb::ram::schema::{Field, Schema};
-use neb::ram::types::{TypeId, Id, key_hash, Map, Value};
+use neb::ram::types::{Id, key_hash, Map, Value, ToValue};
 use neb::ram::cell::{Cell, WriteError, ReadError};
 use neb::client::{Client as NebClient};
 use neb::client::transaction::{Transaction, TxnError};
@@ -181,8 +181,8 @@ impl Graph {
     }
 
     pub fn vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<Option<Vertex>, ReadVertexError>
-        where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key);
+        where K: ToValue, S: ToSchemaId {
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.vertex_by(&id)
     }
 
