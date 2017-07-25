@@ -76,76 +76,76 @@ pub fn relationship() {
     assert_eq!(movie_schema.id, 2);
     assert_eq!(acted_in_schema.id, 3);
     assert_eq!(spouse_schema.id, 4);
-    let morgan_freeman = "Morgan Freeman";
-    let batman_begins = "Batman Begins";
-    let the_dark_knight = "The Dark Knight";
-    let the_dark_knight_rises = "The Dark Knight Rises";
-    let oblivion = "Oblivion";
-    let jeanette = "Jeanette Adair Bradshaw";
-    let morgan_vertex = graph.new_vertex("people", data_map!{
-        name: morgan_freeman, age: 78 as u8
+    let morgan_freeman_name = "Morgan Freeman";
+    let batman_begins_name = "Batman Begins";
+    let the_dark_knight_name = "The Dark Knight";
+    let the_dark_knight_rises_name = "The Dark Knight Rises";
+    let oblivion_name = "Oblivion";
+    let jeanette_name = "Jeanette Adair Bradshaw";
+    graph.new_vertex("people", data_map!{
+        name: morgan_freeman_name, age: 80 as u8
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: batman_begins, year: 2005 as u32
+        name: batman_begins_name, year: 2005 as u32
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: the_dark_knight, year: 2008 as u32
+        name: the_dark_knight_name, year: 2008 as u32
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: the_dark_knight_rises, year: 2012 as u32
+        name: the_dark_knight_rises_name, year: 2012 as u32
     }).unwrap();
     graph.new_vertex("movie", data_map!{
-        name: oblivion, year: 2010 as u32
+        name: oblivion_name, year: 2010 as u32
     }).unwrap();
     graph.new_vertex("people", data_map!{
-        name: jeanette
+        name: jeanette_name
     }).unwrap();
 
     assert_eq!(
-        graph.vertex_by_key("people", morgan_freeman)
+        graph.vertex_by_key("people", morgan_freeman_name)
             .unwrap().unwrap()["name"].String().unwrap(),
-        morgan_freeman
+        morgan_freeman_name
     );
     assert_eq!(
-        graph.vertex_by_key("movie", batman_begins)
+        graph.vertex_by_key("movie", batman_begins_name)
             .unwrap().unwrap()["name"].String().unwrap(),
-        batman_begins
+        batman_begins_name
     );
     assert_eq!(
-        graph.vertex_by_key("movie", the_dark_knight)
+        graph.vertex_by_key("movie", the_dark_knight_name)
             .unwrap().unwrap()["name"].String().unwrap(),
-        the_dark_knight
+        the_dark_knight_name
     );
     assert_eq!(
-        graph.vertex_by_key("movie", the_dark_knight_rises)
+        graph.vertex_by_key("movie", the_dark_knight_rises_name)
             .unwrap().unwrap()["name"].String().unwrap(),
-        the_dark_knight_rises
+        the_dark_knight_rises_name
     );
     assert_eq!(
-        graph.vertex_by_key("movie", oblivion)
+        graph.vertex_by_key("movie", oblivion_name)
             .unwrap().unwrap()["name"].String().unwrap(),
-        oblivion
+        oblivion_name
     );
     assert_eq!(
-        graph.vertex_by_key("people", jeanette)
+        graph.vertex_by_key("people", jeanette_name)
             .unwrap().unwrap()["name"].String().unwrap(),
-        jeanette
+        jeanette_name
     );
     assert_eq!(
-        graph.vertex_by_key("people", morgan_freeman)
+        graph.vertex_by_key("people", morgan_freeman_name)
             .unwrap().unwrap()["age"].U8().unwrap(),
-        78u8
+        80u8
     );
 
-    let morgan_vertex =
-        graph.vertex_by_key("people", morgan_freeman)
+    let morgan_freeman =
+        graph.vertex_by_key("people", morgan_freeman_name)
         .unwrap().unwrap();
 
-    let batman_begins_vertex =
-        graph.vertex_by_key("movie", batman_begins)
+    let batman_begins =
+        graph.vertex_by_key("movie", batman_begins_name)
         .unwrap().unwrap();
 
-    graph.link(&morgan_vertex, "acted-in", &batman_begins_vertex, Some(&data_map!{
-
+    graph.link(&morgan_freeman, "acted-in", &batman_begins, Some(&data_map!{
+        as: "Lucius Fox", works_for: "Bruce Wayne"
     }));
 }
