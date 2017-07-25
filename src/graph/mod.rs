@@ -151,9 +151,9 @@ impl Graph {
         let id = vertex.to_id();
         self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted))
     }
-    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: &K) -> Result<(), TxnError>
-        where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
+    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<(), TxnError>
+        where K: ToValue, S: ToSchemaId {
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.remove_vertex(&id)
     }
     pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
@@ -163,15 +163,15 @@ impl Graph {
             vertex::txn_update(txn, id, &update)
         })
     }
-    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: &K, update: U)
+    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
         -> Result<(), TxnError>
-        where K: Serialize, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>{
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
+        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>{
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.update_vertex(&id, update)
     }
 
     pub fn vertex_by<V>(&self, vertex: V)
-                        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId {
+        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId {
         match self.neb_client.read_cell(&vertex.to_id()) {
             Err(e) => Err(ReadVertexError::RPCError(e)),
             Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
@@ -197,7 +197,7 @@ impl Graph {
         };
         self.neb_client.transaction(wrapper)
     }
-    pub fn link<V, S>(&mut self, from: V, schema: S, to: V, body: Option<&Map>)
+    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<&Map>)
         -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let from_id = from.to_id();
@@ -229,10 +229,10 @@ impl <'a>GraphTransaction<'a> {
         -> Result<Result<(), vertex::RemoveError>, TxnError> where V: ToVertexId{
         vertex::txn_remove(self.neb_txn, &self.schemas, vertex)
     }
-    pub fn remove_vertex_by_key<K, S>(&mut self, schema: S, key: &K)
+    pub fn remove_vertex_by_key<K, S>(&mut self, schema: S, key: K)
         -> Result<Result<(), vertex::RemoveError>, TxnError>
-        where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
+        where K: ToValue, S: ToSchemaId {
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.remove_vertex(&id)
     }
 
@@ -261,10 +261,10 @@ impl <'a>GraphTransaction<'a> {
         where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
         vertex::txn_update(self.neb_txn, vertex, &update)
     }
-    pub fn update_vertex_by_key<K, U, S>(&mut self, schema: S, key: &K, update: U)
+    pub fn update_vertex_by_key<K, U, S>(&mut self, schema: S, key: K, update: U)
         -> Result<(), TxnError>
-        where K: Serialize, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>{
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
+        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>{
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.update_vertex(&id, update)
     }
 
@@ -273,9 +273,9 @@ impl <'a>GraphTransaction<'a> {
         self.neb_txn.read(&vertex.to_id()).map(|c| c.map(vertex::cell_to_vertex))
     }
 
-    pub fn get_vertex<K, S>(&mut self, schema: u32, key: &K) -> Result<Option<Vertex>, TxnError>
-        where K: Serialize, S: ToSchemaId {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), key);
+    pub fn get_vertex<K, S>(&mut self, schema: u32, key: K) -> Result<Option<Vertex>, TxnError>
+        where K: ToValue, S: ToSchemaId {
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.read_vertex(&id)
     }
 

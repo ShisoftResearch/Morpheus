@@ -136,4 +136,16 @@ pub fn relationship() {
             .unwrap().unwrap()["age"].U8().unwrap(),
         78u8
     );
+
+    let morgan_vertex =
+        graph.vertex_by_key("people", morgan_freeman)
+        .unwrap().unwrap();
+
+    let batman_begins_vertex =
+        graph.vertex_by_key("movie", batman_begins)
+        .unwrap().unwrap();
+
+    graph.link(&morgan_vertex, "acted-in", &batman_begins_vertex, Some(&data_map!{
+
+    }));
 }
