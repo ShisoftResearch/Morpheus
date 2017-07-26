@@ -166,4 +166,9 @@ pub fn relationship() {
     graph.link(&morgan_freeman, "acted-in", &the_dark_knight_rises, Some(&data_map!{
         role: "Lucius Fox"
     })).unwrap().unwrap();
+
+    graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
+        // missing required field should fail
+    })).unwrap().err().unwrap();
+
 }
