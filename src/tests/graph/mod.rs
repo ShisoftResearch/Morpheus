@@ -54,7 +54,7 @@ pub fn relationship() {
     ], true);
     let mut acted_in_schema = MorpheusSchema::new("acted-in", None, &vec! [
         Field::new("role", TypeId::String as u32, false, false, None)
-    ], true);
+    ], false);
     let mut spouse_schema = MorpheusSchema::new("spouse", None, &EMPTY_FIELDS, false);
     graph.new_vertex_group(&mut people_schema).unwrap();
     graph.new_vertex_group(&mut movie_schema).unwrap();
@@ -157,7 +157,7 @@ pub fn relationship() {
         graph.vertex_by_key("movie", oblivion_name)
             .unwrap().unwrap();
 
-    graph.link(&morgan_freeman, "acted-in", &batman_begins, Some(&data_map!{
+    let batman_edge = graph.link(&morgan_freeman, "acted-in", &batman_begins, Some(&data_map!{
         role: "Lucius Fox", works_for: "Bruce Wayne"
     })).unwrap().unwrap();
     graph.link(&morgan_freeman, "acted-in", &the_dark_knight, Some(&data_map!{
@@ -167,8 +167,8 @@ pub fn relationship() {
         role: "Lucius Fox"
     })).unwrap().unwrap();
 
-    graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
+    let should_error = graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
         // missing required field should fail
-    })).unwrap().err().unwrap();
-
+    })).err().unwrap();
 }
+

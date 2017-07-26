@@ -80,6 +80,7 @@ pub fn cell_fields(schema_type: SchemaType, body_fields: &mut Vec<Field>) -> Res
         },
         SchemaType::Unspecified => return Err(SchemaError::SchemaTypeUnspecified)
     };
+    fields.append(body_fields);
     Ok(fields)
 }
 

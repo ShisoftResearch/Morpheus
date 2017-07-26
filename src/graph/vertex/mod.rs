@@ -9,6 +9,7 @@ use std::ops::{Index, IndexMut};
 use std::sync::Arc;
 use super::EdgeDirection;
 
+#[derive(Debug)]
 pub struct Vertex {
     pub cell: Cell
 }

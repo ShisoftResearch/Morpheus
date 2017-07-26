@@ -53,6 +53,7 @@ pub trait TEdge {
     fn edge_type() -> EdgeType;
 }
 
+#[derive(Debug)]
 pub enum Edge {
     Directed(directed::DirectedEdge),
     Undirected(undirectd::UndirectedEdge)

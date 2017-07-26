@@ -18,11 +18,12 @@ lazy_static! {
         ];
 }
 
+#[derive(Debug)]
 pub struct DirectedEdge {
     inbound_id: Id,
     outbound_id: Id,
     schema_id: u32,
-    cell: Option<Cell>,
+    pub cell: Option<Cell>,
 }
 
 impl TEdge for DirectedEdge {

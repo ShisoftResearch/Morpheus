@@ -22,6 +22,7 @@ lazy_static! {
     pub static ref EDGE_VERTEX_B_ID: u64 = key_hash(&*EDGE_VERTEX_B_NAME);
 }
 
+#[derive(Debug)]
 pub struct UndirectedEdge {
     vertex_a_id: Id,
     vertex_b_id: Id,
