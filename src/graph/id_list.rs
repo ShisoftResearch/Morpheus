@@ -12,7 +12,7 @@ pub const LIST_KEY: &'static str = "_list";
 
 pub const ID_TYPES_MAP_KEY: &'static str = "_edges";
 pub const ID_TYPE_SCHEMA_ID_KEY: &'static str = "_type";
-pub const ID_TYPE_ID_LIST_KEY: &'static str = "_list";
+pub const ID_TYPE_ID_LIST_KEY: &'static str = "_type_list";
 
 #[derive(Debug)]
 pub enum IdListError {
@@ -29,7 +29,7 @@ lazy_static! {
         Field::new(&String::from(ID_TYPES_MAP_KEY), TypeId::Map as u32, false, true,
             Some(vec![
                 Field::new(&String::from(ID_TYPE_SCHEMA_ID_KEY), TypeId::U32 as u32, false, false, None),
-                Field::new(&String::from(ID_TYPE_ID_LIST_KEY), TypeId::Id as u32, false, true, None)
+                Field::new(&String::from(ID_TYPE_ID_LIST_KEY), TypeId::Id as u32, false, false, None)
             ]))
     ]));
     pub static ref ID_LINKED_LIST: Field = Field::new("*", TypeId::Map as u32, false, false, Some(vec![

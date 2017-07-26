@@ -146,6 +146,6 @@ pub fn relationship() {
         .unwrap().unwrap();
 
     graph.link(&morgan_freeman, "acted-in", &batman_begins, Some(&data_map!{
-        as: "Lucius Fox", works_for: "Bruce Wayne"
+        role: "Lucius Fox", works_for: "Bruce Wayne"
     })).unwrap().unwrap();
 }
