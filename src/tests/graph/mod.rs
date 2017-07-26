@@ -54,7 +54,7 @@ pub fn relationship() {
     ], true);
     let mut acted_in_schema = MorpheusSchema::new("acted-in", None, &vec! [
         Field::new("role", TypeId::String as u32, false, false, None)
-    ], false);
+    ], true);
     let mut spouse_schema = MorpheusSchema::new("spouse", None, &EMPTY_FIELDS, false);
     graph.new_vertex_group(&mut people_schema).unwrap();
     graph.new_vertex_group(&mut movie_schema).unwrap();
