@@ -145,7 +145,25 @@ pub fn relationship() {
         graph.vertex_by_key("movie", batman_begins_name)
         .unwrap().unwrap();
 
+    let the_dark_knight =
+        graph.vertex_by_key("movie", the_dark_knight_name)
+            .unwrap().unwrap();
+
+    let the_dark_knight_rises =
+        graph.vertex_by_key("movie", the_dark_knight_rises_name)
+        .unwrap().unwrap();
+
+    let oblivion =
+        graph.vertex_by_key("movie", oblivion_name)
+            .unwrap().unwrap();
+
     graph.link(&morgan_freeman, "acted-in", &batman_begins, Some(&data_map!{
         role: "Lucius Fox", works_for: "Bruce Wayne"
+    })).unwrap().unwrap();
+    graph.link(&morgan_freeman, "acted-in", &the_dark_knight, Some(&data_map!{
+        role: "Lucius Fox"
+    })).unwrap().unwrap();
+    graph.link(&morgan_freeman, "acted-in", &the_dark_knight_rises, Some(&data_map!{
+        role: "Lucius Fox"
     })).unwrap().unwrap();
 }
