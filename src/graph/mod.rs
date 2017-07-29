@@ -9,6 +9,7 @@ use bifrost::rpc::RPCError;
 use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError, ToSchemaId};
 use graph::vertex::{Vertex, ToVertexId};
 use graph::edge::bilateral::BilateralEdge;
+use graph::edge::{EdgeAttributes, EdgeError};
 
 use std::sync::Arc;
 use serde::Serialize;
@@ -53,7 +54,7 @@ pub enum CellType {
 pub enum EdgeDirection {
     Inbound,
     Outbound,
-    Undirected
+    Undirected,
 }
 
 impl EdgeDirection {
@@ -207,6 +208,15 @@ impl Graph {
             txn.link(from_id, schema_id, to_id, body)
         })
     }
+    pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
+        -> Result<Result<usize, edge::EdgeError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId {
+        let vertex_id = vertex.to_id();
+        let schema_id = schema.to_id(&self.schemas);
+        self.graph_transaction(|txn| {
+            txn.degree(vertex_id, schema_id, ed)
+        })
+    }
 }
 
 pub struct GraphTransaction<'a> {
@@ -257,6 +267,7 @@ impl <'a>GraphTransaction<'a> {
                     .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Undirected))
         }
     }
+
     pub fn update_vertex<V, U>(&mut self, vertex: V, update: U) -> Result<(), TxnError>
         where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
         vertex::txn_update(self.neb_txn, vertex, &update)
@@ -280,7 +291,8 @@ impl <'a>GraphTransaction<'a> {
     }
 
     pub fn neighbourhoods<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
-        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError> where V: ToVertexId, S: ToSchemaId {
+        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId {
         let vertex_field = ed.as_field();
         let schema_id = schema.to_id(&self.schemas);
         let vertex_id = &vertex.to_id();
@@ -301,4 +313,33 @@ impl <'a>GraphTransaction<'a> {
             }))
         }
     }
+
+    pub fn degree<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
+        -> Result<Result<usize, edge::EdgeError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId {
+        let (schema_id, edge_attr) = match edge_attr_from_schema(schema, &self.schemas) {
+            Err(e) => return Ok(Err(e)), Ok(t) => t
+        };
+        let vertex_field = ed.as_field();
+        let vertex_id = &vertex.to_id();
+        match id_list::IdList::from_txn_and_container
+            (self.neb_txn, vertex_id, vertex_field, schema_id).count()? {
+            Err(e) => Ok(Err(edge::EdgeError::IdListError(e))),
+            Ok(count) => Ok(Ok(count))
+        }
+    }
+}
+
+pub fn edge_attr_from_schema<S>(schema: S, schemas: &Arc<SchemaContainer>)
+    -> Result<(u32, EdgeAttributes), EdgeError>
+    where S: ToSchemaId {
+    let schema_id = schema.to_id(schemas);
+    Ok((
+        schema_id,
+        match schemas.schema_type(schema_id) {
+            Some(SchemaType::Edge(ea)) => ea,
+            Some(_) => return Err(EdgeError::WrongSchema),
+            None => return Err(EdgeError::CannotFindSchema)
+        }
+    ))
 }

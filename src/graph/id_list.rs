@@ -99,7 +99,12 @@ fn seg_cell_by_id(txn: &mut Transaction, id: Option<Id>) -> Result<Option<Cell>,
 }
 
 impl<'a> IdList <'a> {
-    pub fn from_txn_and_container(txn: &'a mut Transaction, container_id: &Id, field_id: u64, schema_id: u32) -> IdList<'a> {
+    pub fn from_txn_and_container(
+        txn: &'a mut Transaction,
+        container_id: &Id,
+        field_id: u64,
+        schema_id: u32
+    ) -> IdList<'a> {
         IdList {
             txn: txn,
             container_id: *container_id,
@@ -191,10 +196,10 @@ impl<'a> IdList <'a> {
             Err(e) => return Ok(Err(e)), Ok(id) => id
         };
         let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
-        let current_seg = segments.next();
+        let first_seg = segments.next();
         Ok(Ok(IdListIterator {
             segments: segments,
-            current_seg: current_seg,
+            current_seg: first_seg,
             current_pos: 0,
         }))
     }
@@ -377,6 +382,18 @@ impl <'a> IdListIterator <'a> {
         self.current_seg = self.segments.next();
         self.current_pos = 0;
     }
+
+    fn get_curr_seg_list(&self) -> Option<&Vec<Value>> {
+        if let Some(ref cell) = self.current_seg {
+            let pos = self.current_pos;
+            if let &Value::Map(ref map) = &cell.data {
+                if let &Value::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
+                    return Some(&list);
+                }
+            }
+        }
+        None
+    }
 }
 
 impl <'a> Iterator for IdListIterator<'a> {
@@ -384,28 +401,27 @@ impl <'a> Iterator for IdListIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut need_next_seg = false;
-        if let Some(ref cell) = self.current_seg {
+        if let Some(list) = self.get_curr_seg_list() {
             let pos = self.current_pos;
-            self.current_pos += 1;
-            if let &Value::Map(ref map) = &cell.data {
-                if let &Value::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
-                    if let Some(&Value::Id(id)) = list.get(pos as usize) {
-                        return Some(id);
-                    } else {
-                        need_next_seg = true
-                    }
-                }
+            if let Some(&Value::Id(id)) = list.get(pos as usize) {
+                return Some(id);
+            } else {
+                need_next_seg = true
             }
+        } else {
+            return None;
         };
         if need_next_seg {
             self.next_seg();
             self.next()
         } else {
+            self.current_pos += 1;
             None
         }
     }
 
     fn last(self) -> Option<Self::Item> where Self: Sized {
+        let last_value = self.get_curr_seg_list().map(|l| l.last()).unwrap_or(None).cloned();
         if let Some(last_seg) = self.segments.last() {
             if let &Value::Map(ref map) = &last_seg.data {
                 if let &Value::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
@@ -415,10 +431,16 @@ impl <'a> Iterator for IdListIterator<'a> {
                 }
             }
         }
-        return None;
+        return if let Some(Value::Id(id)) = last_value {
+            Some(id)
+        } else {
+            None
+        };
     }
     fn count(self) -> usize where Self: Sized {
-        let mut count = 0;
+        let mut count = self.get_curr_seg_list()
+            .map(|l| l.len())
+            .unwrap_or(0);
         for seg in self.segments {
             if let &Value::Map(ref map) = &seg.data {
                 if let &Value::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {

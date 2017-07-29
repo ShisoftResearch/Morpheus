@@ -157,6 +157,10 @@ pub fn relationship() {
         graph.vertex_by_key("movie", oblivion_name)
             .unwrap().unwrap();
 
+    assert_eq!(
+        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 0
+    );
+
     let batman_edge = graph.link(&morgan_freeman, "acted-in", &batman_begins, Some(&data_map!{
         role: "Lucius Fox", works_for: "Bruce Wayne"
     })).unwrap().unwrap();
@@ -166,6 +170,10 @@ pub fn relationship() {
     graph.link(&morgan_freeman, "acted-in", &the_dark_knight_rises, Some(&data_map!{
         role: "Lucius Fox"
     })).unwrap().unwrap();
+
+    assert_eq!(
+        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 3
+    );
 
     let should_error = graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
         // missing required field should fail
