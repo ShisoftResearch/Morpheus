@@ -178,5 +178,10 @@ pub fn relationship() {
     let should_error = graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
         // missing required field should fail
     })).err().unwrap();
+
+    assert_eq!(
+        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 3
+    );
+
 }
 
