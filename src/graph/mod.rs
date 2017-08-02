@@ -150,7 +150,7 @@ impl Graph {
     pub fn remove_vertex<V>(&self, vertex: V)
         -> Result<(), TxnError> where V: ToVertexId {
         let id = vertex.to_id();
-        self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted))
+        self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted(None)))
     }
     pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<(), TxnError>
         where K: ToValue, S: ToSchemaId {
