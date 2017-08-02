@@ -180,7 +180,6 @@ pub fn relationship() {
         // missing required field should fail
     })).err().unwrap();
 
-
     {
         let neighbourhoods_should_have = 3;
         let morgan_acted_in = graph.neighbourhoods(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap();
@@ -188,7 +187,8 @@ pub fn relationship() {
             panic!("Assertion failed. Wrong neighbourhood number {:?}", &morgan_acted_in);
         }
         assert_eq!(
-            graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), neighbourhoods_should_have);
+            graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(),
+            neighbourhoods_should_have);
     }
 }
 
