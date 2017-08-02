@@ -20,6 +20,7 @@ extern crate chashmap;
 #[macro_use]
 extern crate log;
 extern crate log4rs;
+extern crate env_logger;
 extern crate yaml_rust;
 extern crate serde_yaml;
 

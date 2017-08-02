@@ -7,6 +7,7 @@ use server::schema::{MorpheusSchema, SchemaError, EMPTY_FIELDS};
 use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Value, Map};
 use neb::ram::cell::Cell;
+use env_logger;
 
 #[test]
 pub fn schemas() {
@@ -43,6 +44,7 @@ pub fn schemas() {
 
 #[test]
 pub fn relationship() {
+    env_logger::init();
     let server = start_server(4002, "relationship");
     let graph = &server.graph;
     let mut people_schema = MorpheusSchema::new("people", Some(&vec!["name".to_string()]), &vec! [
@@ -179,9 +181,14 @@ pub fn relationship() {
         // missing required field should fail
     })).err().unwrap();
 
+
     assert_eq!(
         graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 3
     );
+
+    println!("neighbourhoods for 'acted-in' {:?}",
+             graph.neighbourhoods(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap());
+
 
 }
 

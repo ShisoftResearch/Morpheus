@@ -217,6 +217,15 @@ impl Graph {
             txn.degree(vertex_id, schema_id, ed)
         })
     }
+    pub fn neighbourhoods<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
+        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId {
+        let vertex_id = vertex.to_id();
+        let schema_id = schema.to_id(&self.schemas);
+        self.graph_transaction(|txn| {
+            txn.neighbourhoods(vertex_id, schema_id, ed)
+        })
+    }
 }
 
 pub struct GraphTransaction<'a> {
