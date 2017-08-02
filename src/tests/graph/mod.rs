@@ -174,21 +174,21 @@ pub fn relationship() {
     })).unwrap().unwrap();
 
     assert_eq!(
-        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 3
-    );
+        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 3);
 
     let should_error = graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
         // missing required field should fail
     })).err().unwrap();
 
 
-    assert_eq!(
-        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 3
-    );
-
-    println!("neighbourhoods for 'acted-in' {:?}",
-             graph.neighbourhoods(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap());
-
-
+    {
+        let neighbourhoods_should_have = 3;
+        let morgan_acted_in = graph.neighbourhoods(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap();
+        if morgan_acted_in.len() != neighbourhoods_should_have {
+            panic!("Assertion failed. Wrong neighbourhood number {:?}", &morgan_acted_in);
+        }
+        assert_eq!(
+            graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), neighbourhoods_should_have);
+    }
 }
 

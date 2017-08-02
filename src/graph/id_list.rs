@@ -401,22 +401,24 @@ impl <'a> Iterator for IdListIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut need_next_seg = false;
-        if let Some(list) = self.get_curr_seg_list() {
-            let pos = self.current_pos;
-            if let Some(&Value::Id(id)) = list.get(pos as usize) {
-                return Some(id);
+        let item = if let Some(list) = self.get_curr_seg_list() {
+            if let Some(&Value::Id(id)) = list.get(self.current_pos as usize) {
+                Some(id)
             } else {
-                need_next_seg = true
+                need_next_seg = true;
+                None
             }
         } else {
-            return None;
+            None
         };
         if need_next_seg {
             self.next_seg();
             self.next()
         } else {
-            self.current_pos += 1;
-            None
+            if item.is_some() {
+                self.current_pos += 1;
+            }
+            item
         }
     }
 
