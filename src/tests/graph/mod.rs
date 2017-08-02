@@ -179,7 +179,6 @@ pub fn relationship() {
     let should_error = graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
         // missing required field should fail
     })).err().unwrap();
-
     {
         let neighbourhoods_should_have = 3;
         let morgan_acted_in = graph.neighbourhoods(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap();

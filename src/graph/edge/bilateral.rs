@@ -84,17 +84,17 @@ pub trait BilateralEdge : TEdge {
                     if ea.edge_type != Self::edge_type() { return Ok(Err(EdgeError::WrongEdgeType)); }
                     if ea.has_body {
                         if let Some(body_map) = body {
-                            let mut body_cell = Cell::new_with_id(
+                            let mut edge_body_cell = Cell::new_with_id(
                                 schema_id,
                                 &Id::new(vertex_a_id.higher, rand::next()),
                                 Value::Map(body_map.clone())
                             );
-                            body_cell.data[Self::edge_a_field()] = Value::Id(*vertex_a_id);
-                            body_cell.data[Self::edge_b_field()] = Value::Id(*vertex_b_id);
-                            txn.write(&body_cell)?;
-                            vertex_a_pointer = body_cell.id();
-                            vertex_b_pointer = body_cell.id();
-                            Some(body_cell)
+                            edge_body_cell.data[Self::edge_a_field()] = Value::Id(*vertex_a_id);
+                            edge_body_cell.data[Self::edge_b_field()] = Value::Id(*vertex_b_id);
+                            txn.write(&edge_body_cell)?;
+                            vertex_a_pointer = edge_body_cell.id();
+                            vertex_b_pointer = edge_body_cell.id();
+                            Some(edge_body_cell)
                         } else {
                             return Ok(Err(EdgeError::NormalEdgeShouldHaveBody));
                         }
