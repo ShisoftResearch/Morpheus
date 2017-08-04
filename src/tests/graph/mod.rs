@@ -208,10 +208,16 @@ pub fn relationship() {
     assert_eq!(
         graph.degree(&morgan_freeman, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 0);
     println!("MF Link Jeanette {:?}", graph.link(&morgan_freeman, "spouse", &jeanette, None));
-    println!("MF spouse {:?}", graph.neighbourhoods(&morgan_freeman, "spouse", EdgeDirection::Outbound).unwrap().unwrap());
+    assert_eq!( // must use the right edge direction
+        graph.degree(&morgan_freeman, "spouse", EdgeDirection::Outbound).unwrap().unwrap(), 0);
     assert_eq!(
         graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 4);
     assert_eq!(
         graph.degree(&morgan_freeman, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 1);
+    assert_eq!(
+        graph.degree(&jeanette, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 1);
+    println!(
+        "Edge sample {:?}",
+        graph.neighbourhoods(&jeanette, "spouse", EdgeDirection::Undirected).unwrap().unwrap());
 }
 
