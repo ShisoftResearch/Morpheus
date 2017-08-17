@@ -28,6 +28,7 @@ mod graph;
 mod server;
 mod utils;
 mod config;
+mod query;
 #[cfg(test)]
 mod tests;
 

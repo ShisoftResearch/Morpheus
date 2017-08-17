@@ -1,5 +1,6 @@
 use neb::ram::schema::{Field, Schema};
-use neb::ram::types::{Id, key_hash, Map, Value, ToValue};
+use neb::ram::types::{Id, key_hash};
+use neb::dovahkiin::types::{Map, Value, ToValue};
 use neb::ram::cell::{Cell, WriteError, ReadError};
 use neb::client::{Client as NebClient};
 use neb::client::transaction::{Transaction, TxnError};

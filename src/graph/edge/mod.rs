@@ -8,8 +8,9 @@ pub mod bilateral;
 
 use std::ops::{Index, IndexMut};
 use neb::ram::types::Id;
+use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction, TxnError};
-use neb::ram::types::Value;
+use neb::dovahkiin::types::Value;
 use graph::edge::bilateral::BilateralEdge;
 use server::schema::{SchemaContainer, SchemaType};
 use super::id_list::IdListError;
@@ -65,6 +66,13 @@ impl Edge {
         match self {
             Edge::Directed(mut e) => e.remove(txn),
             Edge::Undirected(mut e) => e.remove(txn),
+        }
+    }
+
+    pub fn get_data(&self) -> &Option<Cell> {
+        match self {
+            &Edge::Directed(ref e) => e.edge_cell(),
+            &Edge::Undirected(ref e) => e.edge_cell(),
         }
     }
 }

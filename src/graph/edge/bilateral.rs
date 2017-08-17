@@ -1,7 +1,8 @@
-use neb::ram::types::{Id, Value, Map};
+use neb::ram::types::{Id, Map};
 use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction, TxnError};
 use neb::utils::rand;
+use neb::dovahkiin::types::Value;
 use std::sync::Arc;
 
 use super::{TEdge, EdgeError};
