@@ -158,6 +158,9 @@ pub fn relationship() {
     let oblivion =
         graph.vertex_by_key("movie", oblivion_name)
             .unwrap().unwrap();
+    let jeanette =
+        graph.vertex_by_key("people", jeanette_name)
+            .unwrap().unwrap();
 
     assert_eq!(
         graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 0
@@ -189,5 +192,32 @@ pub fn relationship() {
             graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(),
             neighbourhoods_should_have);
     }
+
+    graph.link(&morgan_freeman, "acted-in", &oblivion, Some(&data_map!{
+        role: "Beech"
+    })).unwrap().unwrap();
+    assert_eq!(
+        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 4);
+    assert_eq!(
+        graph.degree(&morgan_freeman, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 0);
+    graph.link(&morgan_freeman, "spouse", &jeanette, Some(&data_map!{
+        role: "Sister"
+    })).unwrap().err().unwrap();
+    assert_eq!(
+        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 4);
+    assert_eq!(
+        graph.degree(&morgan_freeman, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 0);
+    println!("MF Link Jeanette {:?}", graph.link(&morgan_freeman, "spouse", &jeanette, None));
+    assert_eq!( // must use the right edge direction
+        graph.degree(&morgan_freeman, "spouse", EdgeDirection::Outbound).unwrap().unwrap(), 0);
+    assert_eq!(
+        graph.degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap(), 4);
+    assert_eq!(
+        graph.degree(&morgan_freeman, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 1);
+    assert_eq!(
+        graph.degree(&jeanette, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 1);
+    println!(
+        "Edge sample {:?}",
+        graph.neighbourhoods(&jeanette, "spouse", EdgeDirection::Undirected).unwrap().unwrap());
 }
 
