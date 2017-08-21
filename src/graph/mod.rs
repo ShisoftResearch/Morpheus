@@ -44,6 +44,13 @@ pub enum LinkVerticesError {
     EdgeError(edge::EdgeError),
 }
 
+#[derive(Debug)]
+pub enum NeighbourhoodError {
+    EdgeError(edge::EdgeError),
+    VertexNotFound(Id),
+    CannotFindOppisiteId(Id)
+}
+
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum CellType {
     Vertex,
@@ -218,7 +225,7 @@ impl Graph {
         })
     }
     pub fn neighbourhoods<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
-        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
+        -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let vertex_id = vertex.to_id();
         let schema_id = schema.to_id(&self.schemas);
@@ -299,7 +306,7 @@ impl <'a>GraphTransaction<'a> {
         self.read_vertex(&id)
     }
 
-    pub fn neighbourhoods<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
+    pub fn edges<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
         -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let vertex_field = ed.as_field();
@@ -320,6 +327,27 @@ impl <'a>GraphTransaction<'a> {
                 }
                 edges
             }))
+        }
+    }
+
+    pub fn neighbourhoods<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
+    -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError> 
+    where V: ToVertexId, S: ToSchemaId {
+        let vertex_id = &vertex.to_id();
+        match self.edges(vertex_id, schema, ed)? {
+            Ok(edges) => {
+                let mut result: Vec<(Vertex, edge::Edge)> = Vec::with_capacity(edges.len());
+                for edge in edges {
+                    let vertex = if let Some(opptisite_id) = edge.one_oppisite_vertex_id(vertex_id) {
+                            if let Some(v) = self.read_vertex(opptisite_id)? { v } else {
+                                return Ok(Err(NeighbourhoodError::VertexNotFound(*opptisite_id)))
+                            }
+                    } else { return Ok(Err(NeighbourhoodError::CannotFindOppisiteId(*vertex_id))) };
+                    result.push((vertex, edge));
+                }
+                return Ok(Ok(result));
+            },
+            Err(e) =>  return Ok(Err(NeighbourhoodError::EdgeError(e)))
         }
     }
 

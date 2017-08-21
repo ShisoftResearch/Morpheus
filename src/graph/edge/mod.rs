@@ -68,11 +68,16 @@ impl Edge {
             Edge::Undirected(mut e) => e.remove(txn),
         }
     }
-
     pub fn get_data(&self) -> &Option<Cell> {
         match self {
             &Edge::Directed(ref e) => e.edge_cell(),
             &Edge::Undirected(ref e) => e.edge_cell(),
+        }
+    }
+    pub fn one_oppisite_vertex_id(&self, vertex_id: &Id)  -> Option<&Id> {
+        match self {
+            &Edge::Directed(ref e) => e.oppisite_vertex_id(vertex_id),
+            &Edge::Undirected(ref e) => e.oppisite_vertex_id(vertex_id),
         }
     }
 }

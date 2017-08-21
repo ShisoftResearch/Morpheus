@@ -143,4 +143,16 @@ pub trait BilateralEdge : TEdge {
         }
         Ok(Ok(()))
     }
+    fn oppisite_vertex_id(&self, vertex_id: &Id) -> Option<&Id> {
+        let v1_id = self.vertex_a();
+        let v2_id = self.vertex_b();
+        if v1_id == vertex_id {
+            Some(v2_id)
+        } else if v2_id == vertex_id {
+            Some(v1_id)
+        } else {
+            None
+        }
+    }
 }
+
