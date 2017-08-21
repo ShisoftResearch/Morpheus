@@ -43,12 +43,12 @@ impl Vertex {
     }
 }
 
-pub fn txn_remove<V>(txn: &mut Transaction, schemas: &Arc<SchemaContainer>, vertex: V)
+pub fn txn_remove<V>(txn: &Transaction, schemas: &Arc<SchemaContainer>, vertex: V)
     -> Result<Result<(), RemoveError>, TxnError> where V: ToVertexId {
     let id = &vertex.to_id();
     match txn.read(id)? {
         Some(cell) => {
-            let remove_field_lists = |id: &Id, txn: &mut Transaction, field_id: u64|
+            let remove_field_lists = |id: &Id, txn: &Transaction, field_id: u64|
                 -> Result<Result<(), RemoveError>, TxnError> {
                 let (type_list_id, schemas_ids) = match IdList::cell_types(txn, id, field_id)? {
                     Some(t) => t, None => return Ok(Err(RemoveError::FormatError))
@@ -93,7 +93,7 @@ pub fn txn_remove<V>(txn: &mut Transaction, schemas: &Arc<SchemaContainer>, vert
     }
 }
 
-pub fn txn_update<U, V>(txn: &mut Transaction, vertex: V, update: &U) -> Result<(), TxnError>
+pub fn txn_update<U, V>(txn: &Transaction, vertex: V, update: &U) -> Result<(), TxnError>
     where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
     let id = &vertex.to_id();
     let update_cell = |cell: Cell| {

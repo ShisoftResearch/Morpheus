@@ -27,7 +27,7 @@ pub trait BilateralEdge : TEdge {
 
     fn from_id(
         vertex_id: &Id, vertex_field: u64,
-        schema_id: u32, schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
+        schema_id: u32, schemas: &Arc<SchemaContainer>, txn: &Transaction, id: &Id
     ) -> Result<Result<Self::Edge, EdgeError>, TxnError> {
         let trace_cell = match txn.read(id)? {
             Some(cell) => cell,
@@ -74,7 +74,7 @@ pub trait BilateralEdge : TEdge {
     }
     fn link(
         vertex_a_id: &Id, vertex_b_id: &Id, body: Option<&Map>,
-        txn: &mut Transaction,
+        txn: &Transaction,
         schema_id: u32, schemas: &Arc<SchemaContainer>
     ) -> Result<Result<Self::Edge, EdgeError>, TxnError> {
         let mut vertex_a_pointer = Id::unit_id();
@@ -123,7 +123,7 @@ pub trait BilateralEdge : TEdge {
         }
         Ok(Ok(Self::build_edge(*vertex_a_id, *vertex_b_id, schema_id, edge_cell)))
     }
-    fn remove(&mut self, txn: &mut Transaction) -> Result<Result<(), EdgeError>, TxnError> {
+    fn remove(&mut self, txn: &Transaction) -> Result<Result<(), EdgeError>, TxnError> {
         let (v_a_removal, v_b_removal) = match self.edge_cell() {
             &Some(ref cell) => {
                 txn.remove(&cell.id())?;

@@ -62,7 +62,7 @@ pub enum Edge {
 }
 
 impl Edge {
-    pub fn remove (self, txn: &mut Transaction)
+    pub fn remove (self, txn: &Transaction)
         -> Result<Result<(), EdgeError>, TxnError> {
         match self {
             Edge::Directed(mut e) => e.remove(txn),
@@ -123,7 +123,7 @@ impl IndexMut<u64> for Edge {
 
 pub fn from_id(
     vertex_id: &Id, vertex_field: u64, schema_id: u32,
-    schemas: &Arc<SchemaContainer>, txn: &mut Transaction, id: &Id
+    schemas: &Arc<SchemaContainer>, txn: &Transaction, id: &Id
 ) -> Result<Result<Edge, EdgeError>, TxnError> {
     match schemas.schema_type(schema_id) {
         Some(SchemaType::Edge(ea)) => {

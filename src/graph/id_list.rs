@@ -48,7 +48,7 @@ lazy_static! {
 }
 
 pub struct IdList<'a> {
-    pub txn: &'a mut Transaction,
+    pub txn: &'a Transaction,
     container_id: Id,
     field_id: u64,
     schema_id: u32
@@ -91,7 +91,7 @@ fn val_is_id(val: &Value, id: &Id) -> bool {
     }
 }
 
-fn seg_cell_by_id(txn: &mut Transaction, id: Option<Id>) -> Result<Option<Cell>, TxnError> {
+fn seg_cell_by_id(txn: &Transaction, id: Option<Id>) -> Result<Option<Cell>, TxnError> {
     match id {
         Some(id) => txn.read(&id),
         None => Ok(None)
@@ -100,7 +100,7 @@ fn seg_cell_by_id(txn: &mut Transaction, id: Option<Id>) -> Result<Option<Cell>,
 
 impl<'a> IdList <'a> {
     pub fn from_txn_and_container(
-        txn: &'a mut Transaction,
+        txn: &'a Transaction,
         container_id: &Id,
         field_id: u64,
         schema_id: u32
@@ -112,7 +112,7 @@ impl<'a> IdList <'a> {
             schema_id: schema_id
         }
     }
-    pub fn cell_types(txn: &mut Transaction, container_id: &Id, field_id: u64) -> Result<Option<(Id, Vec<u32>)>, TxnError> {
+    pub fn cell_types(txn: &Transaction, container_id: &Id, field_id: u64) -> Result<Option<(Id, Vec<u32>)>, TxnError> {
         if let Some(fields) = txn.read_selected(container_id, &vec![field_id])? {
             if let Some(&Value::Id(id)) = fields.get(0) {
                 if !id.is_unit_id() {
@@ -195,7 +195,7 @@ impl<'a> IdList <'a> {
         let list_root_id = match self.get_root_list_id(false)? {
             Err(e) => return Ok(Err(e)), Ok(id) => id
         };
-        let mut segments = IdListSegmentIterator::new(&mut self.txn, list_root_id);
+        let mut segments = IdListSegmentIterator::new(self.txn, list_root_id);
         let first_seg = segments.next();
         Ok(Ok(IdListIterator {
             segments: segments,
@@ -215,7 +215,7 @@ impl<'a> IdList <'a> {
         let mut last_seg = { // TODO: refill segment under capacity
             let last_seg_id = {
                 let mut segments = IdListSegmentIdIterator::new(
-                    &mut self.txn,
+                    self.txn,
                     match list_root_id {
                         Ok(v) => v, Err(e) => return Ok(Err(e))
                     });
@@ -300,7 +300,7 @@ impl<'a> IdList <'a> {
         let list_root_id = match self.get_root_list_id(true)? {
             Ok(v) => v, Err(e) => return Ok(Err(e))
         };
-        let segments: Vec<_> = IdListSegmentIdIterator::new(&mut self.txn, list_root_id).collect();
+        let segments: Vec<_> = IdListSegmentIdIterator::new(self.txn, list_root_id).collect();
         for seg_id in segments {
             self.txn.remove(&seg_id)?;
         }
@@ -309,13 +309,13 @@ impl<'a> IdList <'a> {
 }
 
 pub struct IdListSegmentIdIterator<'a> {
-    pub txn: &'a mut Transaction,
+    pub txn: &'a Transaction,
     next: Id,
     level: u32
 }
 
 impl <'a> IdListSegmentIdIterator<'a> {
-    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIdIterator<'a> {
+    pub fn new(txn: &'a Transaction, head_id: Id) -> IdListSegmentIdIterator<'a> {
         IdListSegmentIdIterator {
             txn: txn,
             next: head_id,
@@ -351,7 +351,7 @@ pub struct IdListSegmentIterator<'a> {
 }
 
 impl <'a>IdListSegmentIterator<'a> {
-    pub fn new(txn: &'a mut Transaction, head_id: Id) -> IdListSegmentIterator<'a> {
+    pub fn new(txn: &'a Transaction, head_id: Id) -> IdListSegmentIterator<'a> {
         IdListSegmentIterator {
             id_iter: IdListSegmentIdIterator::new(txn, head_id)
         }

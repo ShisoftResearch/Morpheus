@@ -198,10 +198,10 @@ impl Graph {
     }
 
     pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> Result<TR, TxnError>
-        where TFN: Fn(&mut GraphTransaction) -> Result<TR, TxnError>
+        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>
     {
-        let wrapper = |neb_txn: &mut Transaction| {
-            func(&mut GraphTransaction {
+        let wrapper = |neb_txn: &Transaction| {
+            func(&GraphTransaction {
                 neb_txn: neb_txn,
                 schemas: self.schemas.clone()
             })
@@ -260,12 +260,12 @@ impl Graph {
 }
 
 pub struct GraphTransaction<'a> {
-    pub neb_txn: & 'a mut Transaction,
+    pub neb_txn: &'a Transaction,
     schemas: Arc<SchemaContainer>
 }
 
 impl <'a>GraphTransaction<'a> {
-    pub fn new_vertex<S>(&mut self, schema: S, data: Map)
+    pub fn new_vertex<S>(&self, schema: S, data: Map)
         -> Result<Result<Vertex, NewVertexError>, TxnError>
         where S: ToSchemaId{
         let vertex = Vertex::new(schema.to_id(&self.schemas), data);
@@ -275,18 +275,18 @@ impl <'a>GraphTransaction<'a> {
         self.neb_txn.write(&cell)?;
         Ok(Ok(vertex::cell_to_vertex(cell)))
     }
-    pub fn remove_vertex<V>(&mut self, vertex: V)
+    pub fn remove_vertex<V>(&self, vertex: V)
         -> Result<Result<(), vertex::RemoveError>, TxnError> where V: ToVertexId{
         vertex::txn_remove(self.neb_txn, &self.schemas, vertex)
     }
-    pub fn remove_vertex_by_key<K, S>(&mut self, schema: S, key: K)
+    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
         -> Result<Result<(), vertex::RemoveError>, TxnError>
         where K: ToValue, S: ToSchemaId {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.remove_vertex(&id)
     }
 
-    pub fn link<V, S>(&mut self, from: V, schema: S, to: V, body: Option<&Map>)
+    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<&Map>)
         -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let from_id = &from.to_id();
@@ -299,46 +299,46 @@ impl <'a>GraphTransaction<'a> {
         };
         match edge_attr.edge_type {
             edge::EdgeType::Directed =>
-                Ok(edge::directed::DirectedEdge::link(from_id, to_id, body, &mut self.neb_txn, schema_id, &self.schemas)?
+                Ok(edge::directed::DirectedEdge::link(from_id, to_id, body, &self.neb_txn, schema_id, &self.schemas)?
                     .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Directed)),
 
             edge::EdgeType::Undirected =>
-                Ok(edge::undirectd::UndirectedEdge::link(from_id, to_id, body, &mut self.neb_txn, schema_id, &self.schemas)?
+                Ok(edge::undirectd::UndirectedEdge::link(from_id, to_id, body, &self.neb_txn, schema_id, &self.schemas)?
                     .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Undirected))
         }
     }
 
-    pub fn update_vertex<V, U>(&mut self, vertex: V, update: U) -> Result<(), TxnError>
+    pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
         where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
         vertex::txn_update(self.neb_txn, vertex, &update)
     }
-    pub fn update_vertex_by_key<K, U, S>(&mut self, schema: S, key: K, update: U)
+    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
         -> Result<(), TxnError>
         where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>{
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.update_vertex(&id, update)
     }
 
-    pub fn read_vertex<V>(&mut self, vertex: V)
+    pub fn read_vertex<V>(&self, vertex: V)
         -> Result<Option<Vertex>, TxnError> where V: ToVertexId {
         self.neb_txn.read(&vertex.to_id()).map(|c| c.map(vertex::cell_to_vertex))
     }
 
-    pub fn get_vertex<K, S>(&mut self, schema: u32, key: K) -> Result<Option<Vertex>, TxnError>
+    pub fn get_vertex<K, S>(&self, schema: u32, key: K) -> Result<Option<Vertex>, TxnError>
         where K: ToValue, S: ToSchemaId {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.read_vertex(&id)
     }
 
     pub fn edges<V, S>(
-        &mut self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
+        &self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
     ) -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let vertex_field = ed.as_field();
         let schema_id = schema.to_id(&self.schemas);
         let vertex_id = &vertex.to_id();
         match id_list::IdList::from_txn_and_container
-            (self.neb_txn, vertex_id, vertex_field, schema_id).all()? {
+            (self.neb_txn, vertex_id, vertex_field, schema_id).iter()? {
             Err(e) => Ok(Err(edge::EdgeError::IdListError(e))),
             Ok(ids) => Ok(Ok({
                 let mut edges = Vec::new();
@@ -362,14 +362,14 @@ impl <'a>GraphTransaction<'a> {
     }
 
     pub fn neighbourhoods<V, S>(
-        &mut self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
+        &self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
     ) -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
     where V: ToVertexId, S: ToSchemaId {
         let vertex_field = ed.as_field();
         let schema_id = schema.to_id(&self.schemas);
         let vertex_id = &vertex.to_id();
         match id_list::IdList::from_txn_and_container
-            (self.neb_txn, vertex_id, vertex_field, schema_id).all()? { // TODO: use iter
+            (self.neb_txn, vertex_id, vertex_field, schema_id).iter()? {
             Err(e) => Ok(Err(NeighbourhoodError::EdgeError(EdgeError::IdListError(e)))),
             Ok(ids) => Ok(Ok({
                 let mut result: Vec<(Vertex, edge::Edge)> = Vec::new();
@@ -397,7 +397,7 @@ impl <'a>GraphTransaction<'a> {
         }
     }
 
-    pub fn degree<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
+    pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
         -> Result<Result<usize, edge::EdgeError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let (schema_id, edge_attr) = match edge_attr_from_schema(schema, &self.schemas) {
