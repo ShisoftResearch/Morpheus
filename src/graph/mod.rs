@@ -365,25 +365,35 @@ impl <'a>GraphTransaction<'a> {
         &mut self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
     ) -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
     where V: ToVertexId, S: ToSchemaId {
+        let vertex_field = ed.as_field();
+        let schema_id = schema.to_id(&self.schemas);
         let vertex_id = &vertex.to_id();
-        match self.edges(vertex_id, schema, ed, &None)? {
-            Ok(edges) => {
-                let mut result: Vec<(Vertex, edge::Edge)> = Vec::with_capacity(edges.len());
-                for edge in edges {
-                    let vertex = if let Some(opptisite_id) = edge.one_oppisite_vertex_id(vertex_id) {
-                            if let Some(v) = self.read_vertex(opptisite_id)? { v } else {
-                                return Ok(Err(NeighbourhoodError::VertexNotFound(*opptisite_id)))
+        match id_list::IdList::from_txn_and_container
+            (self.neb_txn, vertex_id, vertex_field, schema_id).all()? { // TODO: use iter
+            Err(e) => Ok(Err(NeighbourhoodError::EdgeError(EdgeError::IdListError(e)))),
+            Ok(ids) => Ok(Ok({
+                let mut result: Vec<(Vertex, edge::Edge)> = Vec::new();
+                for id in ids {
+                    match edge::from_id(
+                        vertex_id, vertex_field, schema_id, &self.schemas, self.neb_txn, &id
+                    )? {
+                        Ok(edge) => {
+                            let vertex = if let Some(opptisite_id) = edge.one_oppisite_vertex_id(vertex_id) {
+                                if let Some(v) = self.read_vertex(opptisite_id)? { v } else {
+                                    return Ok(Err(NeighbourhoodError::VertexNotFound(*opptisite_id)))
+                                }
+                            } else { return Ok(Err(NeighbourhoodError::CannotFindOppisiteId(*vertex_id))) };
+                            match Tester::eval_with_edge_and_vertex(filter, &vertex, &edge) {
+                                Ok(true) => {result.push((vertex, edge));},
+                                Ok(false) => {},
+                                Err(err) => return Ok(Err(NeighbourhoodError::FilterEvalError(err))),
                             }
-                    } else { return Ok(Err(NeighbourhoodError::CannotFindOppisiteId(*vertex_id))) };
-                    match Tester::eval_with_edge_and_vertex(filter, &vertex, &edge) {
-                        Ok(true) => {result.push((vertex, edge));},
-                        Ok(false) => {},
-                        Err(err) => return Ok(Err(NeighbourhoodError::FilterEvalError(err))),
+                        },
+                        Err(edge_error) => return Ok(Err(NeighbourhoodError::EdgeError(edge_error)))
                     }
                 }
                 return Ok(Ok(result));
-            },
-            Err(e) =>  return Ok(Err(NeighbourhoodError::EdgeError(e)))
+            }))
         }
     }
 
