@@ -50,7 +50,7 @@ pub enum LinkVerticesError {
 pub enum NeighbourhoodError {
     EdgeError(edge::EdgeError),
     VertexNotFound(Id),
-    CannotFindOppisiteId(Id),
+    CannotFindOppositeId(Id),
     FilterEvalError(String)
 }
 
@@ -382,7 +382,7 @@ impl <'a>GraphTransaction<'a> {
                                 if let Some(v) = self.read_vertex(opposite_id)? { v } else {
                                     return Ok(Err(NeighbourhoodError::VertexNotFound(*opposite_id)))
                                 }
-                            } else { return Ok(Err(NeighbourhoodError::CannotFindOppisiteId(*vertex_id))) };
+                            } else { return Ok(Err(NeighbourhoodError::CannotFindOppositeId(*vertex_id))) };
                             match Tester::eval_with_edge_and_vertex(filter, &vertex, &edge) {
                                 Ok(true) => {result.push((vertex, edge));},
                                 Ok(false) => {},
