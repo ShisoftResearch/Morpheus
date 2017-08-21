@@ -10,29 +10,29 @@ use graph::vertex::Vertex;
 pub static VERTEX_SYMBOL: u64 = hash_ident!(vertex) as u64;
 pub static EDGE_SYMBOL: u64 = hash_ident!(edge) as u64;
 
-pub trait Expression {
+pub trait Expr {
     fn to_sexpr(self) -> Result<Vec<SExpr>, String>;
 }
 
-impl Expression for String {
+impl Expr for String {
     fn to_sexpr(self) -> Result<Vec<SExpr>, String> {
         parse_to_expr(&self)
     }
 }
 
-impl <'a>Expression for &'a str {
+impl <'a>Expr for &'a str {
     fn to_sexpr(self) -> Result<Vec<SExpr>, String> {
         parse_to_expr(self)
     }
 }
 
-impl Expression for Vec<SExpr> {
+impl Expr for Vec<SExpr> {
     fn to_sexpr(self) -> Result<Vec<SExpr>, String> {
         return Ok(self);
     }
 }
 
-impl Expression for SExpr {
+impl Expr for SExpr {
     fn to_sexpr(self) -> Result<Vec<SExpr>, String> {
         Ok(vec![self])
     }
@@ -42,16 +42,41 @@ pub struct Tester {
     core: Interpreter
 }
 
+fn prep_interp() -> Interpreter {
+    let inter = Interpreter::new();
+    inter.set_env();
+    return inter;
+}
+
 impl Tester {
+
     pub fn eval_with_edge_and_vertex<E>(expr: Option<E>, vertex: &Vertex, edge: &Edge) -> Result<bool, String>
-        where E: Expression {
+        where E: Expr {
         let sexpr = if let Some(expr) = expr { expr.to_sexpr()? } else { return Ok(true); };
-        let inter = Interpreter::new();
-        inter.set_env();
+        let interp = prep_interp();
         bind(VERTEX_SYMBOL, SExpr::Value(vertex.cell.data.clone()));
         bind(EDGE_SYMBOL, SExpr::Value(if let &Some(ref e) = edge.get_data() {
             e.data.clone()
         } else {Value::Null}));
-        Ok(is_true(inter.eval(sexpr)?))
+        Ok(is_true(interp.eval(sexpr)?))
     }
+    
+    pub fn eval_with_vertex<E>(expr: Option<E>, vertex: &Vertex) -> Result<bool, String>
+        where E: Expr {
+        let sexpr = if let Some(expr) = expr { expr.to_sexpr()? } else { return Ok(true); };
+        let interp = prep_interp();
+        bind(VERTEX_SYMBOL, SExpr::Value(vertex.cell.data.clone()));
+        Ok(is_true(interp.eval(sexpr)?))
+    }
+
+    pub fn eval_with_edge<E>(expr: Option<E>, edge: &Edge) -> Result<bool, String>
+        where E: Expr {
+        let sexpr = if let Some(expr) = expr { expr.to_sexpr()? } else { return Ok(true); };
+        let interp = prep_interp();
+        bind(EDGE_SYMBOL, SExpr::Value(if let &Some(ref e) = edge.get_data() {
+            e.data.clone()
+        } else {Value::Null}));
+        Ok(is_true(interp.eval(sexpr)?))
+    }
+    
 }

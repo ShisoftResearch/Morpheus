@@ -13,7 +13,6 @@ use graph::edge::bilateral::BilateralEdge;
 use graph::edge::{EdgeAttributes, EdgeError};
 
 use std::sync::Arc;
-use serde::Serialize;
 
 pub mod vertex;
 pub mod edge;
