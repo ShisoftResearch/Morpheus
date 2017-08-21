@@ -378,9 +378,9 @@ impl <'a>GraphTransaction<'a> {
                         vertex_id, vertex_field, schema_id, &self.schemas, self.neb_txn, &id
                     )? {
                         Ok(edge) => {
-                            let vertex = if let Some(opptisite_id) = edge.one_oppisite_vertex_id(vertex_id) {
-                                if let Some(v) = self.read_vertex(opptisite_id)? { v } else {
-                                    return Ok(Err(NeighbourhoodError::VertexNotFound(*opptisite_id)))
+                            let vertex = if let Some(opposite_id) = edge.one_opposite_id_vertex_id(vertex_id) {
+                                if let Some(v) = self.read_vertex(opposite_id)? { v } else {
+                                    return Ok(Err(NeighbourhoodError::VertexNotFound(*opposite_id)))
                                 }
                             } else { return Ok(Err(NeighbourhoodError::CannotFindOppisiteId(*vertex_id))) };
                             match Tester::eval_with_edge_and_vertex(filter, &vertex, &edge) {

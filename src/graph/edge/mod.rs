@@ -75,7 +75,7 @@ impl Edge {
             &Edge::Undirected(ref e) => e.edge_cell(),
         }
     }
-    pub fn one_oppisite_vertex_id(&self, vertex_id: &Id)  -> Option<&Id> {
+    pub fn one_opposite_id_vertex_id(&self, vertex_id: &Id) -> Option<&Id> {
         match self {
             &Edge::Directed(ref e) => e.oppisite_vertex_id(vertex_id),
             &Edge::Undirected(ref e) => e.oppisite_vertex_id(vertex_id),
