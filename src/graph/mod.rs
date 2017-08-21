@@ -1,6 +1,7 @@
 use neb::ram::schema::{Field, Schema};
 use neb::ram::types::{Id, key_hash};
 use neb::dovahkiin::types::{Map, Value, ToValue};
+use neb::dovahkiin::expr::SExpr;
 use neb::ram::cell::{Cell, WriteError, ReadError};
 use neb::client::{Client as NebClient};
 use neb::client::transaction::{Transaction, TxnError};
@@ -11,6 +12,7 @@ use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError, T
 use graph::vertex::{Vertex, ToVertexId};
 use graph::edge::bilateral::BilateralEdge;
 use graph::edge::{EdgeAttributes, EdgeError};
+use query::{Tester, Expr, parse_optional_expr};
 
 use std::sync::Arc;
 
@@ -48,7 +50,8 @@ pub enum LinkVerticesError {
 pub enum NeighbourhoodError {
     EdgeError(edge::EdgeError),
     VertexNotFound(Id),
-    CannotFindOppisiteId(Id)
+    CannotFindOppisiteId(Id),
+    FilterEvalError(String)
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -224,14 +227,20 @@ impl Graph {
             txn.degree(vertex_id, schema_id, ed)
         })
     }
-    pub fn neighbourhoods<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
+    pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
         -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
-        where V: ToVertexId, S: ToSchemaId {
+        where V: ToVertexId, S: ToSchemaId, F: Expr {
         let vertex_id = vertex.to_id();
         let schema_id = schema.to_id(&self.schemas);
-        self.graph_transaction(|txn| {
-            txn.neighbourhoods(vertex_id, schema_id, ed)
-        })
+        let filter_sexpr = parse_optional_expr(filter);
+        match filter_sexpr {
+            Ok(ref filter) => {
+                self.graph_transaction(|txn| {
+                    txn.neighbourhoods(vertex_id, schema_id, ed, filter)
+                })
+            },
+            Err(e) => Ok(Err(NeighbourhoodError::FilterEvalError(e)))
+        }
     }
 }
 
@@ -306,8 +315,9 @@ impl <'a>GraphTransaction<'a> {
         self.read_vertex(&id)
     }
 
-    pub fn edges<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
-        -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
+    pub fn edges<V, S>(
+        &mut self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
+    ) -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
         where V: ToVertexId, S: ToSchemaId {
         let vertex_field = ed.as_field();
         let schema_id = schema.to_id(&self.schemas);
@@ -321,7 +331,13 @@ impl <'a>GraphTransaction<'a> {
                     match edge::from_id(
                         vertex_id, vertex_field, schema_id, &self.schemas, self.neb_txn, &id
                     )? {
-                        Ok(e) => edges.push(e),
+                        Ok(e) => {
+                            match Tester::eval_with_edge(filter, &e) {
+                                Ok(true) => {edges.push(e);},
+                                Ok(false) => {},
+                                Err(err) => return Ok(Err(EdgeError::FilterEvalError(err))),
+                            }
+                        },
                         Err(er) => return Ok(Err(er))
                     }
                 }
@@ -330,11 +346,12 @@ impl <'a>GraphTransaction<'a> {
         }
     }
 
-    pub fn neighbourhoods<V, S>(&mut self, vertex: V, schema: S, ed: EdgeDirection)
-    -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError> 
+    pub fn neighbourhoods<V, S>(
+        &mut self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
+    ) -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
     where V: ToVertexId, S: ToSchemaId {
         let vertex_id = &vertex.to_id();
-        match self.edges(vertex_id, schema, ed)? {
+        match self.edges(vertex_id, schema, ed, &None)? {
             Ok(edges) => {
                 let mut result: Vec<(Vertex, edge::Edge)> = Vec::with_capacity(edges.len());
                 for edge in edges {
@@ -343,7 +360,11 @@ impl <'a>GraphTransaction<'a> {
                                 return Ok(Err(NeighbourhoodError::VertexNotFound(*opptisite_id)))
                             }
                     } else { return Ok(Err(NeighbourhoodError::CannotFindOppisiteId(*vertex_id))) };
-                    result.push((vertex, edge));
+                    match Tester::eval_with_edge_and_vertex(filter, &vertex, &edge) {
+                        Ok(true) => {result.push((vertex, edge));},
+                        Ok(false) => {},
+                        Err(err) => return Ok(Err(NeighbourhoodError::FilterEvalError(err))),
+                    }
                 }
                 return Ok(Ok(result));
             },

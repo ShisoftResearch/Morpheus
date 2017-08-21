@@ -46,7 +46,8 @@ pub enum EdgeError {
     WrongEdgeType,
     IdListError(IdListError),
     SimpleEdgeShouldNotHaveBody,
-    NormalEdgeShouldHaveBody
+    NormalEdgeShouldHaveBody,
+    FilterEvalError(String)
 }
 
 pub trait TEdge {

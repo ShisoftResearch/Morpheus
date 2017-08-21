@@ -184,7 +184,9 @@ pub fn relationship() {
     })).err().unwrap();
     {
         let neighbourhoods_should_have = 3;
-        let morgan_acted_in = graph.neighbourhoods(&morgan_freeman, "acted-in", EdgeDirection::Outbound).unwrap().unwrap();
+        let morgan_acted_in =
+            graph.neighbourhoods::<_, _, String>
+            (&morgan_freeman, "acted-in", EdgeDirection::Outbound, &None).unwrap().unwrap();
         if morgan_acted_in.len() != neighbourhoods_should_have {
             panic!("Assertion failed. Wrong neighbourhood number {:?}", &morgan_acted_in);
         }
@@ -218,6 +220,7 @@ pub fn relationship() {
         graph.degree(&jeanette, "spouse", EdgeDirection::Undirected).unwrap().unwrap(), 1);
     println!(
         "Edge sample {:?}",
-        graph.neighbourhoods(&jeanette, "spouse", EdgeDirection::Undirected).unwrap().unwrap());
+        graph.neighbourhoods::<_, _, String>
+        (&jeanette, "spouse", EdgeDirection::Undirected, &None).unwrap().unwrap());
 }
 
