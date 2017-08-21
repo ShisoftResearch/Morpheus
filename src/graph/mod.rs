@@ -242,6 +242,21 @@ impl Graph {
             Err(e) => Ok(Err(NeighbourhoodError::FilterEvalError(e)))
         }
     }
+    pub fn edges<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
+        -> Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId, F: Expr {
+        let vertex_id = vertex.to_id();
+        let schema_id = schema.to_id(&self.schemas);
+        let filter_sexpr = parse_optional_expr(filter);
+        match filter_sexpr {
+            Ok(ref filter) => {
+                self.graph_transaction(|txn| {
+                    txn.edges(vertex_id, schema_id, ed, filter)
+                })
+            },
+            Err(e) => Ok(Err(EdgeError::FilterEvalError(e)))
+        }
+    }
 }
 
 pub struct GraphTransaction<'a> {
