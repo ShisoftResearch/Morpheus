@@ -37,6 +37,7 @@ use std::thread;
 fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
     info!("Shisoft Morpheus is initializing...");
+    query::init().unwrap();
     let neb_config = config::neb::options_from_file("config/neb.yaml");
     let morpheus_server = server::MorpheusServer::new(&neb_config).unwrap();
 

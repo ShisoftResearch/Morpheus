@@ -10,6 +10,18 @@ use graph::vertex::Vertex;
 pub static VERTEX_SYMBOL: u64 = hash_ident!(vertex) as u64;
 pub static EDGE_SYMBOL: u64 = hash_ident!(edge) as u64;
 
+#[derive(Debug)]
+pub enum InitQueryError {
+    CannotInitSymbols
+}
+
+pub mod symbols;
+
+pub fn init() -> Result<(), InitQueryError> {
+    symbols::init_symbols().map_err(|_| InitQueryError::CannotInitSymbols)?;
+    Ok(())
+}
+
 pub trait Expr {
     fn to_sexpr(&self) -> Result<Vec<SExpr>, String>;
 }
@@ -54,7 +66,6 @@ pub fn parse_optional_expr<E>(expr: &Option<E>)
 }
 
 impl Tester {
-
     pub fn eval_with_edge_and_vertex(sexpr: &Option<Vec<SExpr>>, vertex: &Vertex, edge: &Edge)
         -> Result<bool, String> {
         let sexpr = sexpr.clone(); // TODO: Memory management
@@ -86,5 +97,4 @@ impl Tester {
         } else {Value::Null}));
         Ok(is_true(interp.eval(sexpr)?))
     }
-    
 }
