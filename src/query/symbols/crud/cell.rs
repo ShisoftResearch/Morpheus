@@ -1,6 +1,7 @@
 use neb::dovahkiin::expr::symbols::Symbol;
 use neb::dovahkiin::expr::SExpr;
 
+// (insert-cell "<schema>" (hashmap "<key-1>" <value-1> "<key-2>" (hashmap "<key-3>" <value-2>)))
 #[derive(Debug)]
 pub struct Insert {}
 impl Symbol for Insert {
