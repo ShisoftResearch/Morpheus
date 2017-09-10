@@ -11,6 +11,8 @@ impl Symbol for Insert {
     fn is_macro(&self) -> bool { true }
 }
 
+// (select-cell "<schema>" <cell-id>)
+// (select-cell "<schema>" (hashmap "<key>" <value>)) // until index is done
 #[derive(Debug)]
 pub struct Select {}
 impl Symbol for Select {
@@ -20,6 +22,8 @@ impl Symbol for Select {
     fn is_macro(&self) -> bool { true }
 }
 
+// (update-cell "<schema>" <cell-id> (hashmap ...))
+// (update-cell "<schema>" (hashmap ...) (hashmap ...)) // until index is done
 #[derive(Debug)]
 pub struct Update {}
 impl Symbol for Update {
@@ -29,6 +33,8 @@ impl Symbol for Update {
     fn is_macro(&self) -> bool { true }
 }
 
+// (delete-cell "<schema>" <cell-id>)
+// (delete-cell "<schema>" (hashmap ...)) // until index is done
 #[derive(Debug)]
 pub struct Delete {}
 impl Symbol for Delete {
