@@ -1,7 +1,9 @@
+use bifrost::rpc;
 use std::sync::Arc;
 use bifrost::raft::state_machine::master::ExecError;
 use neb::client::{Client as NebClient, NebClientError};
-use neb::server::{ServerOptions, NebServer, ServerError};
+use neb::server::{ServerOptions as NebServerOptions, NebServer, ServerError};
+use bifrost::tcp::{STANDALONE_ADDRESS_STRING};
 
 use graph::Graph;
 
@@ -24,29 +26,39 @@ pub struct MorpheusServer {
 }
 
 impl MorpheusServer {
-    pub fn new(opts: &ServerOptions)
-               -> Result<Arc<MorpheusServer>, MorpheusServerError> {
-        let neb_server = NebServer::new(opts).map_err(MorpheusServerError::ServerError)?;
+    pub fn new(
+        neb_opts: &NebServerOptions
+    ) -> Result<Arc<MorpheusServer>, MorpheusServerError> {
+        let server_addr = if neb_opts.standalone {&STANDALONE_ADDRESS_STRING} else {&neb_opts.address};
+        let rpc_server = rpc::Server::new(server_addr);
+        rpc::Server::listen_and_resume(&rpc_server);
+        if !neb_opts.is_meta && neb_opts.standalone {
+            return Err(MorpheusServerError::ServerError(ServerError::StandaloneMustAlsoBeMetaServer))
+        }
+
+        let neb_server = NebServer::new(
+            neb_opts, server_addr, &rpc_server
+        ).map_err(MorpheusServerError::ServerError)?;
         let neb_client = Arc::new(NebClient::new(
-            &neb_server.rpc, &opts.meta_members,
-            &opts.group_name).map_err(MorpheusServerError::ClientError)?);
-        if opts.is_meta {
+            &neb_server.rpc, &neb_opts.meta_members,
+            &neb_opts.group_name).map_err(MorpheusServerError::ClientError)?);
+        if neb_opts.is_meta {
             if let &Some(ref raft_service) = &neb_server.raft_service {
-                schema::SchemaContainer::new_meta_service(&opts.group_name, raft_service);
+                schema::SchemaContainer::new_meta_service(&neb_opts.group_name, raft_service);
             } else {
                 panic!("raft service should be ready for meta server");
             }
         }
         let schema_container = schema::SchemaContainer::new_client(
-            &opts.group_name, &neb_client.raft_client, &neb_client, &neb_server.meta
+            &neb_opts.group_name, &neb_client.raft_client, &neb_client, &neb_server.meta
         ).map_err(MorpheusServerError::InitSchemaError)?;
         let graph = Arc::new(Graph::new(&schema_container, &neb_client)
             .map_err(MorpheusServerError::InitSchemaError)?);
         Ok(Arc::new(MorpheusServer {
-            neb_server: neb_server,
-            neb_client: neb_client,
-            schema_container: schema_container,
-            graph: graph
+            neb_server,
+            neb_client,
+            schema_container,
+            graph
         }))
     }
 }

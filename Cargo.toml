@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Hao Shi <shisoftgenius@gmail.com>"]
 
 [dependencies]
-neb = { git = "https://github.com/ShisoftResearch/Nebuchadnezzar", branch = "feature/dovahkiin" }
+neb = { git = "https://github.com/ShisoftResearch/Nebuchadnezzar", branch = "develop" }
 #neb = { path = "../Nebuchadnezzar" }
 bifrost = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
 bifrost_plugins = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
