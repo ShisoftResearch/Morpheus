@@ -6,6 +6,8 @@
 #[macro_use]
 extern crate neb;
 #[macro_use]
+extern crate hivemind;
+#[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate bifrost;

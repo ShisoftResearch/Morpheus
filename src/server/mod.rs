@@ -3,6 +3,7 @@ use std::sync::Arc;
 use bifrost::raft::state_machine::master::ExecError;
 use neb::client::{Client as NebClient, NebClientError};
 use neb::server::{ServerOptions as NebServerOptions, NebServer, ServerError};
+use hivemind::server::{ServerOptions as HMServerOptions};
 use bifrost::tcp::{STANDALONE_ADDRESS_STRING};
 
 use graph::Graph;
