@@ -7,7 +7,7 @@ use graph::edge;
 use chashmap::CHashMap;
 use std::sync::Arc;
 use neb::ram::schema::{Field, Schema};
-use neb::client::{Client as NebClient};
+use neb::client::{AsyncClient as NebClient};
 use neb::server::{ServerMeta as NebServerMeta};
 use server::schema::sm::schema_types::client::SMClient;
 use graph::fields::VERTEX_TEMPLATE;

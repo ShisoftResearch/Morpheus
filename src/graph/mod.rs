@@ -3,7 +3,7 @@ use neb::ram::types::{Id, key_hash};
 use neb::dovahkiin::types::{Map, Value, ToValue};
 use neb::dovahkiin::expr::SExpr;
 use neb::ram::cell::{Cell, WriteError, ReadError};
-use neb::client::{Client as NebClient};
+use neb::client::{AsyncClient as NebClient};
 use neb::client::transaction::{Transaction, TxnError};
 use bifrost::raft::state_machine::master::ExecError;
 use bifrost::rpc::RPCError;
