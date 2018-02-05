@@ -248,10 +248,10 @@ impl GraphInner {
     }
     #[async]
     pub fn new_vertex<S>(this: Arc<Self>, schema: S, data: Map) -> Result<Vertex, NewVertexError>
-        where S: ToSchemaId
+        where S: ToSchemaId + 'static
     {
-        let vertex = Vertex::new(schema.to_id(this.schemas), data);
-        let mut cell = vertex_to_cell_for_write(this.schemas, vertex)?;
+        let vertex = Vertex::new(schema.to_id(&this.schemas), data);
+        let mut cell = vertex_to_cell_for_write(&this.schemas, vertex)?;
         let header = match await!(this.neb_client.write_cell(cell.clone())) {
             Ok(Ok(header)) => header,
             Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
@@ -272,7 +272,7 @@ impl GraphInner {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.remove_vertex(&id)
     }
-    pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
+    pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> impl Future<Item = (), Error = TxnError>
         where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>
     {
         let id = vertex.to_id();
@@ -281,17 +281,18 @@ impl GraphInner {
         })
     }
     pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
-        -> Result<(), TxnError>
+        -> impl Future<Item = (), Error = TxnError>
         where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>
     {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.update_vertex(&id, update)
     }
 
-    pub fn vertex_by<V>(&self, vertex: V)
-        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId
+    #[async]
+    pub fn vertex_by<V>(this: Arc<Self>, vertex: V)
+        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId + 'static
     {
-        match self.neb_client.read_cell(&vertex.to_id()) {
+        match await!(this.neb_client.read_cell(vertex.to_id())) {
             Err(e) => Err(ReadVertexError::RPCError(e)),
             Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
             Ok(Err(e)) => Err(ReadVertexError::ReadError(e)),
