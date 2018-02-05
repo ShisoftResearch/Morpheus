@@ -13,6 +13,7 @@ use graph::vertex::{Vertex, ToVertexId};
 use graph::edge::bilateral::BilateralEdge;
 use graph::edge::{EdgeAttributes, EdgeError};
 use query::{Tester, Expr, parse_optional_expr};
+use futures::prelude::*;
 
 use std::sync::Arc;
 
@@ -106,34 +107,134 @@ fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> R
 }
 
 pub struct Graph {
+    inner: Arc<GraphInner>
+}
+
+pub struct GraphInner {
     schemas: Arc<SchemaContainer>,
     neb_client: Arc<NebClient>
 }
 
 impl Graph {
-    pub fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> Result<Graph, ExecError> {
-        Graph::check_base_schemas(schemas)?;
-        Ok(Graph {
+    pub fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> impl Future<Item = Graph, Error = ExecError> {
+        let schemas = schemas.clone();
+        let neb_client = neb_client.clone();
+        GraphInner::check_base_schemas(schemas)
+            .and_then(|_| {
+                GraphInner::new(schemas, neb_client)
+            })
+            .and_then(|inner| {
+                Ok(Graph { inner: Arc::new(inner) })
+            })
+    }
+    fn check_base_schema<'a>(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'a str, fields: &Field) -> Result<(), ExecError> {
+        unimplemented!()
+    }
+    fn check_base_schemas(schemas: &Arc<SchemaContainer>) -> Result<(), ExecError> {
+        unimplemented!()
+    }
+    pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
+        unimplemented!()
+    }
+    pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_attrs: edge::EdgeAttributes) -> Result<(), SchemaError> {
+        unimplemented!()
+    }
+    pub fn new_vertex<S>(&self, schema: S, data: Map) -> Result<Vertex, NewVertexError>
+        where S: ToSchemaId
+    {
+        unimplemented!()
+    }
+    pub fn remove_vertex<V>(&self, vertex: V)
+        -> Result<(), TxnError> where V: ToVertexId
+    {
+        unimplemented!()
+    }
+    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<(), TxnError>
+        where K: ToValue, S: ToSchemaId
+    {
+        unimplemented!()
+    }
+    pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
+        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>
+    {
+        unimplemented!()
+    }
+    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U) -> Result<(), TxnError>
+        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>
+    {
+        unimplemented!()
+    }
+
+    pub fn vertex_by<V>(&self, vertex: V)
+        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId
+    {
+        unimplemented!()
+    }
+
+    pub fn vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<Option<Vertex>, ReadVertexError>
+        where K: ToValue, S: ToSchemaId
+    {
+        unimplemented!()
+    }
+
+    pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> Result<TR, TxnError>
+        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>
+    {
+        unimplemented!()
+    }
+    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<&Map>)
+        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId
+    {
+        unimplemented!()
+    }
+    pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
+        -> Result<Result<usize, edge::EdgeError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId
+    {
+        unimplemented!()
+    }
+    pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
+                                   -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId, F: Expr
+    {
+        unimplemented!()
+    }
+    pub fn edges<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
+        -> Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>
+        where V: ToVertexId, S: ToSchemaId, F: Expr
+    {
+        unimplemented!()
+    }
+}
+
+impl GraphInner {
+    #[async]
+    pub fn new(schemas: Arc<SchemaContainer>, neb_client: Arc<NebClient>) -> Result<GraphInner, ExecError> {
+        await!(GraphInner::check_base_schemas(schemas))?;
+        Ok(GraphInner {
             schemas: schemas.clone(),
             neb_client: neb_client.clone()
         })
     }
-    fn check_base_schema<'a>(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'a str, fields: &Field) -> Result<(), ExecError> {
+    #[async]
+    fn check_base_schema(schemas: Arc<SchemaContainer>, schema_id: u32, schema_name: &'static str, fields: &'static Field) -> Result<(), ExecError> {
         match schemas.get_neb_schema(schema_id) {
             None => {
-                schemas.neb_client.new_schema_with_id(
-                    &Schema::new_with_id(
+                await!(schemas.neb_client.new_schema_with_id(
+                    Schema::new_with_id(
                         schema_id, schema_name, None, fields.clone(), false
                     )
-                )?;
+                ))?;
             },
             _ => {}
         }
         Ok(())
     }
-    fn check_base_schemas(schemas: &Arc<SchemaContainer>) -> Result<(), ExecError> {
-        Graph::check_base_schema(schemas, id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST)?;
-        Graph::check_base_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST)?;
+    #[async]
+    fn check_base_schemas(schemas: Arc<SchemaContainer>) -> Result<(), ExecError> {
+        await!(GraphInner::check_base_schema(schemas, id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST))?;
+        await!(GraphInner::check_base_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST))?;
         Ok(())
     }
     pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
@@ -145,12 +246,13 @@ impl Graph {
         self.schemas.new_schema(schema)?;
         Ok(())
     }
-    pub fn new_vertex<S>(&self, schema: S, data: Map) -> Result<Vertex, NewVertexError>
+    #[async]
+    pub fn new_vertex<S>(this: Arc<Self>, schema: S, data: Map) -> Result<Vertex, NewVertexError>
         where S: ToSchemaId
     {
-        let vertex = Vertex::new(schema.to_id(&self.schemas), data);
-        let mut cell = vertex_to_cell_for_write(&self.schemas, vertex)?;
-        let header = match self.neb_client.write_cell(&cell) {
+        let vertex = Vertex::new(schema.to_id(this.schemas), data);
+        let mut cell = vertex_to_cell_for_write(this.schemas, vertex)?;
+        let header = match await!(this.neb_client.write_cell(cell.clone())) {
             Ok(Ok(header)) => header,
             Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
             Err(e) => return Err(NewVertexError::RPCError(e))

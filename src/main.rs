@@ -3,6 +3,8 @@
 #![feature(conservative_impl_trait)]
 #![plugin(bifrost_plugins)]
 
+#![feature(conservative_impl_trait, generators)]
+
 #[macro_use]
 extern crate neb;
 #[macro_use]
