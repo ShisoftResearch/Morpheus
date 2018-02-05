@@ -13,7 +13,8 @@ extern crate lazy_static;
 extern crate bifrost;
 #[macro_use]
 extern crate bifrost_hasher;
-extern crate futures;
+extern crate futures_await as futures;
+extern crate futures_cpupool;
 extern crate parking_lot;
 extern crate serde;
 #[macro_use]
