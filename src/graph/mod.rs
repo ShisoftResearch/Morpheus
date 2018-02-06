@@ -261,7 +261,7 @@ impl GraphInner {
         Ok(vertex::cell_to_vertex(cell))
     }
     pub fn remove_vertex<V>(&self, vertex: V)
-        -> Result<(), TxnError> where V: ToVertexId
+        -> impl Future<Item = (), Error = TxnError> where V: ToVertexId
     {
         let id = vertex.to_id();
         self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted(None)))
@@ -300,14 +300,15 @@ impl GraphInner {
         }
     }
 
-    pub fn vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<Option<Vertex>, ReadVertexError>
+    pub fn vertex_by_key<K, S>(&self, schema: S, key: K)
+        -> impl Future<Item = Option<Vertex>, Error = ReadVertexError>
         where K: ToValue, S: ToSchemaId
     {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
-        self.vertex_by(&id)
+        Self::vertex_by(this, id)
     }
 
-    pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> Result<TR, TxnError>
+    pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> impl Future<Item = TR, Error = TxnError>
         where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>
     {
         let wrapper = |neb_txn: &Transaction| {
@@ -319,7 +320,7 @@ impl GraphInner {
         self.neb_client.transaction(wrapper)
     }
     pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<&Map>)
-        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
+        -> impl Future<Item = Result<edge::Edge, LinkVerticesError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
         let from_id = from.to_id();
@@ -330,7 +331,7 @@ impl GraphInner {
         })
     }
     pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
-        -> Result<Result<usize, edge::EdgeError>, TxnError>
+        -> impl Future<Item = Result<usize, edge::EdgeError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
         let vertex_id = vertex.to_id();
@@ -340,20 +341,19 @@ impl GraphInner {
         })
     }
     pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
-        -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
+        -> impl Future<Item = Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId, F: Expr
     {
         let vertex_id = vertex.to_id();
         let schema_id = schema.to_id(&self.schemas);
-        let filter_sexpr = parse_optional_expr(filter);
-        match filter_sexpr {
-            Ok(ref filter) => {
+        future::result(parse_optional_expr(filter))
+            .and_then(|ref filter| {
                 self.graph_transaction(|txn| {
                     txn.neighbourhoods(vertex_id, schema_id, ed, filter)
                 })
-            },
-            Err(e) => Ok(Err(NeighbourhoodError::FilterEvalError(e)))
-        }
+                .then(|r| Ok(r))
+            })
+            .or_else(|e| Ok(Err(NeighbourhoodError::FilterEvalError(e))))
     }
     pub fn edges<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
         -> Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>
