@@ -127,72 +127,83 @@ impl Graph {
                 Ok(Graph { inner: Arc::new(inner) })
             })
     }
-    fn check_base_schema<'a>(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'a str, fields: &Field) -> Result<(), ExecError> {
-        unimplemented!()
+    fn check_base_schema(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'static str, fields: &Field)
+        -> impl Future<Item = (), Error = ExecError>
+    {
+        GraphInner::check_base_schema(this.inner.clone(), schema_id, schema_name, fields)
     }
-    fn check_base_schemas(schemas: &Arc<SchemaContainer>) -> Result<(), ExecError> {
-        unimplemented!()
+    fn check_base_schemas(schemas: &Arc<SchemaContainer>)
+        -> impl Future<Item = (), Error = ExecError>
+    {
+        GraphInner::check_base_schemas(schemas)
     }
     pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
-        unimplemented!()
+        self.inner.new_vertex_group(schema)
     }
     pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_attrs: edge::EdgeAttributes) -> Result<(), SchemaError> {
-        unimplemented!()
+        self.inner.new_edge_group(schema, edge_attrs)
     }
-    pub fn new_vertex<S>(&self, schema: S, data: Map) -> Result<Vertex, NewVertexError>
+    pub fn new_vertex<S>(&self, schema: S, data: Map)
+        -> impl Future<Item = Vertex, Error = NewVertexError>
         where S: ToSchemaId
     {
-        unimplemented!()
+        GraphInner::new_vertex(self.inner.clone(), schema, data)
     }
     pub fn remove_vertex<V>(&self, vertex: V)
-        -> Result<(), TxnError> where V: ToVertexId
+        -> impl Future<Item = (), Error = TxnError> where V: ToVertexId
     {
-        unimplemented!()
+        self.inner.remove_vertex(vertex)
     }
-    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<(), TxnError>
+    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
+        -> impl Future<Item = (), Error = TxnError>
         where K: ToValue, S: ToSchemaId
     {
-        unimplemented!()
+        self.inner.remove_vertex_by_key(schema, key)
     }
-    pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
+    pub fn update_vertex<V, U>(&self, vertex: V, update: U)
+        -> impl Future<Item = (), Error = TxnError>
         where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>
     {
-        unimplemented!()
+        self.inner.update_vertex(vertex, update)
     }
-    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U) -> Result<(), TxnError>
+    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
+        -> impl Future<Item = (), Error = TxnError>
         where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>
     {
-        unimplemented!()
+        self.inner.update_vertex_by_key(schema, key, update)
     }
 
     pub fn vertex_by<V>(&self, vertex: V)
-        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId
+        -> impl Future<Item = Option<Vertex>, Error = ReadVertexError>
+        where V: ToVertexId
     {
-        unimplemented!()
+        GraphInner::vertex_by(self.inner.clone(), vertex)
     }
 
-    pub fn vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<Option<Vertex>, ReadVertexError>
+    pub fn vertex_by_key<K, S>(&self, schema: S, key: K)
+        -> impl Future<Item = Option<Vertex>, Error = ReadVertexError>
         where K: ToValue, S: ToSchemaId
     {
-        unimplemented!()
+        self.inner.vertex_by_key(schema, key)
     }
 
-    pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> Result<TR, TxnError>
+    pub fn graph_transaction<TFN, TR>(&self, func: TFN)
+        -> impl Future<Item = TR, Error = TxnError>
         where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>
     {
-        unimplemented!()
+        self.inner.graph_transaction(func)
     }
-    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<&Map>)
-        -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
+    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<Map>)
+        -> impl Future<Item = Result<edge::Edge, LinkVerticesError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
-        unimplemented!()
+        self.inner.link(from, schema, to, body)
     }
     pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
-        -> Result<Result<usize, edge::EdgeError>, TxnError>
+        -> impl Future<Item = Result<usize, edge::EdgeError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
-        unimplemented!()
+        self.inner.degree(vertex, schema, ed)
     }
     pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
                                    -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
@@ -321,7 +332,7 @@ impl GraphInner {
         };
         self.neb_client.transaction(wrapper)
     }
-    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<&Map>)
+    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<Map>)
         -> impl Future<Item = Result<edge::Edge, LinkVerticesError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
@@ -363,15 +374,13 @@ impl GraphInner {
     {
         let vertex_id = vertex.to_id();
         let schema_id = schema.to_id(&self.schemas);
-        let filter_sexpr = parse_optional_expr(filter);
-        match filter_sexpr {
-            Ok(ref filter) => {
+        future::result(parse_optional_expr(filter))
+            .and_then(|ref filter| {
                 self.graph_transaction(|txn| {
                     txn.edges(vertex_id, schema_id, ed, filter)
                 })
-            },
-            Err(e) => Ok(Err(EdgeError::FilterEvalError(e)))
-        }
+            })
+            .or_else(|e| Ok(Err(EdgeError::FilterEvalError(e))))
     }
 }
 
@@ -405,7 +414,7 @@ impl <'a>GraphTransaction<'a> {
         self.remove_vertex(&id)
     }
 
-    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<&Map>)
+    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<Map>)
         -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
         where V: ToVertexId, S: ToSchemaId
     {

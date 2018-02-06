@@ -73,7 +73,7 @@ pub trait BilateralEdge : TEdge {
         Ok(Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell)))
     }
     fn link(
-        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<&Map>,
+        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Map>,
         txn: &Transaction,
         schema_id: u32, schemas: &Arc<SchemaContainer>
     ) -> Result<Result<Self::Edge, EdgeError>, TxnError> {
@@ -88,7 +88,7 @@ pub trait BilateralEdge : TEdge {
                             let mut edge_body_cell = Cell::new_with_id(
                                 schema_id,
                                 &Id::new(vertex_a_id.higher, rand::next()),
-                                Value::Map(body_map.clone())
+                                Value::Map(body_map)
                             );
                             edge_body_cell.data[Self::edge_a_field()] = Value::Id(*vertex_a_id);
                             edge_body_cell.data[Self::edge_b_field()] = Value::Id(*vertex_b_id);
