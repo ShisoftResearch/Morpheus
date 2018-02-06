@@ -14,6 +14,7 @@ use graph::edge::bilateral::BilateralEdge;
 use graph::edge::{EdgeAttributes, EdgeError};
 use query::{Tester, Expr, parse_optional_expr};
 use futures::prelude::*;
+use futures::future;
 
 use std::sync::Arc;
 
@@ -127,15 +128,15 @@ impl Graph {
                 Ok(Graph { inner: Arc::new(inner) })
             })
     }
-    fn check_base_schema(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'static str, fields: &Field)
+    fn check_base_schema(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'static str, fields: &'static Field)
         -> impl Future<Item = (), Error = ExecError>
     {
-        GraphInner::check_base_schema(this.inner.clone(), schema_id, schema_name, fields)
+        GraphInner::check_base_schema(schemas.clone(), schema_id, schema_name, fields)
     }
     fn check_base_schemas(schemas: &Arc<SchemaContainer>)
         -> impl Future<Item = (), Error = ExecError>
     {
-        GraphInner::check_base_schemas(schemas)
+        GraphInner::check_base_schemas(schemas.clone())
     }
     pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
         self.inner.new_vertex_group(schema)
@@ -184,12 +185,12 @@ impl Graph {
         -> impl Future<Item = Option<Vertex>, Error = ReadVertexError>
         where K: ToValue, S: ToSchemaId
     {
-        self.inner.vertex_by_key(schema, key)
+        GraphInner::vertex_by_key(self.inner.clone(), schema, key)
     }
 
     pub fn graph_transaction<TFN, TR>(&self, func: TFN)
         -> impl Future<Item = TR, Error = TxnError>
-        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>
+        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static
     {
         self.inner.graph_transaction(func)
     }
@@ -199,23 +200,23 @@ impl Graph {
     {
         self.inner.link(from, schema, to, body)
     }
-    pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
+    pub fn degree<V, S>(&self, vertex: V, schema: S, direction: EdgeDirection)
         -> impl Future<Item = Result<usize, edge::EdgeError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
-        self.inner.degree(vertex, schema, ed)
+        self.inner.degree(vertex, schema, direction)
     }
-    pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
-                                   -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
+    pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, direction: EdgeDirection, filter: &Option<F>)
+        -> impl Future<Item = Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId, F: Expr
     {
-        unimplemented!()
+        GraphInner::neighbourhoods(self.inner.clone(), vertex, schema, direction, filter)
     }
-    pub fn edges<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
-        -> Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>
+    pub fn edges<V, S, F>(&self, vertex: V, schema: S, direction: EdgeDirection, filter: &Option<F>)
+        -> impl Future<Item = Result<Vec<edge::Edge>, EdgeError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId, F: Expr
     {
-        unimplemented!()
+        GraphInner::edges(self.inner.clone(), vertex, schema, direction, filter)
     }
 }
 
@@ -257,19 +258,22 @@ impl GraphInner {
         self.schemas.new_schema(schema)?;
         Ok(())
     }
-    #[async]
-    pub fn new_vertex<S>(this: Arc<Self>, schema: S, data: Map) -> Result<Vertex, NewVertexError>
-        where S: ToSchemaId + 'static
+    pub fn new_vertex<S>(this: Arc<Self>, schema: S, data: Map)
+        -> impl Future<Item = Vertex, Error = NewVertexError>
+        where S: ToSchemaId
     {
         let vertex = Vertex::new(schema.to_id(&this.schemas), data);
-        let mut cell = vertex_to_cell_for_write(&this.schemas, vertex)?;
-        let header = match await!(this.neb_client.write_cell(cell.clone())) {
-            Ok(Ok(header)) => header,
-            Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
-            Err(e) => return Err(NewVertexError::RPCError(e))
-        };
-        cell.header = header;
-        Ok(vertex::cell_to_vertex(cell))
+        let mut cell_result = vertex_to_cell_for_write(&this.schemas, vertex);
+        async_block! {
+            let mut cell = cell_result?;
+            let header = match await!(this.neb_client.write_cell(cell.clone())) {
+                Ok(Ok(header)) => header,
+                Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
+                Err(e) => return Err(NewVertexError::RPCError(e))
+            };
+            cell.header = header;
+            Ok(vertex::cell_to_vertex(cell))
+        }
     }
     pub fn remove_vertex<V>(&self, vertex: V)
         -> impl Future<Item = (), Error = TxnError> where V: ToVertexId
@@ -300,23 +304,25 @@ impl GraphInner {
         self.update_vertex(&id, update)
     }
 
-    #[async]
     pub fn vertex_by<V>(this: Arc<Self>, vertex: V)
-        -> Result<Option<Vertex>, ReadVertexError> where V: ToVertexId + 'static
+        -> impl Future<Item = Option<Vertex>, Error = ReadVertexError> where V: ToVertexId
     {
-        match await!(this.neb_client.read_cell(vertex.to_id())) {
-            Err(e) => Err(ReadVertexError::RPCError(e)),
-            Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
-            Ok(Err(e)) => Err(ReadVertexError::ReadError(e)),
-            Ok(Ok(cell)) => Ok(Some(vertex::cell_to_vertex(cell)))
-        }
+        this.neb_client.read_cell(vertex.to_id())
+            .then(|result| {
+                match result {
+                    Err(e) => Err(ReadVertexError::RPCError(e)),
+                    Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
+                    Ok(Err(e)) => Err(ReadVertexError::ReadError(e)),
+                    Ok(Ok(cell)) => Ok(Some(vertex::cell_to_vertex(cell)))
+                }
+            })
     }
 
-    pub fn vertex_by_key<K, S>(&self, schema: S, key: K)
+    pub fn vertex_by_key<K, S>(this: Arc<Self>, schema: S, key: K)
         -> impl Future<Item = Option<Vertex>, Error = ReadVertexError>
         where K: ToValue, S: ToSchemaId
     {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        let id = Cell::encode_cell_key(schema.to_id(&this.schemas), &key.value());
         Self::vertex_by(this, id)
     }
 
@@ -353,34 +359,51 @@ impl GraphInner {
             txn.degree(vertex_id, schema_id, ed)
         })
     }
-    pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
+    pub fn neighbourhoods<V, S, F>(this: Arc<Self>, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
         -> impl Future<Item = Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId, F: Expr
     {
         let vertex_id = vertex.to_id();
-        let schema_id = schema.to_id(&self.schemas);
+        let schema_id = schema.to_id(&this.schemas);
         future::result(parse_optional_expr(filter))
-            .and_then(|ref filter| {
-                self.graph_transaction(|txn| {
-                    txn.neighbourhoods(vertex_id, schema_id, ed, filter)
-                })
-                .then(|r| Ok(r))
+            .map_err(|e| {
+                NeighbourhoodError::FilterEvalError(e)
             })
-            .or_else(|e| Ok(Err(NeighbourhoodError::FilterEvalError(e))))
+            .then(|filter_sexpr_result| {
+                async_block! {
+                    match filter_sexpr_result {
+                        Ok(ref filter_sexpr) => {
+                            return await!(this.graph_transaction(|txn| {
+                                txn.neighbourhoods(vertex_id, schema_id, ed, filter_sexpr)
+                            }))
+                        },
+                        Err(e) => return Ok(Err(e))
+                    }
+                }
+            })
     }
-    pub fn edges<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
-        -> Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>
+    pub fn edges<V, S, F>(this: Arc<Self>, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
+        -> impl Future<Item = Result<Vec<edge::Edge>, EdgeError>, Error = TxnError>
         where V: ToVertexId, S: ToSchemaId, F: Expr
     {
         let vertex_id = vertex.to_id();
-        let schema_id = schema.to_id(&self.schemas);
+        let schema_id = schema.to_id(&this.schemas);
         future::result(parse_optional_expr(filter))
-            .and_then(|ref filter| {
-                self.graph_transaction(|txn| {
-                    txn.edges(vertex_id, schema_id, ed, filter)
-                })
+            .map_err(|e| {
+                EdgeError::FilterEvalError(e)
             })
-            .or_else(|e| Ok(Err(EdgeError::FilterEvalError(e))))
+            .then(|filter_result| {
+                async_block! {
+                    match filter_result {
+                        Ok(ref filter) => {
+                            return await!(this.graph_transaction(|txn| {
+                                txn.edges(vertex_id, schema_id, ed, filter)
+                            }))
+                        },
+                        Err(e) => return Ok(Err(e))
+                    }
+                }
+            })
     }
 }
 
@@ -507,7 +530,7 @@ impl <'a>GraphTransaction<'a> {
         match id_list::IdList::from_txn_and_container
             (self.neb_txn, vertex_id, vertex_field, schema_id).iter()? {
             Err(e) => Ok(Err(NeighbourhoodError::EdgeError(EdgeError::IdListError(e)))),
-            Ok(ids) => Ok(Ok({
+            Ok(ids) => {
                 let mut result: Vec<(Vertex, edge::Edge)> = Vec::new();
                 for id in ids {
                     match edge::from_id(
@@ -529,7 +552,7 @@ impl <'a>GraphTransaction<'a> {
                     }
                 }
                 return Ok(Ok(result));
-            }))
+            }
         }
     }
 
