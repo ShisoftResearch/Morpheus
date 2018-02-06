@@ -266,11 +266,12 @@ impl GraphInner {
         let id = vertex.to_id();
         self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted(None)))
     }
-    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<(), TxnError>
+    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
+        -> impl Future<Item = (), Error = TxnError>
         where K: ToValue, S: ToSchemaId
     {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
-        self.remove_vertex(&id)
+        self.remove_vertex(id)
     }
     pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> impl Future<Item = (), Error = TxnError>
         where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>
@@ -309,12 +310,13 @@ impl GraphInner {
     }
 
     pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> impl Future<Item = TR, Error = TxnError>
-        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>
+        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static
     {
+        let schemas = self.schemas.clone();
         let wrapper = |neb_txn: &Transaction| {
             func(&GraphTransaction {
                 neb_txn,
-                schemas: self.schemas.clone()
+                schemas: schemas.clone()
             })
         };
         self.neb_client.transaction(wrapper)
