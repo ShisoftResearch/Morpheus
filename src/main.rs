@@ -29,6 +29,8 @@ extern crate env_logger;
 extern crate yaml_rust;
 extern crate serde_yaml;
 
+use futures::Future;
+
 mod graph;
 mod server;
 mod utils;
@@ -44,7 +46,7 @@ fn main() {
     info!("Shisoft Morpheus is initializing...");
     query::init().unwrap();
     let neb_config = config::neb::options_from_file("config/neb.yaml");
-    let morpheus_server = server::MorpheusServer::new(&neb_config).unwrap();
+    let morpheus_server = server::MorpheusServer::new(neb_config).wait().unwrap();
 
     thread::park();
 }
