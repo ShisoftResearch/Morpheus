@@ -138,10 +138,14 @@ impl Graph {
     {
         GraphInner::check_base_schemas(schemas.clone())
     }
-    pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
+    pub fn new_vertex_group(&self, schema: MorpheusSchema)
+        -> impl Future<Item = u32, Error = SchemaError>
+    {
         self.inner.new_vertex_group(schema)
     }
-    pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_attrs: edge::EdgeAttributes) -> Result<(), SchemaError> {
+    pub fn new_edge_group(&self, schema: MorpheusSchema, edge_attrs: edge::EdgeAttributes)
+        -> impl Future<Item = u32, Error = SchemaError>
+    {
         self.inner.new_edge_group(schema, edge_attrs)
     }
     pub fn new_vertex<S>(&self, schema: S, data: Map)
@@ -249,14 +253,17 @@ impl GraphInner {
         await!(GraphInner::check_base_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST))?;
         Ok(())
     }
-    pub fn new_vertex_group(&self, schema: &mut MorpheusSchema) -> Result<(), SchemaError> {
+    pub fn new_vertex_group(&self, schema: MorpheusSchema)
+        -> impl Future<Item = u32, Error = SchemaError>
+    {
         schema.schema_type = SchemaType::Vertex;
         self.schemas.new_schema(schema)
     }
-    pub fn new_edge_group(&self, schema: &mut MorpheusSchema, edge_attrs: edge::EdgeAttributes) -> Result<(), SchemaError> {
+    pub fn new_edge_group(&self, schema: MorpheusSchema, edge_attrs: edge::EdgeAttributes)
+        -> impl Future<Item = u32, Error = SchemaError>
+    {
         schema.schema_type = SchemaType::Edge(edge_attrs);
-        self.schemas.new_schema(schema)?;
-        Ok(())
+        self.schemas.new_schema(schema)
     }
     pub fn new_vertex<S>(this: Arc<Self>, schema: S, data: Map)
         -> impl Future<Item = Vertex, Error = NewVertexError>
