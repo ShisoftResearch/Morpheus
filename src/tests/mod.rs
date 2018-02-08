@@ -2,6 +2,7 @@ use neb::server::ServerOptions;
 use server::MorpheusServer;
 use config;
 use std::sync::Arc;
+use futures::Future;
 
 mod graph;
 
@@ -11,7 +12,7 @@ pub fn start_server<'a>(port: u32, group: &'a str) -> Arc<MorpheusServer> {
     neb_config.meta_members = vec![replacement_address.clone()];
     neb_config.address = replacement_address.clone();
     neb_config.group_name = format!("{}-{}", group, "test");
-    MorpheusServer::new(&neb_config).unwrap()
+    MorpheusServer::new(neb_config).wait().unwrap()
 }
 
 #[test]

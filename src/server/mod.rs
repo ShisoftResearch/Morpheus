@@ -34,15 +34,17 @@ impl MorpheusServer {
     pub fn new(
         neb_opts: NebServerOptions
     ) -> Result<Arc<MorpheusServer>, MorpheusServerError> {
-        let server_addr = if neb_opts.standalone {&STANDALONE_ADDRESS_STRING} else {&neb_opts.address};
-        let rpc_server = rpc::Server::new(server_addr);
+        let server_addr = {
+            if neb_opts.standalone {&STANDALONE_ADDRESS_STRING} else {&neb_opts.address}
+        }.clone();
+        let rpc_server = rpc::Server::new(&server_addr);
         rpc::Server::listen_and_resume(&rpc_server);
         if !neb_opts.is_meta && neb_opts.standalone {
             return Err(MorpheusServerError::ServerError(ServerError::StandaloneMustAlsoBeMetaServer))
         }
 
         let neb_server = NebServer::new(
-            &neb_opts, server_addr, &rpc_server
+            &neb_opts, &server_addr, &rpc_server
         ).map_err(MorpheusServerError::ServerError)?;
         let neb_client = Arc::new(NebClient::new(
             &neb_server.rpc, &neb_opts.meta_members,

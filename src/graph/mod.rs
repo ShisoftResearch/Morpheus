@@ -119,10 +119,11 @@ pub struct GraphInner {
 impl Graph {
     pub fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> impl Future<Item = Graph, Error = ExecError> {
         let schemas = schemas.clone();
+        let schemas_clone = schemas.clone();
         let neb_client = neb_client.clone();
         GraphInner::check_base_schemas(schemas)
             .and_then(|_| {
-                GraphInner::new(schemas, neb_client)
+                GraphInner::new(schemas_clone, neb_client)
             })
             .and_then(|inner| {
                 Ok(Graph { inner: Arc::new(inner) })
@@ -167,13 +168,13 @@ impl Graph {
     }
     pub fn update_vertex<V, U>(&self, vertex: V, update: U)
         -> impl Future<Item = (), Error = TxnError>
-        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>
+        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>, U: 'static
     {
         self.inner.update_vertex(vertex, update)
     }
     pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
         -> impl Future<Item = (), Error = TxnError>
-        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>
+        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>, U: 'static
     {
         self.inner.update_vertex_by_key(schema, key, update)
     }
@@ -194,7 +195,7 @@ impl Graph {
 
     pub fn graph_transaction<TFN, TR>(&self, func: TFN)
         -> impl Future<Item = TR, Error = TxnError>
-        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static
+        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static, TFN: 'static
     {
         self.inner.graph_transaction(func)
     }
@@ -227,7 +228,7 @@ impl Graph {
 impl GraphInner {
     #[async]
     pub fn new(schemas: Arc<SchemaContainer>, neb_client: Arc<NebClient>) -> Result<GraphInner, ExecError> {
-        await!(GraphInner::check_base_schemas(schemas))?;
+        await!(GraphInner::check_base_schemas(schemas.clone()))?;
         Ok(GraphInner {
             schemas: schemas.clone(),
             neb_client: neb_client.clone()
@@ -249,17 +250,17 @@ impl GraphInner {
     }
     #[async]
     fn check_base_schemas(schemas: Arc<SchemaContainer>) -> Result<(), ExecError> {
-        await!(GraphInner::check_base_schema(schemas, id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST))?;
+        await!(GraphInner::check_base_schema(schemas.clone(), id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST))?;
         await!(GraphInner::check_base_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST))?;
         Ok(())
     }
-    pub fn new_vertex_group(&self, schema: MorpheusSchema)
+    pub fn new_vertex_group(&self, mut schema: MorpheusSchema)
         -> impl Future<Item = u32, Error = SchemaError>
     {
         schema.schema_type = SchemaType::Vertex;
         self.schemas.new_schema(schema)
     }
-    pub fn new_edge_group(&self, schema: MorpheusSchema, edge_attrs: edge::EdgeAttributes)
+    pub fn new_edge_group(&self, mut schema: MorpheusSchema, edge_attrs: edge::EdgeAttributes)
         -> impl Future<Item = u32, Error = SchemaError>
     {
         schema.schema_type = SchemaType::Edge(edge_attrs);
@@ -286,7 +287,8 @@ impl GraphInner {
         -> impl Future<Item = (), Error = TxnError> where V: ToVertexId
     {
         let id = vertex.to_id();
-        self.graph_transaction(|txn| txn.remove_vertex(id)?.map_err(|_| TxnError::Aborted(None)))
+        self.graph_transaction(move |txn| txn.remove_vertex(id)?
+            .map_err(|_| TxnError::Aborted(None)))
     }
     pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
         -> impl Future<Item = (), Error = TxnError>
@@ -296,19 +298,19 @@ impl GraphInner {
         self.remove_vertex(id)
     }
     pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> impl Future<Item = (), Error = TxnError>
-        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>
+        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>, U: 'static
     {
         let id = vertex.to_id();
-        self.neb_client.transaction(|txn|{
+        self.neb_client.transaction(move |txn|{
             vertex::txn_update(txn, id, &update)
         })
     }
     pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
         -> impl Future<Item = (), Error = TxnError>
-        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>
+        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>, U: 'static
     {
         let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
-        self.update_vertex(&id, update)
+        self.update_vertex(id, update)
     }
 
     pub fn vertex_by<V>(this: Arc<Self>, vertex: V)
@@ -334,10 +336,10 @@ impl GraphInner {
     }
 
     pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> impl Future<Item = TR, Error = TxnError>
-        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static
+        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static, TFN: 'static
     {
         let schemas = self.schemas.clone();
-        let wrapper = |neb_txn: &Transaction| {
+        let wrapper = move |neb_txn: &Transaction| {
             func(&GraphTransaction {
                 neb_txn,
                 schemas: schemas.clone()
@@ -352,8 +354,8 @@ impl GraphInner {
         let from_id = from.to_id();
         let to_id = to.to_id();
         let schema_id = schema.to_id(&self.schemas);
-        self.graph_transaction(|txn| {
-            txn.link(from_id, schema_id, to_id, body)
+        self.graph_transaction(move |txn| {
+            txn.link(from_id, schema_id, to_id, body.clone())
         })
     }
     pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
@@ -362,7 +364,7 @@ impl GraphInner {
     {
         let vertex_id = vertex.to_id();
         let schema_id = schema.to_id(&self.schemas);
-        self.graph_transaction(|txn| {
+        self.graph_transaction(move |txn| {
             txn.degree(vertex_id, schema_id, ed)
         })
     }
@@ -376,12 +378,12 @@ impl GraphInner {
             .map_err(|e| {
                 NeighbourhoodError::FilterEvalError(e)
             })
-            .then(|filter_sexpr_result| {
+            .then(move |filter_sexpr_result| {
                 async_block! {
                     match filter_sexpr_result {
-                        Ok(ref filter_sexpr) => {
-                            return await!(this.graph_transaction(|txn| {
-                                txn.neighbourhoods(vertex_id, schema_id, ed, filter_sexpr)
+                        Ok(filter_sexpr) => {
+                            return await!(this.graph_transaction(move |txn| {
+                                txn.neighbourhoods(vertex_id, schema_id, ed, &filter_sexpr)
                             }))
                         },
                         Err(e) => return Ok(Err(e))
@@ -399,12 +401,12 @@ impl GraphInner {
             .map_err(|e| {
                 EdgeError::FilterEvalError(e)
             })
-            .then(|filter_result| {
+            .then(move |filter_result| {
                 async_block! {
                     match filter_result {
-                        Ok(ref filter) => {
-                            return await!(this.graph_transaction(|txn| {
-                                txn.edges(vertex_id, schema_id, ed, filter)
+                        Ok(filter) => {
+                            return await!(this.graph_transaction(move |txn| {
+                                txn.edges(vertex_id, schema_id, ed, &filter)
                             }))
                         },
                         Err(e) => return Ok(Err(e))

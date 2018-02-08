@@ -134,8 +134,8 @@ impl SchemaContainer {
         let schema_type = schema.schema_type;
         let sm_client = self.sm_client.clone();
         let neb_client = self.neb_client.clone();
-        future::result(cell_fields(schema_type, schema.fields))
-            .and_then(|schema_fields| {
+        future::result(cell_fields(schema_type, schema.fields.clone()))
+            .and_then(move |schema_fields| {
                 let mut neb_schema = Schema::new(
                     &schema.name,
                     schema.key_field.clone(),
@@ -145,7 +145,7 @@ impl SchemaContainer {
                 neb_client.new_schema(neb_schema)
                     .map_err(|e| SchemaError::NewNebSchemaExecError(e))
             })
-            .and_then(|(schema_id, _)| {
+            .and_then(move |(schema_id, _)| {
                 match sm_client.insert(&schema_id, &schema_type) {
                     Ok(_) => Ok(schema_id),
                     Err(e) => Err(SchemaError::NewMorpheusSchemaExecError(e))
@@ -158,7 +158,7 @@ impl SchemaContainer {
     }
 
     fn schema_type_(map: &Arc<CHashMap<u32, SchemaType>>, schema_id: u32) -> Option<SchemaType> {
-        match self.map.get(&schema_id) {
+        match map.get(&schema_id) {
             Some(t) => Some(*t),
             None => None
         }
@@ -198,7 +198,7 @@ impl SchemaContainer {
     pub fn all_morpheus_schemas(&self) -> impl Future<Item = Vec<MorpheusSchema>, Error = ExecError> {
         let schema_map = self.map.clone();
         self.neb_client.get_all_schema()
-            .map(|neb_schemas| {
+            .map(move |neb_schemas| {
                 neb_schemas
                     .into_iter()
                     .map(|schema| Self::neb_to_morpheus_schema_(&schema_map, &Arc::new(schema)))
