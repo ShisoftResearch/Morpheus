@@ -1,10 +1,12 @@
 use bifrost::rpc;
 use std::sync::Arc;
 use bifrost::raft::state_machine::master::ExecError;
-use neb::client::{Client as NebClient, NebClientError};
+use neb::client::{AsyncClient as NebClient, NebClientError};
 use neb::server::{ServerOptions as NebServerOptions, NebServer, ServerError};
 use hivemind::server::{ServerOptions as HMServerOptions};
 use bifrost::tcp::{STANDALONE_ADDRESS_STRING};
+use futures::{Future, future};
+use futures::prelude::*;
 
 use graph::Graph;
 
@@ -27,18 +29,22 @@ pub struct MorpheusServer {
 }
 
 impl MorpheusServer {
+
+    #[async]
     pub fn new(
-        neb_opts: &NebServerOptions
+        neb_opts: NebServerOptions
     ) -> Result<Arc<MorpheusServer>, MorpheusServerError> {
-        let server_addr = if neb_opts.standalone {&STANDALONE_ADDRESS_STRING} else {&neb_opts.address};
-        let rpc_server = rpc::Server::new(server_addr);
+        let server_addr = {
+            if neb_opts.standalone {&STANDALONE_ADDRESS_STRING} else {&neb_opts.address}
+        }.clone();
+        let rpc_server = rpc::Server::new(&server_addr);
         rpc::Server::listen_and_resume(&rpc_server);
         if !neb_opts.is_meta && neb_opts.standalone {
             return Err(MorpheusServerError::ServerError(ServerError::StandaloneMustAlsoBeMetaServer))
         }
 
         let neb_server = NebServer::new(
-            neb_opts, server_addr, &rpc_server
+            &neb_opts, &server_addr, &rpc_server
         ).map_err(MorpheusServerError::ServerError)?;
         let neb_client = Arc::new(NebClient::new(
             &neb_server.rpc, &neb_opts.meta_members,
@@ -51,10 +57,10 @@ impl MorpheusServer {
             }
         }
         let schema_container = schema::SchemaContainer::new_client(
-            &neb_opts.group_name, &neb_client.raft_client, &neb_client, &neb_server.meta
+            &neb_opts.group_name, &neb_client.raft_client(), &neb_client, &neb_server.meta
         ).map_err(MorpheusServerError::InitSchemaError)?;
-        let graph = Arc::new(Graph::new(&schema_container, &neb_client)
-            .map_err(MorpheusServerError::InitSchemaError)?);
+        let graph = Arc::new(await!(Graph::new(&schema_container, &neb_client)
+            .map_err(MorpheusServerError::InitSchemaError))?);
         Ok(Arc::new(MorpheusServer {
             neb_server,
             neb_client,
