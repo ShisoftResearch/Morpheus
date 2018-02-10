@@ -11,7 +11,6 @@ bifrost = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
 bifrost_plugins = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
 bifrost_hasher = { git = "https://github.com/shisoft/bifrost", branch = "develop" }
 lazy_static = "*"
-futures = "0.1"
 futures-cpupool = "0.1"
 futures-await = "0.1"
 parking_lot = {version = "0.4", features = ["nightly"]}
