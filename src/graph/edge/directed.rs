@@ -6,9 +6,8 @@ use std::sync::Arc;
 
 use super::{TEdge, EdgeType, EdgeError};
 use super::bilateral::BilateralEdge;
-use super::macros;
-use server::schema::{SchemaContainer};
-use graph::fields::*;
+use crate::server::schema::{SchemaContainer};
+use crate::graph::fields::*;
 
 
 lazy_static! {

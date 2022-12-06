@@ -1,27 +1,19 @@
 #![feature(proc_macro)]
 #![feature(plugin)]
 #![feature(conservative_impl_trait)]
-#![plugin(bifrost_plugins)]
-
-#![feature(conservative_impl_trait, generators)]
 
 #[macro_use]
 extern crate neb;
-#[macro_use]
-extern crate hivemind;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate bifrost;
 #[macro_use]
 extern crate bifrost_hasher;
-extern crate futures_await as futures;
-extern crate futures_cpupool;
 extern crate parking_lot;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate chashmap;
 #[macro_use]
 extern crate log;
 extern crate log4rs;

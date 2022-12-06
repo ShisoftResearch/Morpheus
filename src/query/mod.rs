@@ -4,8 +4,8 @@ use neb::dovahkiin::expr::SExpr;
 use neb::dovahkiin::expr::symbols::utils::is_true;
 use neb::dovahkiin::integrated::lisp::parse_to_expr;
 use neb::dovahkiin::types::Value;
-use graph::edge::Edge;
-use graph::vertex::Vertex;
+use crate::graph::edge::Edge;
+use crate::graph::vertex::Vertex;
 
 pub static VERTEX_SYMBOL: u64 = hash_ident!(vertex) as u64;
 pub static EDGE_SYMBOL: u64 = hash_ident!(edge) as u64;

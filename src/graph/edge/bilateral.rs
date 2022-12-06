@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use super::{TEdge, EdgeError};
 use super::super::id_list::IdList;
-use server::schema::{SchemaContainer, SchemaType};
+use crate::server::schema::{SchemaContainer, SchemaType};
 
 
 pub trait BilateralEdge : TEdge {

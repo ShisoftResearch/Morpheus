@@ -11,8 +11,8 @@ use neb::ram::types::Id;
 use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction, TxnError};
 use neb::dovahkiin::types::Value;
-use graph::edge::bilateral::BilateralEdge;
-use server::schema::{SchemaContainer, SchemaType};
+use crate::graph::edge::bilateral::BilateralEdge;
+use crate::server::schema::{SchemaContainer, SchemaType};
 use super::id_list::IdListError;
 use std::sync::Arc;
 

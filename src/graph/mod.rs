@@ -8,11 +8,11 @@ use neb::client::transaction::{Transaction, TxnError};
 use bifrost::raft::state_machine::master::ExecError;
 use bifrost::rpc::RPCError;
 
-use server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError, ToSchemaId};
-use graph::vertex::{Vertex, ToVertexId};
-use graph::edge::bilateral::BilateralEdge;
-use graph::edge::{EdgeAttributes, EdgeError};
-use query::{Tester, Expr, parse_optional_expr};
+use crate::server::schema::{MorpheusSchema, SchemaType, SchemaContainer, SchemaError, ToSchemaId};
+use crate::graph::vertex::{Vertex, ToVertexId};
+use crate::graph::edge::bilateral::BilateralEdge;
+use crate::graph::edge::{EdgeAttributes, EdgeError};
+use crate::query::{Tester, Expr, parse_optional_expr};
 use futures::prelude::*;
 use futures::future;
 

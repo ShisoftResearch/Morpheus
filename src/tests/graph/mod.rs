@@ -1,14 +1,13 @@
 use super::start_server;
-use graph;
-use graph::*;
-use graph::edge::*;
-use graph::vertex::*;
-use server::schema::{MorpheusSchema, SchemaError, EMPTY_FIELDS};
+use crate::graph;
+use crate::graph::*;
+use crate::graph::edge::*;
+use crate::graph::vertex::*;
+use crate::server::schema::{MorpheusSchema, SchemaError, EMPTY_FIELDS};
 use neb::ram::schema::Field;
 use neb::ram::types::{TypeId, Value, Map};
 use neb::ram::cell::Cell;
 use env_logger;
-use futures::Future;
 
 #[test]
 pub fn schemas() {

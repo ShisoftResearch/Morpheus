@@ -3,12 +3,11 @@ use std::sync::Arc;
 use bifrost::raft::state_machine::master::ExecError;
 use neb::client::{AsyncClient as NebClient, NebClientError};
 use neb::server::{ServerOptions as NebServerOptions, NebServer, ServerError};
-use hivemind::server::{ServerOptions as HMServerOptions};
 use bifrost::tcp::{STANDALONE_ADDRESS_STRING};
 use futures::{Future, future};
 use futures::prelude::*;
 
-use graph::Graph;
+use crate::graph::Graph;
 
 pub mod general;
 pub mod schema;
@@ -30,8 +29,7 @@ pub struct MorpheusServer {
 
 impl MorpheusServer {
 
-    #[async]
-    pub fn new(
+    pub async fn new(
         neb_opts: NebServerOptions
     ) -> Result<Arc<MorpheusServer>, MorpheusServerError> {
         let server_addr = {
@@ -45,7 +43,7 @@ impl MorpheusServer {
 
         let neb_server = NebServer::new(
             &neb_opts, &server_addr, &rpc_server
-        ).map_err(MorpheusServerError::ServerError)?;
+        ).await.map_err(MorpheusServerError::ServerError)?;
         let neb_client = Arc::new(NebClient::new(
             &neb_server.rpc, &neb_opts.meta_members,
             &neb_opts.group_name).map_err(MorpheusServerError::ClientError)?);
@@ -59,8 +57,7 @@ impl MorpheusServer {
         let schema_container = schema::SchemaContainer::new_client(
             &neb_opts.group_name, &neb_client.raft_client(), &neb_client, &neb_server.meta
         ).map_err(MorpheusServerError::InitSchemaError)?;
-        let graph = Arc::new(await!(Graph::new(&schema_container, &neb_client)
-            .map_err(MorpheusServerError::InitSchemaError))?);
+        let graph = Arc::new(Graph::new(&schema_container, &neb_client).map_err(MorpheusServerError::InitSchemaError).await?);
         Ok(Arc::new(MorpheusServer {
             neb_server,
             neb_client,
