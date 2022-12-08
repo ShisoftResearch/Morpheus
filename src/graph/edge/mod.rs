@@ -7,10 +7,10 @@ pub mod hyper;
 pub mod bilateral;
 
 use std::ops::{Index, IndexMut};
+use dovahkiin::types::Value;
 use neb::ram::types::Id;
 use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction, TxnError};
-use neb::dovahkiin::types::Value;
 use crate::graph::edge::bilateral::BilateralEdge;
 use crate::server::schema::{SchemaContainer, SchemaType};
 use super::id_list::IdListError;
@@ -69,7 +69,7 @@ impl Edge {
             Edge::Undirected(mut e) => e.remove(txn),
         }
     }
-    pub fn get_data(&self) -> &Option<Cell> {
+    pub fn get_data(&self) -> &Option<dyn Cell> {
         match self {
             &Edge::Directed(ref e) => e.edge_cell(),
             &Edge::Undirected(ref e) => e.edge_cell(),
@@ -84,7 +84,7 @@ impl Edge {
 }
 
 impl Index<u64> for Edge {
-    type Output = Value;
+    type Output = dyn Value;
     fn index(&self, index: u64) -> &Self::Output {
         match self {
             &Edge::Directed(ref e) => &e[index],
@@ -94,7 +94,7 @@ impl Index<u64> for Edge {
 }
 
 impl <'a> Index<&'a str> for Edge {
-    type Output = Value;
+    type Output = dyn Value;
     fn index(&self, index: &'a str) -> &Self::Output {
         match self {
             &Edge::Directed(ref e) => &e[index],

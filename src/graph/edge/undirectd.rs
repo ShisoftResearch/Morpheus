@@ -1,5 +1,6 @@
+use dovahkiin::types::Type;
 use neb::ram::schema::Field;
-use neb::ram::types::{TypeId, Id, key_hash};
+use neb::ram::types::{Id, key_hash};
 use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction};
 use std::sync::Arc;
@@ -15,8 +16,8 @@ lazy_static! {
     pub static ref EDGE_VERTEX_A_NAME: String = String::from("_vertex_a");
     pub static ref EDGE_VERTEX_B_NAME: String = String::from("_vertex_b");
     pub static ref EDGE_TEMPLATE: Vec<Field> = vec![
-            Field::new(&*EDGE_VERTEX_A_NAME, TypeId::Id as u32, false, false, None),
-            Field::new(&*EDGE_VERTEX_B_NAME, TypeId::Id as u32, false, false, None),
+            Field::new(&*EDGE_VERTEX_A_NAME, Type::Id, false, false, None),
+            Field::new(&*EDGE_VERTEX_B_NAME, Type::Id, false, false, None),
     ];
     pub static ref EDGE_VERTEX_A_ID: u64 = key_hash(&*EDGE_VERTEX_A_NAME);
     pub static ref EDGE_VERTEX_B_ID: u64 = key_hash(&*EDGE_VERTEX_B_NAME);
@@ -27,7 +28,7 @@ pub struct UndirectedEdge {
     vertex_a_id: Id,
     vertex_b_id: Id,
     schema_id: u32,
-    cell: Option<Cell>,
+    cell: Option<dyn Cell>,
 }
 
 impl TEdge for UndirectedEdge {
@@ -63,7 +64,7 @@ impl BilateralEdge for UndirectedEdge {
         *EDGE_VERTEX_B_ID
     }
 
-    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<Cell>) -> Self::Edge {
+    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<dyn Cell>) -> Self::Edge {
         UndirectedEdge {
             vertex_a_id: a_field,
             vertex_b_id: b_field,
@@ -72,7 +73,7 @@ impl BilateralEdge for UndirectedEdge {
         }
     }
 
-    fn edge_cell(&self) -> &Option<Cell> {
+    fn edge_cell(&self) -> &Option<dyn Cell> {
         &self.cell
     }
     fn schema_id(&self) -> u32 {

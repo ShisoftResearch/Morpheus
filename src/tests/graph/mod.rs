@@ -4,8 +4,9 @@ use crate::graph::*;
 use crate::graph::edge::*;
 use crate::graph::vertex::*;
 use crate::server::schema::{MorpheusSchema, SchemaError, EMPTY_FIELDS};
+use dovahkiin::data_map;
 use neb::ram::schema::Field;
-use neb::ram::types::{TypeId, Value, Map};
+use neb::ram::types::{Type, Value, SharedMap};
 use neb::ram::cell::Cell;
 use env_logger;
 
@@ -16,7 +17,7 @@ pub fn schemas() {
     let edge_schema = MorpheusSchema::new(
         "test_edge_schema",
         None,
-        &vec![Field::new(&"test_field", TypeId::U32 as u32, false, false, None)], false
+        &vec![Field::new(&"test_field", Type::U32, false, false, None, vec![])], false
     );
     assert_eq!(edge_schema.id, 0);
     assert!(
@@ -36,7 +37,7 @@ pub fn schemas() {
     let vertex_schema_id = graph.new_vertex_group(vertex_schema.clone()).wait().unwrap();
     assert_eq!(edge_schema_id, 1);
     assert_eq!(vertex_schema_id, 2);
-    let mut test_data = Map::new();
+    let mut test_data = SharedMap::new();
     vertex_schema.id = vertex_schema_id;
         test_data.insert("test_field", Value::U32(1));
     graph.new_vertex(vertex_schema, test_data.clone()).wait().unwrap();
@@ -49,14 +50,14 @@ pub fn relationship() {
     let server = start_server(4002, "relationship");
     let graph = &server.graph;
     let mut people_schema = MorpheusSchema::new("people", Some(&vec!["name".to_string()]), &vec! [
-        Field::new("name", TypeId::String as u32, false, false, None)
+        Field::new("name", Type::String, false, false, None, vec![])
     ], true);
     let mut movie_schema = MorpheusSchema::new("movie", Some(&vec!["name".to_string()]), &vec! [
-        Field::new("name", TypeId::String as u32, false, false, None),
-        Field::new("year", TypeId::U32 as u32, false, false, None)
+        Field::new("name", Type::String, false, false, None, vec![]),
+        Field::new("year", Type::U32, false, false, None, vec![])
     ], true);
     let mut acted_in_schema = MorpheusSchema::new("acted-in", None, &vec! [
-        Field::new("role", TypeId::String as u32, false, false, None)
+        Field::new("role", Type::String, false, false, None, vec![])
     ], true);
     let mut spouse_schema = MorpheusSchema::new("spouse", None, &EMPTY_FIELDS, false);
     let people_schema_id = graph.new_vertex_group(people_schema).wait().unwrap();

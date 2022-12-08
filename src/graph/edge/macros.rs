@@ -2,25 +2,25 @@
 macro_rules! edge_index {
     ($struc: ident) => {
         use std::ops::{Index, IndexMut};
-        use neb::ram::types::{Value, NULL_VALUE};
+        use neb::ram::types::Value;
         impl Index<u64> for $struc {
-            type Output = Value;
+            type Output = dyn Value;
             fn index(&self, index: u64) -> &Self::Output {
                 if let Some(ref cell) = self.cell {
                     &cell[index]
                 } else {
-                    &NULL_VALUE
+                    &Value::Null
                 }
             }
         }
 
         impl <'a> Index<&'a str> for $struc {
-            type Output = Value;
+            type Output = dyn Value;
             fn index(&self, index: &'a str) -> &Self::Output {
                 if let Some(ref cell) = self.cell {
                     &cell[index]
                 } else {
-                    &NULL_VALUE
+                    &Value::Null
                 }
             }
         }

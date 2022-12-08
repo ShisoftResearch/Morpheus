@@ -2,14 +2,13 @@
 #![feature(plugin)]
 #![feature(conservative_impl_trait)]
 
-#[macro_use]
 extern crate neb;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
 extern crate bifrost;
-#[macro_use]
 extern crate bifrost_hasher;
+#[macro_use]
+extern crate bifrost_plugins;
 extern crate parking_lot;
 extern crate serde;
 #[macro_use]

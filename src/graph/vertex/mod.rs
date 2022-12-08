@@ -1,5 +1,6 @@
+use dovahkiin::types::{SharedMap};
 use neb::ram::cell::Cell;
-use neb::ram::types::{Id, key_hash, Map};
+use neb::ram::types::{Id, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
 use neb::dovahkiin::types::Value;
 use crate::graph::id_list::{IdList, IdListError};
@@ -12,7 +13,7 @@ use super::EdgeDirection;
 
 #[derive(Debug)]
 pub struct Vertex {
-    pub cell: Cell
+    pub cell: dyn Cell
 }
 
 pub enum RemoveError {
@@ -22,18 +23,18 @@ pub enum RemoveError {
     EdgeError(edge::EdgeError)
 }
 
-pub fn cell_to_vertex(cell: Cell) -> Vertex {
+pub fn cell_to_vertex(cell: dyn Cell) -> Vertex {
     Vertex {
-        cell: cell
+        cell
     }
 }
 
-pub fn vertex_to_cell(vertex: Vertex) -> Cell {
+pub fn vertex_to_cell(vertex: Vertex) -> dyn Cell {
     vertex.cell
 }
 
 impl Vertex {
-    pub fn new(schema: u32, data: Map) -> Vertex {
+    pub fn new(schema: u32, data: SharedMap) -> Vertex {
         Vertex {
             cell: Cell::new_with_id(schema, &Id::unit_id(), Value::Map(data))
         }
@@ -143,14 +144,14 @@ impl <'a> ToVertexId for &'a Vertex {
 }
 
 impl Index<u64> for Vertex {
-    type Output = Value;
+    type Output = dyn Value;
     fn index(&self, index: u64) -> &Self::Output {
         &self.cell.data[index]
     }
 }
 
 impl <'a> Index<&'a str> for Vertex {
-    type Output = Value;
+    type Output = dyn Value;
     fn index(&self, index: &'a str) -> &Self::Output {
         &self.cell.data[index]
     }

@@ -1,7 +1,6 @@
-use neb::ram::types::{Id, Map};
+use neb::ram::types::{Id, SharedMap};
 use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction, TxnError};
-use neb::utils::rand;
 use neb::dovahkiin::types::Value;
 use std::sync::Arc;
 
@@ -9,6 +8,7 @@ use super::{TEdge, EdgeError};
 use super::super::id_list::IdList;
 use crate::server::schema::{SchemaContainer, SchemaType};
 
+use rand::prelude::*;
 
 pub trait BilateralEdge : TEdge {
 
@@ -21,8 +21,8 @@ pub trait BilateralEdge : TEdge {
     fn edge_a_field() -> u64;
     fn edge_b_field() -> u64;
 
-    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<Cell>) -> Self::Edge;
-    fn edge_cell(&self) -> &Option<Cell>;
+    fn build_edge<C: Cell>(a_field: Id, b_field: Id, schema_id: u32, cell: Option<C>) -> Self::Edge;
+    fn edge_cell<C: Cell>(&self) -> &Option<C>;
     fn schema_id(&self) -> u32;
 
     fn from_id(
@@ -73,7 +73,7 @@ pub trait BilateralEdge : TEdge {
         Ok(Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell)))
     }
     fn link(
-        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<Map>,
+        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<SharedMap>,
         txn: &Transaction,
         schema_id: u32, schemas: &Arc<SchemaContainer>
     ) -> Result<Result<Self::Edge, EdgeError>, TxnError> {
@@ -85,9 +85,10 @@ pub trait BilateralEdge : TEdge {
                     if ea.edge_type != Self::edge_type() { return Ok(Err(EdgeError::WrongEdgeType)); }
                     if ea.has_body {
                         if let Some(body_map) = body {
+                            let mut rng = rand::thread_rng();
                             let mut edge_body_cell = Cell::new_with_id(
                                 schema_id,
-                                &Id::new(vertex_a_id.higher, rand::next()),
+                                &Id::new(vertex_a_id.higher, rng.gen()),
                                 Value::Map(body_map)
                             );
                             edge_body_cell.data[Self::edge_a_field()] = Value::Id(*vertex_a_id);

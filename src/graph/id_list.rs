@@ -1,6 +1,7 @@
+use dovahkiin::types::{OwnedValue, OwnedMap, Value, SharedValue};
 use neb::ram::schema::{Field, Schema};
-use neb::ram::cell::{MAX_CELL_SIZE, Cell};
-use neb::ram::types::{TypeId, Id, Map, Value, id_io, u32_io, key_hash};
+use neb::ram::cell::{MAX_CELL_SIZE, Cell, OwnedCell, SharedCell};
+use neb::ram::types::{Type, Id, SharedMap, GenericValue, id_io, u32_io, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
 
 use std::collections::BTreeSet;
@@ -25,19 +26,19 @@ pub static ID_LIST_SCHEMA_ID: u32 = 100;
 pub static TYPE_LIST_SCHEMA_ID: u32 = 150;
 
 lazy_static! {
-    pub static ref ID_TYPE_LIST: Field = Field::new("*", TypeId::Map as u32, false, false, Some(vec![
-        Field::new(&String::from(ID_TYPES_MAP_KEY), TypeId::Map as u32, false, true,
+    pub static ref ID_TYPE_LIST: Field = Field::new("*", Type::Map, false, false, Some(vec![
+        Field::new(&String::from(ID_TYPES_MAP_KEY), Type::Map, false, true,
             Some(vec![
-                Field::new(&String::from(ID_TYPE_SCHEMA_ID_KEY), TypeId::U32 as u32, false, false, None),
-                Field::new(&String::from(ID_TYPE_ID_LIST_KEY), TypeId::Id as u32, false, false, None)
+                Field::new(&String::from(ID_TYPE_SCHEMA_ID_KEY), Type::U32, false, false, None),
+                Field::new(&String::from(ID_TYPE_ID_LIST_KEY), Type::Id, false, false, None)
             ]))
     ]));
-    pub static ref ID_LINKED_LIST: Field = Field::new("*", TypeId::Map as u32, false, false, Some(vec![
-        Field::new(&String::from(NEXT_KEY), TypeId::Id as u32, false, false, None),
-        Field::new(&String::from(LIST_KEY), TypeId::Id as u32, false, true, None)
+    pub static ref ID_LINKED_LIST: Field = Field::new("*", Type::Map, false, false, Some(vec![
+        Field::new(&String::from(NEXT_KEY), Type::Id, false, false, None),
+        Field::new(&String::from(LIST_KEY), Type::Id, false, true, None)
     ]));
     pub static ref LIST_CAPACITY: usize =
-        ((MAX_CELL_SIZE - u32_io::size(0) - id_io::size(0)) / id_io::size(0));
+        (MAX_CELL_SIZE - Type::U32.size() - Type::Id.size()) / Type::Id.size();
     pub static ref NEXT_KEY_ID: u64 = key_hash(&String::from(NEXT_KEY));
     pub static ref LIST_KEY_ID: u64 = key_hash(&String::from(LIST_KEY));
     pub static ref NEXT_KEY_ID_VEC: Vec<u64> = vec![*NEXT_KEY_ID];
@@ -54,26 +55,26 @@ pub struct IdList<'a> {
     schema_id: u32
 }
 
-fn empty_list_segment(container_id: &Id, field_id: u64, schema_id: u32, level: usize) -> (Id, Value) {
+fn empty_list_segment(container_id: &Id, field_id: u64, schema_id: u32, level: usize) -> (Id, OwnedValue) {
     let str_id = format!("IDLIST-{},{}-{}-{}-{}", container_id.higher, container_id.lower, field_id, schema_id, level);
     let list_id = Id::new(container_id.higher, key_hash(&str_id));
-    let mut list_map = Map::new();
-    list_map.insert_key_id(*NEXT_KEY_ID, Value::Id(Id::unit_id()));
-    list_map.insert_key_id(*LIST_KEY_ID, Value::Array(Vec::<Value>::new()));
-    return (list_id, Value::Map(list_map));
+    let mut list_map = OwnedMap::new();
+    list_map.insert_key_id(*NEXT_KEY_ID, OwnedValue::Id(Id::unit_id()));
+    list_map.insert_key_id(*LIST_KEY_ID, OwnedValue::Array(Vec::new()));
+    return (list_id, OwnedValue::Map(list_map));
 }
 
-fn empty_type_list(container_id: &Id, field_id: u64) -> (Id, Value) {
+fn empty_type_list(container_id: &Id, field_id: u64) -> (Id, OwnedValue) {
     let str_id = format!("TYPELIST-{},{}-{}", container_id.higher, container_id.lower, field_id);
     let list_id = Id::new(container_id.higher, key_hash(&str_id));
-    let mut list_map = Map::new();
-    list_map.insert_key_id(*ID_TYPES_MAP_ID, Value::Array(Vec::<Value>::new()));
-    return (list_id, Value::Map(list_map));
+    let mut list_map = OwnedMap::new();
+    list_map.insert_key_id(*ID_TYPES_MAP_ID, OwnedValue::Array(Vec::new()));
+    return (list_id, OwnedValue::Map(list_map));
 }
 
-fn count_cell_list(seg: &Cell) -> Result<usize, IdListError> {
-    if let &Value::Map(ref map) = &seg.data {
-        if let &Value::Array(ref array) = map.get_by_key_id(*LIST_KEY_ID) {
+fn count_cell_list<C: Cell>(seg: &C) -> Result<usize, IdListError> {
+    if let Some(ref map) = &seg.data().map() {
+        if let Some(ref array) = map.get_by_key_id(*LIST_KEY_ID).array() {
             Ok(array.len())
         } else {
             Err(IdListError::FormatError)
@@ -83,7 +84,7 @@ fn count_cell_list(seg: &Cell) -> Result<usize, IdListError> {
     }
 }
 
-fn val_is_id(val: &Value, id: &Id) -> bool {
+fn val_is_id<V: Value>(val: &V, id: &Id) -> bool {
     if let &Value::Id(ref val_id) = val {
         return val_id != id;
     } else {
@@ -91,7 +92,7 @@ fn val_is_id(val: &Value, id: &Id) -> bool {
     }
 }
 
-fn seg_cell_by_id(txn: &Transaction, id: Option<Id>) -> Result<Option<Cell>, TxnError> {
+fn seg_cell_by_id(txn: &Transaction, id: Option<Id>) -> Result<Option<OwnedCell>, TxnError> {
     match id {
         Some(id) => txn.read(&id),
         None => Ok(None)
@@ -170,7 +171,7 @@ impl<'a> IdList <'a> {
                             let list_cell = Cell::new_with_id(ID_LIST_SCHEMA_ID, &list_id, list_value);
                             self.txn.write(&list_cell)?; // create schema id list
 
-                            let mut id_list_pair_map = Map::new();
+                            let mut id_list_pair_map = OwnedMap::new();
                             id_list_pair_map.insert_key_id(*ID_TYPES_SCHEMA_ID_ID, Value::U32(self.schema_id));
                             id_list_pair_map.insert_key_id(*ID_TYPES_LIST_ID, Value::Id(list_id));
                             if let &mut Value::Array(ref mut type_list) = &mut type_list_cell.data[*ID_TYPES_MAP_ID] {
@@ -359,7 +360,7 @@ impl <'a>IdListSegmentIterator<'a> {
 }
 
 impl <'a> Iterator for IdListSegmentIterator <'a> {
-    type Item = Cell;
+    type Item = SharedCell<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next_id = self.id_iter.next();
@@ -373,7 +374,7 @@ impl <'a> Iterator for IdListSegmentIterator <'a> {
 
 pub struct IdListIterator<'a> {
     pub segments: IdListSegmentIterator<'a>,
-    current_seg: Option<Cell>,
+    current_seg: Option<SharedCell<'a>>,
     current_pos: u32
 }
 
@@ -383,7 +384,7 @@ impl <'a> IdListIterator <'a> {
         self.current_pos = 0;
     }
 
-    fn get_curr_seg_list(&self) -> Option<&Vec<Value>> {
+    fn get_curr_seg_list(&self) -> Option<&Vec<SharedValue<'a>>> {
         if let Some(ref cell) = self.current_seg {
             let pos = self.current_pos;
             if let &Value::Map(ref map) = &cell.data {

@@ -1,7 +1,8 @@
+use dovahkiin::types::SharedValue;
 use neb::client::transaction::{Transaction, TxnError};
 use neb::ram::types::{Value, Id};
 
-pub fn set_map_by_key_id(txn: &Transaction, cell_id: &Id, key_id: u64, value: Value)
+pub fn set_map_by_key_id(txn: &Transaction, cell_id: &Id, key_id: u64, value: SharedValue)
     -> Result<Option<()>, TxnError> {
     match txn.read(cell_id)? {
         Some(mut cell) => {

@@ -4,11 +4,11 @@ use bifrost::raft::state_machine::master::ExecError;
 use bifrost_hasher::hash_str;
 use crate::graph::edge::{EdgeAttributes, EdgeType};
 use crate::graph::edge;
-use chashmap::CHashMap;
 use std::sync::Arc;
 use neb::ram::schema::{Field, Schema};
 use neb::client::{AsyncClient as NebClient};
 use neb::server::{ServerMeta as NebServerMeta};
+use lightning::map::{PtrHashMap as LFHashMap, Map};
 use crate::server::schema::sm::schema_types::client::SMClient;
 use crate::graph::fields::VERTEX_TEMPLATE;
 use futures::{Future, future};
@@ -32,7 +32,7 @@ pub enum SchemaError {
 
 pub struct SchemaContainer {
     pub neb_client: Arc<NebClient>,
-    map: Arc<CHashMap<u32, SchemaType>>,
+    map: Arc<LFHashMap<u32, SchemaType>>,
     sm_client: Arc<SMClient>,
     neb_mata: Arc<NebServerMeta>,
 }
@@ -106,7 +106,7 @@ impl SchemaContainer {
         let sm_client = Arc::new(SMClient::new(generate_sm_id(group), &raft_client));
         let sm_entries = sm_client.entries()?.unwrap();
         let container = SchemaContainer {
-            map: Arc::new(CHashMap::new()),
+            map: Arc::new(LFHashMap::with_capacity(64)),
             sm_client: sm_client.clone(),
             neb_client: neb_client.clone(),
             neb_mata: neb_meta.clone()
@@ -157,7 +157,7 @@ impl SchemaContainer {
         Self::schema_type_(&self.map, schema_id)
     }
 
-    fn schema_type_(map: &Arc<CHashMap<u32, SchemaType>>, schema_id: u32) -> Option<SchemaType> {
+    fn schema_type_(map: &Arc<LFHashMap<u32, SchemaType>>, schema_id: u32) -> Option<SchemaType> {
         match map.get(&schema_id) {
             Some(t) => Some(*t),
             None => None
@@ -181,7 +181,7 @@ impl SchemaContainer {
     pub fn neb_to_morpheus_schema(&self, schema: &Arc<Schema>) -> Option<MorpheusSchema> {
         Self::neb_to_morpheus_schema_(&self.map, schema)
     }
-    fn neb_to_morpheus_schema_(schema_map: &Arc<CHashMap<u32, SchemaType>>, schema: &Arc<Schema>) -> Option<MorpheusSchema> {
+    fn neb_to_morpheus_schema_(schema_map: &Arc<LFHashMap<u32, SchemaType>>, schema: &Arc<Schema>) -> Option<MorpheusSchema> {
         if let Some(schema_type) = Self::schema_type_(schema_map, schema.id) {
             if let Some(ref fields) = schema.fields.sub_fields {
                 Some(MorpheusSchema {
