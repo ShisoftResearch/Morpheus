@@ -7,9 +7,9 @@ pub mod hyper;
 pub mod bilateral;
 
 use std::ops::{Index, IndexMut};
-use dovahkiin::types::Value;
+use dovahkiin::types::{Value, SharedValue};
 use neb::ram::types::Id;
-use neb::ram::cell::Cell;
+use neb::ram::cell::{Cell, SharedCell};
 use neb::client::transaction::{Transaction, TxnError};
 use crate::graph::edge::bilateral::BilateralEdge;
 use crate::server::schema::{SchemaContainer, SchemaType};
@@ -56,12 +56,12 @@ pub trait TEdge {
 }
 
 #[derive(Debug)]
-pub enum Edge {
-    Directed(directed::DirectedEdge),
-    Undirected(undirectd::UndirectedEdge)
+pub enum Edge<'a> {
+    Directed(directed::DirectedEdge<'a>),
+    Undirected(undirectd::UndirectedEdge<'a>)
 }
 
-impl Edge {
+impl <'a> Edge <'a> {
     pub fn remove (self, txn: &Transaction)
         -> Result<Result<(), EdgeError>, TxnError> {
         match self {
@@ -69,7 +69,7 @@ impl Edge {
             Edge::Undirected(mut e) => e.remove(txn),
         }
     }
-    pub fn get_data(&self) -> &Option<dyn Cell> {
+    pub fn get_data(&self) -> &Option<SharedCell<'a>> {
         match self {
             &Edge::Directed(ref e) => e.edge_cell(),
             &Edge::Undirected(ref e) => e.edge_cell(),
@@ -83,8 +83,8 @@ impl Edge {
     }
 }
 
-impl Index<u64> for Edge {
-    type Output = dyn Value;
+impl <'a> Index<u64> for Edge<'a> {
+    type Output = SharedValue<'a>;
     fn index(&self, index: u64) -> &Self::Output {
         match self {
             &Edge::Directed(ref e) => &e[index],
@@ -93,8 +93,8 @@ impl Index<u64> for Edge {
     }
 }
 
-impl <'a> Index<&'a str> for Edge {
-    type Output = dyn Value;
+impl <'a, 'b> Index<&'a str> for Edge<'b> {
+    type Output = SharedValue<'b>;
     fn index(&self, index: &'a str) -> &Self::Output {
         match self {
             &Edge::Directed(ref e) => &e[index],
@@ -103,8 +103,8 @@ impl <'a> Index<&'a str> for Edge {
     }
 }
 
-impl <'a> IndexMut <&'a str> for Edge {
-    fn index_mut<'b>(&'b mut self, index: &'a str) -> &'b mut Self::Output {
+impl <'a, 'b> IndexMut <&'a str> for Edge<'b> {
+    fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
         match self {
             &mut Edge::Directed(ref mut e) => &mut e[index],
             &mut Edge::Undirected(ref mut e) => &mut e[index],
@@ -112,8 +112,8 @@ impl <'a> IndexMut <&'a str> for Edge {
     }
 }
 
-impl IndexMut<u64> for Edge {
-    fn index_mut<'a>(&'a mut self, index: u64) -> &'a mut Self::Output {
+impl <'a> IndexMut<u64> for Edge<'a> {
+    fn index_mut(&mut self, index: u64) -> &mut Self::Output {
         match self {
             &mut Edge::Directed(ref mut e) => &mut e[index],
             &mut Edge::Undirected(ref mut e) => &mut e[index],
@@ -121,10 +121,10 @@ impl IndexMut<u64> for Edge {
     }
 }
 
-pub fn from_id(
+pub fn from_id<'a>(
     vertex_id: &Id, vertex_field: u64, schema_id: u32,
     schemas: &Arc<SchemaContainer>, txn: &Transaction, id: &Id
-) -> Result<Result<Edge, EdgeError>, TxnError> {
+) -> Result<Result<Edge<'a>, EdgeError>, TxnError> {
     match schemas.schema_type(schema_id) {
         Some(SchemaType::Edge(ea)) => {
             match ea.edge_type {

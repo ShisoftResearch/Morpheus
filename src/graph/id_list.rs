@@ -1,7 +1,7 @@
 use dovahkiin::types::{OwnedValue, OwnedMap, Value, SharedValue};
 use neb::ram::schema::{Field, Schema};
 use neb::ram::cell::{MAX_CELL_SIZE, Cell, OwnedCell, SharedCell};
-use neb::ram::types::{Type, Id, SharedMap, GenericValue, id_io, u32_io, key_hash};
+use neb::ram::types::{Type, Id, SharedMap, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
 
 use std::collections::BTreeSet;

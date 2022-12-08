@@ -1,3 +1,4 @@
+use dovahkiin::types::{Map, OwnedValue};
 use neb::ram::types::{Id, SharedMap};
 use neb::ram::cell::Cell;
 use neb::client::transaction::{Transaction, TxnError};
@@ -72,8 +73,8 @@ pub trait BilateralEdge : TEdge {
         };
         Ok(Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell)))
     }
-    fn link(
-        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<SharedMap>,
+    fn link<M: Map>(
+        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<M>,
         txn: &Transaction,
         schema_id: u32, schemas: &Arc<SchemaContainer>
     ) -> Result<Result<Self::Edge, EdgeError>, TxnError> {
@@ -89,7 +90,7 @@ pub trait BilateralEdge : TEdge {
                             let mut edge_body_cell = Cell::new_with_id(
                                 schema_id,
                                 &Id::new(vertex_a_id.higher, rng.gen()),
-                                Value::Map(body_map)
+                                OwnedValue::Map(body_map.owned())
                             );
                             edge_body_cell.data[Self::edge_a_field()] = Value::Id(*vertex_a_id);
                             edge_body_cell.data[Self::edge_b_field()] = Value::Id(*vertex_b_id);

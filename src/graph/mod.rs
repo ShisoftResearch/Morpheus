@@ -2,7 +2,7 @@ use neb::ram::schema::{Field, Schema};
 use neb::ram::types::{Id, key_hash};
 use neb::dovahkiin::types::{Value, ToValue};
 use neb::dovahkiin::expr::SExpr;
-use neb::ram::cell::{Cell, WriteError, ReadError};
+use neb::ram::cell::{Cell, WriteError, ReadError, SharedCell};
 use neb::client::{AsyncClient as NebClient};
 use neb::client::transaction::{Transaction, TxnError};
 use bifrost::raft::state_machine::master::ExecError;
@@ -13,8 +13,10 @@ use crate::graph::vertex::{Vertex, ToVertexId};
 use crate::graph::edge::bilateral::BilateralEdge;
 use crate::graph::edge::{EdgeAttributes, EdgeError};
 use crate::query::{Tester, Expr, parse_optional_expr};
-use futures::prelude::*;
-use dovahkiin::types::Map;
+
+use std::future::Future;
+
+use dovahkiin::types::{Map, SharedMap};
 
 use std::sync::Arc;
 
@@ -79,7 +81,7 @@ impl EdgeDirection {
     }
 }
 
-fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<dyn Cell, NewVertexError> {
+fn vertex_to_cell_for_write<'a>(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<SharedCell<'a>, NewVertexError> {
     let schema_id = vertex.schema();
     if let Some(stype) = schemas.schema_type(schema_id) {
         if stype != SchemaType::Vertex {
@@ -108,127 +110,14 @@ fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> R
 }
 
 pub struct Graph {
-    inner: Arc<GraphInner>
-}
-
-pub struct GraphInner {
     schemas: Arc<SchemaContainer>,
     neb_client: Arc<NebClient>
 }
 
 impl Graph {
-    pub fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> impl Future<Output = Result<Graph, ExecError>> {
-        let schemas = schemas.clone();
-        let schemas_clone = schemas.clone();
-        let neb_client = neb_client.clone();
-        GraphInner::check_base_schemas(schemas)
-            .and_then(|_| {
-                GraphInner::new(schemas_clone, neb_client)
-            })
-            .and_then(|inner| {
-                Ok(Graph { inner: Arc::new(inner) })
-            })
-    }
-    fn check_base_schema(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: & 'static str, fields: &'static Field)
-        -> impl Future<Output = Result<(), ExecError>>
-    {
-        GraphInner::check_base_schema(schemas.clone(), schema_id, schema_name, fields)
-    }
-    fn check_base_schemas(schemas: &Arc<SchemaContainer>)
-        -> impl Future<Output = Result<(), ExecError>>
-    {
-        GraphInner::check_base_schemas(schemas.clone())
-    }
-    pub fn new_vertex_group(&self, schema: MorpheusSchema)
-        -> impl Future<Output = Result<u32, SchemaError>>
-    {
-        self.inner.new_vertex_group(schema)
-    }
-    pub fn new_edge_group(&self, schema: MorpheusSchema, edge_attrs: edge::EdgeAttributes)
-        -> impl Future<Output = Result<u32, SchemaError>>
-    {
-        self.inner.new_edge_group(schema, edge_attrs)
-    }
-    pub fn new_vertex<S, M: Map>(&self, schema: S, data: M)
-        -> impl Future<Output = Result<Vertex, NewVertexError>>
-        where S: ToSchemaId
-    {
-        GraphInner::new_vertex(self.inner.clone(), schema, data)
-    }
-    pub fn remove_vertex<V>(&self, vertex: V)
-        -> impl Future<Output = Result<(), TxnError>> where V: ToVertexId
-    {
-        self.inner.remove_vertex(vertex)
-    }
-    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
-        -> impl Future<Output = Result<(), TxnError>>
-        where K: ToValue, S: ToSchemaId
-    {
-        self.inner.remove_vertex_by_key(schema, key)
-    }
-    pub fn update_vertex<V, U>(&self, vertex: V, update: U)
-        -> impl Future<Output = Result<(), TxnError>>
-        where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>, U: 'static
-    {
-        self.inner.update_vertex(vertex, update)
-    }
-    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
-        -> impl Future<Output = Result<(), TxnError>>
-        where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>, U: 'static
-    {
-        self.inner.update_vertex_by_key(schema, key, update)
-    }
-
-    pub fn vertex_by<V>(&self, vertex: V)
-        -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>>
-        where V: ToVertexId
-    {
-        GraphInner::vertex_by(self.inner.clone(), vertex)
-    }
-
-    pub fn vertex_by_key<K, S>(&self, schema: S, key: K)
-        -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>>
-        where K: ToValue, S: ToSchemaId
-    {
-        GraphInner::vertex_by_key(self.inner.clone(), schema, key)
-    }
-
-    pub fn graph_transaction<TFN, TR>(&self, func: TFN)
-        -> impl Future<Output = Result<TR, TxnError>>
-        where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static, TFN: 'static
-    {
-        self.inner.graph_transaction(func)
-    }
-    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<Map>)
-        -> impl Future<Output = Result<Result<edge::Edge, LinkVerticesError>, TxnError>>
-        where V: ToVertexId, S: ToSchemaId
-    {
-        self.inner.link(from, schema, to, body)
-    }
-    pub fn degree<V, S>(&self, vertex: V, schema: S, direction: EdgeDirection)
-        -> impl Future<Output = Result<Result<usize, edge::EdgeError>, TxnError>>
-        where V: ToVertexId, S: ToSchemaId
-    {
-        self.inner.degree(vertex, schema, direction)
-    }
-    pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, direction: EdgeDirection, filter: &Option<F>)
-        -> impl Future<Output = Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>>
-        where V: ToVertexId, S: ToSchemaId, F: Expr
-    {
-        GraphInner::neighbourhoods(self.inner.clone(), vertex, schema, direction, filter)
-    }
-    pub fn edges<V, S, F>(&self, vertex: V, schema: S, direction: EdgeDirection, filter: &Option<F>)
-        -> impl Future<Output = Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>>
-        where V: ToVertexId, S: ToSchemaId, F: Expr
-    {
-        GraphInner::edges(self.inner.clone(), vertex, schema, direction, filter)
-    }
-}
-
-impl GraphInner {
-    pub async fn new(schemas: Arc<SchemaContainer>, neb_client: Arc<NebClient>) -> Result<GraphInner, ExecError> {
-        GraphInner::check_base_schemas(schemas.clone()).await?;
-        Ok(GraphInner {
+    pub async fn new(schemas: &Arc<SchemaContainer>, neb_client: &Arc<NebClient>) -> Result<Self, ExecError> {
+        Self::check_base_schemas(&*schemas).await?;
+        Ok(Self {
             schemas: schemas.clone(),
             neb_client: neb_client.clone()
         })
@@ -248,9 +137,9 @@ impl GraphInner {
         Ok(())
     }
     
-    async fn check_base_schemas(schemas: Arc<SchemaContainer>) -> Result<(), ExecError> {
-        GraphInner::check_base_schema(schemas.clone(), id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST).await?;
-        GraphInner::check_base_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST).await?;
+    async fn check_base_schemas(schemas: &SchemaContainer) -> Result<(), ExecError> {
+        Self::check_base_schema(schemas.clone(), id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST).await?;
+        Self::check_base_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST).await?;
         Ok(())
     }
     pub fn new_vertex_group(&self, mut schema: MorpheusSchema)
@@ -265,15 +154,15 @@ impl GraphInner {
         schema.schema_type = SchemaType::Edge(edge_attrs);
         self.schemas.new_schema(schema)
     }
-    pub fn new_vertex<S>(this: Arc<Self>, schema: S, data: Map)
-        -> impl Future<Output = Result<Vertex, NewVertexError>>
+    pub fn new_vertex<'a, S>(&self, schema: S, data: SharedMap<'a>)
+        -> impl Future<Output = Result<Vertex<'a>, NewVertexError>>
         where S: ToSchemaId
     {
-        let vertex = Vertex::new(schema.to_id(&this.schemas), data);
-        let mut cell_result = vertex_to_cell_for_write(&this.schemas, vertex);
+        let vertex = Vertex::new(schema.to_id(&self.schemas), data);
+        let mut cell_result = vertex_to_cell_for_write(&self.schemas, vertex);
         async {
             let mut cell = cell_result?;
-            let header = match this.neb_client.write_cell(cell.clone()).await {
+            let header = match self.neb_client.write_cell(cell.clone()).await {
                 Ok(Ok(header)) => header,
                 Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
                 Err(e) => return Err(NewVertexError::RPCError(e))
@@ -312,10 +201,10 @@ impl GraphInner {
         self.update_vertex(id, update)
     }
 
-    pub fn vertex_by<V>(this: Arc<Self>, vertex: V)
-        -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>> where V: ToVertexId
+    pub fn vertex_by<'a, V>(&self, vertex: V)
+        -> impl Future<Output = Result<Option<Vertex<'a>>, ReadVertexError>> where V: ToVertexId
     {
-        this.neb_client.read_cell(vertex.to_id())
+        self.neb_client.read_cell(vertex.to_id())
             .then(|result| {
                 match result {
                     Err(e) => Err(ReadVertexError::RPCError(e)),
@@ -326,12 +215,12 @@ impl GraphInner {
             })
     }
 
-    pub fn vertex_by_key<K, S>(this: Arc<Self>, schema: S, key: K)
-        -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>>
+    pub fn vertex_by_key<'a, K, S>(&self, schema: S, key: K)
+        -> impl Future<Output = Result<Option<Vertex<'a>>, ReadVertexError>>
         where K: ToValue, S: ToSchemaId
     {
-        let id = Cell::encode_cell_key(schema.to_id(&this.schemas), &key.value());
-        Self::vertex_by(this, id)
+        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        self.vertex_by(id)
     }
 
     pub fn graph_transaction<TFN, TR>(&self, func: TFN) -> impl Future<Output = Result<TR, TxnError>>
@@ -346,7 +235,7 @@ impl GraphInner {
         };
         self.neb_client.transaction(wrapper)
     }
-    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<Map>)
+    pub fn link<'a, V, S>(&self, from: V, schema: S, to: V, body: Option<SharedMap<'a>>)
         -> impl Future<Output = Result<Result<edge::Edge, LinkVerticesError>, TxnError>>
         where V: ToVertexId, S: ToSchemaId
     {
@@ -354,7 +243,7 @@ impl GraphInner {
         let to_id = to.to_id();
         let schema_id = schema.to_id(&self.schemas);
         self.graph_transaction(move |txn| {
-            txn.link(from_id, schema_id, to_id, body.clone())
+            txn.link(from_id, schema_id, to_id, body)
         })
     }
     pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
@@ -367,17 +256,17 @@ impl GraphInner {
             txn.degree(vertex_id, schema_id, ed)
         })
     }
-    pub fn neighbourhoods<V, S, F>(this: Arc<Self>, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
+    pub fn neighbourhoods<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
         -> impl Future<Output = Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>>
         where V: ToVertexId, S: ToSchemaId, F: Expr
     {
         let vertex_id = vertex.to_id();
-        let schema_id = schema.to_id(&this.schemas);
+        let schema_id = schema.to_id(&self.schemas);
         async {
             match parse_optional_expr(filter) {
                 Err(e) => NeighbourhoodError::FilterEvalError(e),
                 Ok(Ok(filter_sexpr)) => {
-                    this.graph_transaction(move |txn| {
+                    self.graph_transaction(move |txn| {
                         txn.neighbourhoods(vertex_id, schema_id, ed, &filter_sexpr)
                     }).await
                 }
@@ -385,16 +274,16 @@ impl GraphInner {
             }
         }
     }
-    pub fn edges<V, S, F>(this: Arc<Self>, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
+    pub fn edges<V, S, F>(&self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<F>)
         -> impl Future<Output = Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>>
         where V: ToVertexId, S: ToSchemaId, F: Expr
     {
         let vertex_id = vertex.to_id();
-        let schema_id = schema.to_id(&this.schemas);
+        let schema_id = schema.to_id(&self.schemas);
         async {
             match parse_optional_expr(filter) {
                 Err(e) => EdgeError::FilterEvalError(e),
-                Ok(Ok(filter)) => this.graph_transaction(move |txn| {
+                Ok(Ok(filter)) => self.graph_transaction(move |txn| {
                     txn.edges(vertex_id, schema_id, ed, &filter)
                 }).await,
                 Err(e) => Ok(Err(e))
@@ -409,8 +298,8 @@ pub struct GraphTransaction<'a> {
 }
 
 impl <'a>GraphTransaction<'a> {
-    pub fn new_vertex<S>(&self, schema: S, data: Map)
-        -> Result<Result<Vertex, NewVertexError>, TxnError>
+    pub fn new_vertex<'b, S>(&self, schema: S, data: SharedMap<'b>)
+        -> Result<Result<Vertex<'b>, NewVertexError>, TxnError>
         where S: ToSchemaId
     {
         let vertex = Vertex::new(schema.to_id(&self.schemas), data);
@@ -433,7 +322,7 @@ impl <'a>GraphTransaction<'a> {
         self.remove_vertex(&id)
     }
 
-    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<Map>)
+    pub fn link<'b, V, S>(&self, from: V, schema: S, to: V, body: Option<SharedMap<'b>>)
         -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
         where V: ToVertexId, S: ToSchemaId
     {

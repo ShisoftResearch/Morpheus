@@ -1,13 +1,11 @@
 use dovahkiin::types::Type;
 use neb::ram::schema::Field;
 use neb::ram::types::{Id, key_hash};
-use neb::ram::cell::Cell;
-use neb::client::transaction::{Transaction};
-use std::sync::Arc;
+use neb::ram::cell::{Cell, SharedCell};
+use dovahkiin::types::SharedValue;
 
-use super::{TEdge, EdgeType, EdgeError};
+use super::{TEdge, EdgeType};
 use super::bilateral::BilateralEdge;
-use crate::server::schema::{SchemaContainer};
 use crate::graph::fields::*;
 
 
@@ -24,21 +22,21 @@ lazy_static! {
 }
 
 #[derive(Debug)]
-pub struct UndirectedEdge {
+pub struct UndirectedEdge<'a> {
     vertex_a_id: Id,
     vertex_b_id: Id,
     schema_id: u32,
-    cell: Option<dyn Cell>,
+    cell: Option<SharedCell<'a>>,
 }
 
-impl TEdge for UndirectedEdge {
-    type Edge = UndirectedEdge;
+impl <'a> TEdge for UndirectedEdge<'a> {
+    type Edge = UndirectedEdge<'a>;
     fn edge_type() -> EdgeType {
         EdgeType::Undirected
     }
 }
 
-impl BilateralEdge for UndirectedEdge {
+impl <'a> BilateralEdge for UndirectedEdge<'a> {
 
     fn vertex_a_field() -> u64 {
         *UNDIRECTED_KEY_ID
@@ -64,7 +62,7 @@ impl BilateralEdge for UndirectedEdge {
         *EDGE_VERTEX_B_ID
     }
 
-    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<dyn Cell>) -> Self::Edge {
+    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<SharedCell<'a>>) -> Self::Edge {
         UndirectedEdge {
             vertex_a_id: a_field,
             vertex_b_id: b_field,
@@ -73,7 +71,7 @@ impl BilateralEdge for UndirectedEdge {
         }
     }
 
-    fn edge_cell(&self) -> &Option<dyn Cell> {
+    fn edge_cell(&self) -> &Option<SharedCell<'a>> {
         &self.cell
     }
     fn schema_id(&self) -> u32 {

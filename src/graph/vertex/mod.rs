@@ -1,8 +1,8 @@
-use dovahkiin::types::{SharedMap};
-use neb::ram::cell::Cell;
+use dovahkiin::types::{SharedMap, SharedValue};
 use neb::ram::types::{Id, key_hash};
 use neb::client::transaction::{Transaction, TxnError};
 use neb::dovahkiin::types::Value;
+use neb::ram::cell::{SharedCell};
 use crate::graph::id_list::{IdList, IdListError};
 use crate::graph::edge;
 use crate::server::schema::SchemaContainer;
@@ -12,8 +12,8 @@ use std::sync::Arc;
 use super::EdgeDirection;
 
 #[derive(Debug)]
-pub struct Vertex {
-    pub cell: dyn Cell
+pub struct Vertex<'a> {
+    pub cell: SharedCell<'a>
 }
 
 pub enum RemoveError {
@@ -23,20 +23,20 @@ pub enum RemoveError {
     EdgeError(edge::EdgeError)
 }
 
-pub fn cell_to_vertex(cell: dyn Cell) -> Vertex {
+pub fn cell_to_vertex<'a>(cell: SharedCell<'a>) -> Vertex<'a> {
     Vertex {
         cell
     }
 }
 
-pub fn vertex_to_cell(vertex: Vertex) -> dyn Cell {
+pub fn vertex_to_cell<'a>(vertex: Vertex<'a>) -> SharedCell<'a> {
     vertex.cell
 }
 
-impl Vertex {
+impl <'a> Vertex <'a> {
     pub fn new(schema: u32, data: SharedMap) -> Vertex {
         Vertex {
-            cell: Cell::new_with_id(schema, &Id::unit_id(), Value::Map(data))
+            cell: SharedCell::new_with_id(schema, &Id::unit_id(), Value::Map(data))
         }
     }
     pub fn schema(&self) -> u32 {
@@ -97,7 +97,7 @@ pub fn txn_remove<V>(txn: &Transaction, schemas: &Arc<SchemaContainer>, vertex: 
 pub fn txn_update<U, V>(txn: &Transaction, vertex: V, update: &U) -> Result<(), TxnError>
     where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex> {
     let id = &vertex.to_id();
-    let update_cell = |cell: Cell| {
+    let update_cell = |cell| {
         match update(cell_to_vertex(cell)) {
             Some(vertex) => Some(vertex_to_cell(vertex)),
             None => None
@@ -119,7 +119,7 @@ pub trait ToVertexId {
     fn to_id(&self) -> Id;
 }
 
-impl ToVertexId for Vertex {
+impl <'a> ToVertexId for Vertex<'a> {
     fn to_id(&self) -> Id {
         self.cell.id()
     }
@@ -137,34 +137,34 @@ impl <'a> ToVertexId for &'a Id {
     }
 }
 
-impl <'a> ToVertexId for &'a Vertex {
+impl <'a, 'b> ToVertexId for &'a Vertex<'b> {
     fn to_id(&self) -> Id {
         self.cell.id()
     }
 }
 
-impl Index<u64> for Vertex {
-    type Output = dyn Value;
+impl <'a> Index<u64> for Vertex<'a> {
+    type Output = SharedValue<'a>;
     fn index(&self, index: u64) -> &Self::Output {
         &self.cell.data[index]
     }
 }
 
-impl <'a> Index<&'a str> for Vertex {
-    type Output = dyn Value;
+impl <'a, 'b> Index<&'a str> for Vertex<'b> {
+    type Output = SharedValue<'b>;
     fn index(&self, index: &'a str) -> &Self::Output {
         &self.cell.data[index]
     }
 }
 
-impl <'a> IndexMut <&'a str> for Vertex {
-    fn index_mut<'b>(&'b mut self, index: &'a str) -> &'b mut Self::Output {
+impl <'a, 'b> IndexMut <&'a str> for Vertex<'b> {
+    fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
         &mut self.cell[index]
     }
 }
 
-impl IndexMut<u64> for Vertex {
-    fn index_mut<'a>(&'a mut self, index: u64) -> &'a mut Self::Output {
+impl <'a> IndexMut<u64> for Vertex<'a> {
+    fn index_mut(&mut self, index: u64) -> &mut Self::Output {
         &mut self.cell[index]
     }
 }
