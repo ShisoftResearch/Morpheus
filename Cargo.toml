@@ -14,6 +14,8 @@ lightning-containers = { git = "https://github.com/ShisoftResearch/Lightning.git
 lazy_static = "*"
 futures = "0.3"
 parking_lot = {version = "0.12", features = ["nightly"]}
+tokio = { version = "1.23.0", features = ["full"] }
+async-stream = "0.3"
 serde = "*"
 serde_derive = "*"
 log = "0.4"

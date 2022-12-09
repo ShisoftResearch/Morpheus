@@ -1,3 +1,4 @@
+use dovahkiin::expr::interpreter::Envorinment;
 use neb::dovahkiin::expr::symbols::Symbol;
 use neb::dovahkiin::expr::SExpr;
 
@@ -5,7 +6,11 @@ use neb::dovahkiin::expr::SExpr;
 #[derive(Debug)]
 pub struct Insert {}
 impl Symbol for Insert {
-    fn eval(&self, exprs: Vec<SExpr>) -> Result<SExpr, String> {
+    fn eval<'a>(
+        &self,
+        exprs: Vec<SExpr<'a>>,
+        env: &mut Envorinment<'a>,
+    ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
     fn is_macro(&self) -> bool { true }
@@ -16,7 +21,11 @@ impl Symbol for Insert {
 #[derive(Debug)]
 pub struct Select {}
 impl Symbol for Select {
-    fn eval(&self, exprs: Vec<SExpr>) -> Result<SExpr, String> {
+    fn eval<'a>(
+        &self,
+        exprs: Vec<SExpr<'a>>,
+        env: &mut Envorinment<'a>,
+    ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
     fn is_macro(&self) -> bool { true }
@@ -27,7 +36,11 @@ impl Symbol for Select {
 #[derive(Debug)]
 pub struct Update {}
 impl Symbol for Update {
-    fn eval(&self, exprs: Vec<SExpr>) -> Result<SExpr, String> {
+    fn eval<'a>(
+        &self,
+        exprs: Vec<SExpr<'a>>,
+        env: &mut Envorinment<'a>,
+    ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
     fn is_macro(&self) -> bool { true }
@@ -38,7 +51,11 @@ impl Symbol for Update {
 #[derive(Debug)]
 pub struct Delete {}
 impl Symbol for Delete {
-    fn eval(&self, exprs: Vec<SExpr>) -> Result<SExpr, String> {
+    fn eval<'a>(
+        &self,
+        exprs: Vec<SExpr<'a>>,
+        env: &mut Envorinment<'a>,
+    ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
     fn is_macro(&self) -> bool { true }

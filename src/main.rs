@@ -32,12 +32,11 @@ mod tests;
 
 use std::thread;
 
-fn main() {
+#[tokio::main(flavor = "multi_thread")]
+async fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
     info!("Shisoft Morpheus is initializing...");
     query::init().unwrap();
     let neb_config = config::neb::options_from_file("config/neb.yaml");
-    let morpheus_server = server::MorpheusServer::new(neb_config).wait().unwrap();
-
-    thread::park();
+    server::MorpheusServer::new(neb_config).await.unwrap();
 }

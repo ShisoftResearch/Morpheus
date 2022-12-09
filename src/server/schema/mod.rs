@@ -130,7 +130,7 @@ impl SchemaContainer {
         return Ok(container_ref);
     }
 
-    pub fn new_schema(&self, schema: MorpheusSchema) -> impl Future<Item = u32, Error = SchemaError> {
+    pub fn new_schema(&self, schema: MorpheusSchema) -> impl Future<Output = Result<u32, SchemaError>> {
         let schema_type = schema.schema_type;
         let sm_client = self.sm_client.clone();
         let neb_client = self.neb_client.clone();
@@ -195,7 +195,7 @@ impl SchemaContainer {
             } else { None }
         } else { None }
     }
-    pub fn all_morpheus_schemas(&self) -> impl Future<Item = Vec<MorpheusSchema>, Error = ExecError> {
+    pub fn all_morpheus_schemas(&self) -> impl Future<Output = Result<Vec<MorpheusSchema>, ExecError>> {
         let schema_map = self.map.clone();
         self.neb_client.get_all_schema()
             .map(move |neb_schemas| {
@@ -206,7 +206,7 @@ impl SchemaContainer {
                     .collect()
             })
     }
-    pub fn count(&self) -> impl Future<Item = usize, Error = ExecError> {
+    pub fn count(&self) -> impl Future<Output = Result<usize, ExecError>> {
         self.all_morpheus_schemas().map(|x| x.len())
     }
 }
