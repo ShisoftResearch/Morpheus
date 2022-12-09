@@ -8,7 +8,7 @@ pub mod undirectd;
 
 use super::id_list::IdListError;
 use crate::graph::edge::bilateral::BilateralEdge;
-use crate::server::schema::{SchemaContainer, GraphSchema};
+use crate::server::schema::{GraphSchema, SchemaContainer};
 use dovahkiin::types::{OwnedValue, SharedValue, Value};
 use neb::client::transaction::{Transaction, TxnError};
 use neb::ram::cell::{Cell, OwnedCell, SharedCell};

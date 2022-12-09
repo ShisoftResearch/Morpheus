@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use super::super::id_list::IdList;
 use super::{EdgeError, TEdge};
-use crate::server::schema::{SchemaContainer, GraphSchema};
+use crate::server::schema::{GraphSchema, SchemaContainer};
 
 use rand::prelude::*;
 
@@ -171,7 +171,7 @@ pub trait BilateralEdge: TEdge + Sync + Send {
     fn remove<'a>(
         &mut self,
         txn: &Transaction,
-    ) -> BoxFuture<'a, Result<Result<(), EdgeError>, TxnError>>  {
+    ) -> BoxFuture<'a, Result<Result<(), EdgeError>, TxnError>> {
         async move {
             let (v_a_removal, v_b_removal) = match self.edge_cell() {
                 &Some(ref cell) => {

@@ -26,25 +26,30 @@ raft_state_machine! {
 }
 
 impl StateMachineCmds for GraphSchemasSM {
-    fn get_all<'a>(&'a self,) ->  BoxFuture<Vec<(u32,GraphSchema)> > {
+    fn get_all<'a>(&'a self) -> BoxFuture<Vec<(u32, GraphSchema)>> {
         future::ready(self.get_all_local()).boxed()
     }
 
-    fn get<'a>(&'a self, id:u32) ->  BoxFuture<Option<GraphSchema> > {
+    fn get<'a>(&'a self, id: u32) -> BoxFuture<Option<GraphSchema>> {
         future::ready(self.get_local(id)).boxed()
     }
 
-    fn new_schema<'a>(&'a mut self,id:u32,schema:GraphSchema) ->  BoxFuture<Result<(),NotifyError> > {
+    fn new_schema<'a>(
+        &'a mut self,
+        id: u32,
+        schema: GraphSchema,
+    ) -> BoxFuture<Result<(), NotifyError>> {
         self.map.insert(id, schema);
         async {
             self.callback
-                .notify(commands::on_schema_added::new(), schema)
+                .notify(commands::on_schema_added::new(), (id, schema))
                 .await?;
             Ok(())
-        }.boxed()
+        }
+        .boxed()
     }
 
-    fn del_schema<'a>(&'a mut self,id:u32) ->  BoxFuture<Result<(),NotifyError> > {
+    fn del_schema<'a>(&'a mut self, id: u32) -> BoxFuture<Result<(), NotifyError>> {
         self.map.remove(&id).unwrap();
         async move {
             self.callback
@@ -62,7 +67,9 @@ impl StateMachineCtl for GraphSchemasSM {
         self.sm_id
     }
     fn snapshot(&self) -> Option<Vec<u8>> {
-        Some(utils::serde::serialize(&self.map.iter().collect::<Vec<_>>() ))
+        Some(utils::serde::serialize(
+            &self.map.iter().collect::<Vec<_>>(),
+        ))
     }
     fn recover(&mut self, data: Vec<u8>) -> BoxFuture<()> {
         let schemas: Vec<(u32, GraphSchema)> = utils::serde::deserialize(&data).unwrap();
@@ -81,11 +88,14 @@ impl GraphSchemasSM {
             sm_id,
         }
     }
-    fn get_all_local(&self,) ->  Vec<(u32, GraphSchema)> {
-        self.map.iter().map(|(k, v)| (*k, v.clone())).collect::<Vec<_>>()
+    fn get_all_local(&self) -> Vec<(u32, GraphSchema)> {
+        self.map
+            .iter()
+            .map(|(k, v)| (*k, v.clone()))
+            .collect::<Vec<_>>()
     }
 
-    fn get_local(&self, id:u32) ->  Option<GraphSchema> {
+    fn get_local(&self, id: u32) -> Option<GraphSchema> {
         self.map.get(&id).map(|s| s.clone())
     }
 }

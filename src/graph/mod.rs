@@ -12,7 +12,9 @@ use crate::graph::edge::bilateral::BilateralEdge;
 use crate::graph::edge::{EdgeAttributes, EdgeError};
 use crate::graph::vertex::{ToVertexId, Vertex};
 use crate::query::{parse_optional_expr, Expr, Tester};
-use crate::server::schema::{MorpheusSchema, SchemaContainer, SchemaError, GraphSchema, ToSchemaId};
+use crate::server::schema::{
+    GraphSchema, MorpheusSchema, SchemaContainer, SchemaError, ToSchemaId,
+};
 
 use std::future::Future;
 
@@ -220,21 +222,22 @@ impl Graph {
         let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.remove_vertex(id).await
     }
-    pub fn update_vertex<'a, V, U>(&'a self, vertex: V, update: U) -> impl Future<Output = Result<(), TxnError>> + 'a
+    pub fn update_vertex<'a, V, U>(
+        &'a self,
+        vertex: V,
+        update: U,
+    ) -> impl Future<Output = Result<(), TxnError>> + 'a
     where
         V: ToVertexId,
         U: Fn(Vertex) -> Option<Vertex> + Clone,
         U: 'a,
     {
         let id = vertex.to_id();
-        self.neb_client
-            .transaction(move |txn| {
-                let update = update.clone();
-                let txn = txn.clone();
-                async move {
-                    vertex::txn_update(&txn, id, update).await
-                }
-            })
+        self.neb_client.transaction(move |txn| {
+            let update = update.clone();
+            let txn = txn.clone();
+            async move { vertex::txn_update(&txn, id, update).await }
+        })
     }
     pub fn update_vertex_by_key<K, U, S>(
         &self,
@@ -251,10 +254,7 @@ impl Graph {
         self.update_vertex(id, update)
     }
 
-    pub async fn vertex_by<V>(
-        &self,
-        vertex: V,
-    ) -> Result<Option<Vertex>, ReadVertexError>
+    pub async fn vertex_by<V>(&self, vertex: V) -> Result<Option<Vertex>, ReadVertexError>
     where
         V: ToVertexId,
     {

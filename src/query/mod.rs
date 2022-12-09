@@ -113,7 +113,10 @@ impl<'a> Tester<'a> {
         Ok(is_true(&interp.eval(sexpr)?))
     }
 
-    pub async fn eval_with_edge(sexpr: &Option<Vec<SExpr<'a>>>, edge: &Edge) -> Result<bool, String> {
+    pub async fn eval_with_edge(
+        sexpr: &Option<Vec<SExpr<'a>>>,
+        edge: &Edge,
+    ) -> Result<bool, String> {
         let sexpr = sexpr.clone(); // TODO: Memory management
         let sexpr = if let Some(expr) = sexpr {
             expr
