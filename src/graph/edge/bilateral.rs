@@ -34,48 +34,50 @@ pub trait BilateralEdge: TEdge + Sync + Send {
         txn: &'a Transaction,
         id: Id,
     ) -> BoxFuture<'a, Result<Result<Self::Edge, EdgeError>, TxnError>> {
-        txn.read(id).map_ok(move |trace_cell| {
-            let trace_cell = match trace_cell {
-                Some(cell) => cell,
-                None => return Err(EdgeError::CellNotFound),
-            };
-            let cell_schema_type = match schemas.schema_type(trace_cell.header.schema) {
-                Some(t) => t,
-                None => return Err(EdgeError::CannotFindSchema),
-            };
-            let mut a_id = Id::unit_id();
-            let mut b_id = Id::unit_id();
-            let edge_cell = match cell_schema_type {
-                GraphSchema::Vertex => {
-                    if vertex_field == Self::vertex_a_field() {
-                        a_id = vertex_id;
-                        b_id = id;
-                    } else if vertex_field == Self::vertex_b_field() {
-                        b_id = vertex_id;
-                        a_id = id;
-                    } else {
-                        return Err(EdgeError::WrongVertexField);
-                    }
-                    None
-                }
-                GraphSchema::Edge(edge_attrs) => {
-                    if edge_attrs.edge_type == Self::edge_type() {
-                        if let (&OwnedValue::Id(e_a_id), &OwnedValue::Id(e_b_id)) = (
-                            &trace_cell.data[Self::edge_a_field()],
-                            &trace_cell.data[Self::edge_b_field()],
-                        ) {
-                            a_id = e_a_id;
-                            b_id = e_b_id;
+        txn.read(id)
+            .map_ok(move |trace_cell| {
+                let trace_cell = match trace_cell {
+                    Some(cell) => cell,
+                    None => return Err(EdgeError::CellNotFound),
+                };
+                let cell_schema_type = match schemas.schema_type(trace_cell.header.schema) {
+                    Some(t) => t,
+                    None => return Err(EdgeError::CannotFindSchema),
+                };
+                let mut a_id = Id::unit_id();
+                let mut b_id = Id::unit_id();
+                let edge_cell = match cell_schema_type {
+                    GraphSchema::Vertex => {
+                        if vertex_field == Self::vertex_a_field() {
+                            a_id = vertex_id;
+                            b_id = id;
+                        } else if vertex_field == Self::vertex_b_field() {
+                            b_id = vertex_id;
+                            a_id = id;
+                        } else {
+                            return Err(EdgeError::WrongVertexField);
                         }
-                        Some(trace_cell)
-                    } else {
-                        return Err(EdgeError::WrongEdgeType);
+                        None
                     }
-                }
-                _ => return Err(EdgeError::WrongSchema),
-            };
-            Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell))
-        }).boxed()
+                    GraphSchema::Edge(edge_attrs) => {
+                        if edge_attrs.edge_type == Self::edge_type() {
+                            if let (&OwnedValue::Id(e_a_id), &OwnedValue::Id(e_b_id)) = (
+                                &trace_cell.data[Self::edge_a_field()],
+                                &trace_cell.data[Self::edge_b_field()],
+                            ) {
+                                a_id = e_a_id;
+                                b_id = e_b_id;
+                            }
+                            Some(trace_cell)
+                        } else {
+                            return Err(EdgeError::WrongEdgeType);
+                        }
+                    }
+                    _ => return Err(EdgeError::WrongSchema),
+                };
+                Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell))
+            })
+            .boxed()
     }
 
     fn link<'a>(
@@ -210,7 +212,7 @@ pub trait BilateralEdge: TEdge + Sync + Send {
         }
         .boxed()
     }
-    
+
     fn oppisite_vertex_id(&self, vertex_id: &Id) -> Option<&Id> {
         let v1_id = self.vertex_a();
         let v2_id = self.vertex_b();

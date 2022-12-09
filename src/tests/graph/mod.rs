@@ -46,10 +46,7 @@ pub async fn schemas() {
         .unwrap();
     let mut vertex_schema = edge_schema.clone();
     vertex_schema.name = "test_vertex_schema".to_string();
-    let vertex_schema_id = graph
-        .new_vertex_group(vertex_schema.clone())
-        .await
-        .unwrap();
+    let vertex_schema_id = graph.new_vertex_group(vertex_schema.clone()).await.unwrap();
     assert_eq!(edge_schema_id, 1);
     assert_eq!(vertex_schema_id, 2);
     let mut test_data = OwnedMap::new();

@@ -1,4 +1,4 @@
-use crate::{utils::file::slurp, server::MorphesOptions};
+use crate::{server::MorphesOptions, utils::file::slurp};
 use serde_yaml;
 
 pub fn options_from_file<'a>(file: &'a str) -> MorphesOptions {

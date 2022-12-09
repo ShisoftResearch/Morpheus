@@ -216,17 +216,18 @@ impl SchemaContainer {
             None
         }
     }
-    pub async fn all_morpheus_schemas(
-        &self,
-    ) -> Result<Vec<MorpheusSchema>, ExecError> {
+    pub async fn all_morpheus_schemas(&self) -> Result<Vec<MorpheusSchema>, ExecError> {
         let schema_map = self.map.clone();
-        self.neb_client.get_all_schema().await.map(move |neb_schemas| {
-            neb_schemas
-                .into_iter()
-                .map(|schema| Self::neb_to_morpheus_schema_(&schema_map, &Arc::new(schema)))
-                .filter_map(|ms| ms)
-                .collect()
-        })
+        self.neb_client
+            .get_all_schema()
+            .await
+            .map(move |neb_schemas| {
+                neb_schemas
+                    .into_iter()
+                    .map(|schema| Self::neb_to_morpheus_schema_(&schema_map, &Arc::new(schema)))
+                    .filter_map(|ms| ms)
+                    .collect()
+            })
     }
 
     pub async fn count(&self) -> Result<usize, ExecError> {

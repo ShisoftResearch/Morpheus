@@ -184,7 +184,7 @@ impl Graph {
         &self,
         mut schema: MorpheusSchema,
         edge_attrs: edge::EdgeAttributes,
-    ) -> impl Future<Output = Result<u32, SchemaError>>  + '_ {
+    ) -> impl Future<Output = Result<u32, SchemaError>> + '_ {
         schema.schema_type = GraphSchema::Edge(edge_attrs);
         self.schemas.new_schema(schema)
     }

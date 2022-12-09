@@ -36,16 +36,10 @@ pub struct MorphesOptions {
 }
 
 impl MorpheusServer {
-    pub async fn new(
-        options: MorphesOptions,
-    ) -> Result<Arc<MorpheusServer>, MorpheusServerError> {
+    pub async fn new(options: MorphesOptions) -> Result<Arc<MorpheusServer>, MorpheusServerError> {
         let neb_opts = &options.storage;
         let group_name = &options.group_name;
-        let neb_server = NebServer::new_from_opts(
-            neb_opts, 
-            &options.server_addr,
-            group_name
-        ).await;
+        let neb_server = NebServer::new_from_opts(neb_opts, &options.server_addr, group_name).await;
         let neb_client = Arc::new(
             neb::client::AsyncClient::new(
                 &neb_server.rpc,
