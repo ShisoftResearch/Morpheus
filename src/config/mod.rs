@@ -1,4 +1,9 @@
-use crate::utils::file;
-use yaml_rust::{Yaml, YamlLoader};
+use crate::{utils::file::slurp, server::MorphesOptions};
+use serde_yaml;
 
-pub mod neb;
+pub fn options_from_file<'a>(file: &'a str) -> MorphesOptions {
+    let file_text = slurp(file).unwrap();
+    let mut config: MorphesOptions = serde_yaml::from_str(&file_text).unwrap();
+    config.storage.memory_size *= 1024 * 1024;
+    return config;
+}

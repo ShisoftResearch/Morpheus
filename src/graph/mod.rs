@@ -176,7 +176,7 @@ impl Graph {
     pub fn new_vertex_group(
         &self,
         mut schema: MorpheusSchema,
-    ) -> impl Future<Output = Result<u32, SchemaError>> {
+    ) -> impl Future<Output = Result<u32, SchemaError>> + '_ {
         schema.schema_type = GraphSchema::Vertex;
         self.schemas.new_schema(schema)
     }
@@ -184,7 +184,7 @@ impl Graph {
         &self,
         mut schema: MorpheusSchema,
         edge_attrs: edge::EdgeAttributes,
-    ) -> impl Future<Output = Result<u32, SchemaError>> {
+    ) -> impl Future<Output = Result<u32, SchemaError>>  + '_ {
         schema.schema_type = GraphSchema::Edge(edge_attrs);
         self.schemas.new_schema(schema)
     }

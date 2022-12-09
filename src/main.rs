@@ -37,6 +37,6 @@ async fn main() {
     log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
     info!("Shisoft Morpheus is initializing...");
     query::init().unwrap();
-    let neb_config = config::neb::options_from_file("config/neb.yaml");
-    server::MorpheusServer::new(neb_config).await.unwrap();
+    let config = config::options_from_file("config/server.yaml");
+    server::MorpheusServer::new(config).await.unwrap();
 }

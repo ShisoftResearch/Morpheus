@@ -104,7 +104,7 @@ impl<'a> Tester<'a> {
         } else {
             return Ok(true);
         };
-        let interp = prep_interp();
+        let mut interp = prep_interp();
         bind(
             interp.get_env(),
             VERTEX_SYMBOL,

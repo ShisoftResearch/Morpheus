@@ -1,6 +1,6 @@
 use dovahkiin::types::{Map, OwnedMap, OwnedValue};
 use futures::future::BoxFuture;
-use futures::FutureExt;
+use futures::{FutureExt, TryFutureExt};
 use neb::client::transaction::{Transaction, TxnError};
 use neb::ram::cell::{Cell, OwnedCell};
 use neb::ram::types::Id;
@@ -30,18 +30,18 @@ pub trait BilateralEdge: TEdge + Sync + Send {
         vertex_id: Id,
         vertex_field: u64,
         schema_id: u32,
-        schemas: &Arc<SchemaContainer>,
-        txn: &Transaction,
+        schemas: &'a Arc<SchemaContainer>,
+        txn: &'a Transaction,
         id: Id,
     ) -> BoxFuture<'a, Result<Result<Self::Edge, EdgeError>, TxnError>> {
-        async move {
-            let trace_cell = match txn.read(id).await? {
+        txn.read(id).map_ok(move |trace_cell| {
+            let trace_cell = match trace_cell {
                 Some(cell) => cell,
-                None => return Ok(Err(EdgeError::CellNotFound)),
+                None => return Err(EdgeError::CellNotFound),
             };
             let cell_schema_type = match schemas.schema_type(trace_cell.header.schema) {
                 Some(t) => t,
-                None => return Ok(Err(EdgeError::CannotFindSchema)),
+                None => return Err(EdgeError::CannotFindSchema),
             };
             let mut a_id = Id::unit_id();
             let mut b_id = Id::unit_id();
@@ -54,7 +54,7 @@ pub trait BilateralEdge: TEdge + Sync + Send {
                         b_id = vertex_id;
                         a_id = id;
                     } else {
-                        return Ok(Err(EdgeError::WrongVertexField));
+                        return Err(EdgeError::WrongVertexField);
                     }
                     None
                 }
@@ -69,23 +69,22 @@ pub trait BilateralEdge: TEdge + Sync + Send {
                         }
                         Some(trace_cell)
                     } else {
-                        return Ok(Err(EdgeError::WrongEdgeType));
+                        return Err(EdgeError::WrongEdgeType);
                     }
                 }
-                _ => return Ok(Err(EdgeError::WrongSchema)),
+                _ => return Err(EdgeError::WrongSchema),
             };
-            Ok(Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell)))
-        }
-        .boxed()
+            Ok(Self::build_edge(a_id, b_id, schema_id, edge_cell))
+        }).boxed()
     }
 
     fn link<'a>(
         vertex_a_id: Id,
         vertex_b_id: Id,
-        body: &Option<OwnedMap>,
-        txn: &Transaction,
+        body: &'a Option<OwnedMap>,
+        txn: &'a Transaction,
         schema_id: u32,
-        schemas: &Arc<SchemaContainer>,
+        schemas: &'a Arc<SchemaContainer>,
     ) -> BoxFuture<'a, Result<Result<Self::Edge, EdgeError>, TxnError>> {
         async move {
             let mut vertex_a_pointer = Id::unit_id();
@@ -107,13 +106,14 @@ pub trait BilateralEdge: TEdge + Sync + Send {
                                     &Id::new(vertex_a_id.higher, edge_id_lower),
                                     OwnedValue::Map(body_map.owned()),
                                 );
+                                let edge_body_id = edge_body_cell.id();
                                 edge_body_cell.data[Self::edge_a_field()] =
                                     OwnedValue::Id(vertex_a_id);
                                 edge_body_cell.data[Self::edge_b_field()] =
                                     OwnedValue::Id(vertex_b_id);
-                                txn.write(edge_body_cell).await?;
-                                vertex_a_pointer = edge_body_cell.id();
-                                vertex_b_pointer = edge_body_cell.id();
+                                txn.write(edge_body_cell.clone()).await?;
+                                vertex_a_pointer = edge_body_id;
+                                vertex_b_pointer = edge_body_id;
                                 Some(edge_body_cell)
                             } else {
                                 return Ok(Err(EdgeError::NormalEdgeShouldHaveBody));
@@ -169,8 +169,8 @@ pub trait BilateralEdge: TEdge + Sync + Send {
     }
 
     fn remove<'a>(
-        &mut self,
-        txn: &Transaction,
+        &'a mut self,
+        txn: &'a Transaction,
     ) -> BoxFuture<'a, Result<Result<(), EdgeError>, TxnError>> {
         async move {
             let (v_a_removal, v_b_removal) = match self.edge_cell() {
@@ -210,6 +210,7 @@ pub trait BilateralEdge: TEdge + Sync + Send {
         }
         .boxed()
     }
+    
     fn oppisite_vertex_id(&self, vertex_id: &Id) -> Option<&Id> {
         let v1_id = self.vertex_a();
         let v2_id = self.vertex_b();

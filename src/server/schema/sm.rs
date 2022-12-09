@@ -40,7 +40,7 @@ impl StateMachineCmds for GraphSchemasSM {
         schema: GraphSchema,
     ) -> BoxFuture<Result<(), NotifyError>> {
         self.map.insert(id, schema);
-        async {
+        async move {
             self.callback
                 .notify(commands::on_schema_added::new(), (id, schema))
                 .await?;
