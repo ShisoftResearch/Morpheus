@@ -1,8 +1,8 @@
 use dovahkiin::types::Type;
 use neb::ram::schema::Field;
 use neb::ram::types::Id;
-use neb::ram::cell::SharedCell;
-use dovahkiin::types::SharedValue;
+use neb::ram::cell::OwnedCell;
+use neb::ram::types::OwnedValue;
 
 use super::{TEdge, EdgeType};
 use super::bilateral::BilateralEdge;
@@ -10,27 +10,27 @@ use crate::graph::fields::*;
 
 lazy_static! {
     pub static ref EDGE_TEMPLATE: Vec<Field> = vec![
-            Field::new(&*INBOUND_NAME, Type::Id, false, false, None),
-            Field::new(&*OUTBOUND_NAME, Type::Id, false, false, None),
+            Field::new(&*INBOUND_NAME, Type::Id, false, false, None, vec![]),
+            Field::new(&*OUTBOUND_NAME, Type::Id, false, false, None, vec![]),
         ];
 }
 
 #[derive(Debug)]
-pub struct DirectedEdge<'a> {
+pub struct DirectedEdge {
     inbound_id: Id,
     outbound_id: Id,
     schema_id: u32,
-    pub cell: Option<SharedCell<'a>>,
+    pub cell: Option<OwnedCell>,
 }
 
-impl <'a> TEdge for DirectedEdge<'a> {
-    type Edge = DirectedEdge<'a>;
+impl TEdge for DirectedEdge {
+    type Edge = DirectedEdge;
     fn edge_type() -> EdgeType {
         EdgeType::Directed
     }
 }
 
-impl <'a> BilateralEdge for DirectedEdge<'a> {
+impl BilateralEdge for DirectedEdge {
 
     fn vertex_a_field() -> u64 {
         *OUTBOUND_KEY_ID
@@ -56,7 +56,7 @@ impl <'a> BilateralEdge for DirectedEdge<'a> {
         *OUTBOUND_KEY_ID
     }
 
-    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<SharedCell<'a>>) -> Self::Edge {
+    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<OwnedCell>) -> Self::Edge {
         DirectedEdge {
             inbound_id: a_field,
             outbound_id: b_field,
@@ -65,7 +65,7 @@ impl <'a> BilateralEdge for DirectedEdge<'a> {
         }
     }
 
-    fn edge_cell(&self) -> &Option<SharedCell<'a>> {
+    fn edge_cell(&self) -> &Option<OwnedCell> {
         &self.cell
     }
     fn schema_id(&self) -> u32 {
@@ -73,10 +73,10 @@ impl <'a> BilateralEdge for DirectedEdge<'a> {
     }
 }
 
-pub struct DirectedHyperEdge<'a> {
+pub struct DirectedHyperEdge {
     inbound_ids: Vec<Id>,
     outbound_ids: Vec<Id>,
-    cell: SharedCell<'a>,
+    cell: OwnedCell,
 }
 
 edge_index!(DirectedEdge);

@@ -1,8 +1,8 @@
-use dovahkiin::types::{Map, OwnedValue};
+use dovahkiin::types::{Map, OwnedValue, OwnedMap};
 use futures::FutureExt;
 use futures::future::BoxFuture;
-use neb::ram::types::{Id, SharedMap};
-use neb::ram::cell::{Cell, OwnedCell, SharedCell};
+use neb::ram::types::{Id};
+use neb::ram::cell::{Cell, OwnedCell};
 use neb::client::transaction::{Transaction, TxnError};
 use neb::dovahkiin::types::Value;
 use std::process::Output;
@@ -25,16 +25,16 @@ pub trait BilateralEdge : TEdge {
     fn edge_a_field() -> u64;
     fn edge_b_field() -> u64;
 
-    fn build_edge<C: Cell>(a_field: Id, b_field: Id, schema_id: u32, cell: Option<C>) -> Self::Edge;
-    fn edge_cell<'a>(&self) -> &Option<SharedCell<'a>>;
+    fn build_edge(a_field: Id, b_field: Id, schema_id: u32, cell: Option<OwnedCell>) -> Self::Edge;
+    fn edge_cell(&self) -> &Option<OwnedCell>;
     fn schema_id(&self) -> u32;
 
     fn from_id<'a>(
-        vertex_id: &Id, vertex_field: u64,
-        schema_id: u32, schemas: &Arc<SchemaContainer>, txn: &Transaction, id: &Id
+        vertex_id: Id, vertex_field: u64,
+        schema_id: u32, schemas: &Arc<SchemaContainer>, txn: &Transaction, id: Id
     ) -> BoxFuture<'a, Result<Result<Self::Edge, EdgeError>, TxnError>> {
         async move {
-            let trace_cell = match txn.read(*id).await? {
+            let trace_cell = match txn.read(id).await? {
                 Some(cell) => cell,
                 None => return Ok(Err(EdgeError::CellNotFound))
             };
@@ -46,11 +46,11 @@ pub trait BilateralEdge : TEdge {
             let edge_cell = match cell_schema_type {
                 SchemaType::Vertex => {
                     if vertex_field == Self::vertex_a_field() {
-                        a_id = *vertex_id;
-                        b_id = *id;
+                        a_id = vertex_id;
+                        b_id = id;
                     } else if vertex_field == Self::vertex_b_field() {
-                        b_id = *vertex_id;
-                        a_id = *id;
+                        b_id = vertex_id;
+                        a_id = id;
                     } else {
                         return Ok(Err(EdgeError::WrongVertexField));
                     }
@@ -79,12 +79,11 @@ pub trait BilateralEdge : TEdge {
         }.boxed()
     }
 
-    fn link<'a, M: Map>(
-        vertex_a_id: &Id, vertex_b_id: &Id, body: Option<M>,
+    fn link<'a>(
+        vertex_a_id: Id, vertex_b_id: Id, body: &Option<OwnedMap>,
         txn: &Transaction,
         schema_id: u32, schemas: &Arc<SchemaContainer>
     ) -> BoxFuture<'a, Result<Result<Self::Edge, EdgeError>, TxnError>> {
-        let body = body.map(|m| m.owned());
         async move {
             let mut vertex_a_pointer = Id::unit_id();
             let mut vertex_b_pointer = Id::unit_id();
@@ -103,8 +102,8 @@ pub trait BilateralEdge : TEdge {
                                     &Id::new(vertex_a_id.higher, edge_id_lower),
                                     OwnedValue::Map(body_map.owned())
                                 );
-                                edge_body_cell.data[Self::edge_a_field()] = OwnedValue::Id(*vertex_a_id);
-                                edge_body_cell.data[Self::edge_b_field()] = OwnedValue::Id(*vertex_b_id);
+                                edge_body_cell.data[Self::edge_a_field()] = OwnedValue::Id(vertex_a_id);
+                                edge_body_cell.data[Self::edge_b_field()] = OwnedValue::Id(vertex_b_id);
                                 txn.write(edge_body_cell).await?;
                                 vertex_a_pointer = edge_body_cell.id();
                                 vertex_b_pointer = edge_body_cell.id();
@@ -114,8 +113,8 @@ pub trait BilateralEdge : TEdge {
                             }
                         } else {
                             if body.is_none() {
-                                vertex_a_pointer = *vertex_b_id;
-                                vertex_b_pointer = *vertex_a_id;
+                                vertex_a_pointer = vertex_b_id;
+                                vertex_b_pointer = vertex_a_id;
                                 None
                             } else {
                                 return Ok(Err(EdgeError::SimpleEdgeShouldNotHaveBody));
@@ -127,14 +126,14 @@ pub trait BilateralEdge : TEdge {
                 }
             };
             match IdList::from_txn_and_container(txn, vertex_a_id, Self::vertex_a_field(), schema_id)
-                .add(&vertex_a_pointer)?.map_err(EdgeError::IdListError) {
+                .add(&vertex_a_pointer).await?.map_err(EdgeError::IdListError) {
                 Err(e) => return Ok(Err(e)), _ => {}
             }
             match IdList::from_txn_and_container(txn, vertex_b_id, Self::vertex_b_field(), schema_id)
-                .add(&vertex_b_pointer)?.map_err(EdgeError::IdListError) {
+                .add(&vertex_b_pointer).await?.map_err(EdgeError::IdListError) {
                 Err(e) => return Ok(Err(e)), _ => {}
             }
-            Ok(Ok(Self::build_edge(*vertex_a_id, *vertex_b_id, schema_id, edge_cell)))
+            Ok(Ok(Self::build_edge(vertex_a_id, vertex_b_id, schema_id, edge_cell)))
         }.boxed()
     }
 
@@ -149,12 +148,12 @@ pub trait BilateralEdge : TEdge {
                     (*self.vertex_b(), *self.vertex_a())
                 }
             };
-            match IdList::from_txn_and_container(txn, self.vertex_a(), Self::vertex_a_field(), self.schema_id())
-                .remove(&v_a_removal, false)?.map_err(EdgeError::IdListError) {
+            match IdList::from_txn_and_container(txn, *self.vertex_a(), Self::vertex_a_field(), self.schema_id())
+                .remove(&v_a_removal, false).await?.map_err(EdgeError::IdListError) {
                 Err(e) => return Ok(Err(e)), _ => {}
             }
-            match IdList::from_txn_and_container(txn, self.vertex_b(), Self::vertex_b_field(), self.schema_id())
-                .remove(&v_b_removal, false)?.map_err(EdgeError::IdListError) {
+            match IdList::from_txn_and_container(txn, *self.vertex_b(), Self::vertex_b_field(), self.schema_id())
+                .remove(&v_b_removal, false).await?.map_err(EdgeError::IdListError) {
                 Err(e) => return Ok(Err(e)), _ => {}
             }
             Ok(Ok(()))

@@ -105,20 +105,20 @@ async fn seg_cell_by_id(txn: &Transaction, id: Option<Id>) -> Result<Option<Owne
 impl<'a> IdList <'a> {
     pub fn from_txn_and_container(
         txn: &'a Transaction,
-        container_id: &Id,
+        container_id: Id,
         field_id: u64,
         schema_id: u32
     ) -> IdList<'a> {
         IdList {
             txn: txn,
-            container_id: *container_id,
-            field_id: field_id,
-            schema_id: schema_id
+            container_id,
+            field_id,
+            schema_id
         }
     }
 
-    pub async fn cell_types(txn: &Transaction, container_id: &Id, field_id: u64) -> Result<Option<(Id, Vec<u32>)>, TxnError> {
-        if let Some(fields) = txn.read_selected(*container_id, vec![field_id]).await? {
+    pub async fn cell_types(txn: &Transaction, container_id: Id, field_id: u64) -> Result<Option<(Id, Vec<u32>)>, TxnError> {
+        if let Some(fields) = txn.read_selected(container_id, vec![field_id]).await? {
             if let OwnedValue::Id(id) = fields[0] {
                 if !id.is_unit_id() {
                     if let Some(cell) = txn.read(id).await? {

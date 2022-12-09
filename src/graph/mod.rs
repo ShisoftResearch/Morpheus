@@ -2,7 +2,7 @@ use neb::ram::schema::{Field, Schema};
 use neb::ram::types::{Id, key_hash};
 use neb::dovahkiin::types::{Value, ToValue};
 use neb::dovahkiin::expr::SExpr;
-use neb::ram::cell::{Cell, WriteError, ReadError, SharedCell};
+use neb::ram::cell::{Cell, WriteError, ReadError, SharedCell, OwnedCell};
 use neb::client::{AsyncClient as NebClient};
 use neb::client::transaction::{Transaction, TxnError};
 use bifrost::raft::state_machine::master::ExecError;
@@ -16,7 +16,7 @@ use crate::query::{Tester, Expr, parse_optional_expr};
 
 use std::future::Future;
 
-use dovahkiin::types::{Map, SharedMap};
+use dovahkiin::types::{Map, OwnedValue, OwnedMap};
 
 use std::sync::Arc;
 
@@ -81,7 +81,7 @@ impl EdgeDirection {
     }
 }
 
-fn vertex_to_cell_for_write<'a>(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<SharedCell<'a>, NewVertexError> {
+fn vertex_to_cell_for_write(schemas: &Arc<SchemaContainer>, vertex: Vertex) -> Result<OwnedCell, NewVertexError> {
     let schema_id = vertex.schema();
     if let Some(stype) = schemas.schema_type(schema_id) {
         if stype != SchemaType::Vertex {
@@ -96,14 +96,14 @@ fn vertex_to_cell_for_write<'a>(schemas: &Arc<SchemaContainer>, vertex: Vertex) 
     };
     let mut data = {
         match vertex.cell.data {
-            Value::Map(map) => map,
+            OwnedValue::Map(map) => map,
             _ => return Err(NewVertexError::DataNotMap)
         }
     };
-    data.insert_key_id(*fields::INBOUND_KEY_ID, Value::Id(Id::unit_id()));
-    data.insert_key_id(*fields::OUTBOUND_KEY_ID, Value::Id(Id::unit_id()));
-    data.insert_key_id(*fields::UNDIRECTED_KEY_ID, Value::Id(Id::unit_id()));
-    match Cell::new(&neb_schema, Value::Map(data)) {
+    data.insert_key_id(*fields::INBOUND_KEY_ID, OwnedValue::Id(Id::unit_id()));
+    data.insert_key_id(*fields::OUTBOUND_KEY_ID, OwnedValue::Id(Id::unit_id()));
+    data.insert_key_id(*fields::UNDIRECTED_KEY_ID, OwnedValue::Id(Id::unit_id()));
+    match OwnedCell::new(&neb_schema, OwnedValue::Map(data)) {
         Some(cell) => Ok(cell),
         None => return Err(NewVertexError::CannotGenerateCellByData)
     }
@@ -123,7 +123,7 @@ impl Graph {
         })
     }
     
-    async fn check_base_schema(schemas: Arc<SchemaContainer>, schema_id: u32, schema_name: &'static str, fields: &'static Field) -> Result<(), ExecError> {
+    async fn check_base_schema(schemas: &Arc<SchemaContainer>, schema_id: u32, schema_name: &'static str, fields: &'static Field) -> Result<(), ExecError> {
         match schemas.get_neb_schema(schema_id) {
             None => {
                 schemas.neb_client.new_schema_with_id(
@@ -137,8 +137,8 @@ impl Graph {
         Ok(())
     }
     
-    async fn check_base_schemas(schemas: &SchemaContainer) -> Result<(), ExecError> {
-        Self::check_base_schema(schemas.clone(), id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST).await?;
+    async fn check_base_schemas(schemas: &Arc<SchemaContainer>) -> Result<(), ExecError> {
+        Self::check_base_schema(schemas, id_list::ID_LIST_SCHEMA_ID, "_NEB_ID_LIST", &*id_list::ID_LINKED_LIST).await?;
         Self::check_base_schema(schemas, id_list::TYPE_LIST_SCHEMA_ID, "_NEB_TYPE_ID_LIST", &*id_list::ID_TYPE_LIST).await?;
         Ok(())
     }
@@ -154,35 +154,30 @@ impl Graph {
         schema.schema_type = SchemaType::Edge(edge_attrs);
         self.schemas.new_schema(schema)
     }
-    pub fn new_vertex<'a, S>(&self, schema: S, data: SharedMap<'a>)
-        -> impl Future<Output = Result<Vertex<'a>, NewVertexError>>
-        where S: ToSchemaId
+    pub async fn new_vertex<S>(&self, schema: S, data: OwnedMap) -> Result<Vertex, NewVertexError> where S: ToSchemaId
     {
         let vertex = Vertex::new(schema.to_id(&self.schemas), data);
-        let mut cell_result = vertex_to_cell_for_write(&self.schemas, vertex);
-        async {
-            let mut cell = cell_result?;
-            let header = match self.neb_client.write_cell(cell.clone()).await {
-                Ok(Ok(header)) => header,
-                Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
-                Err(e) => return Err(NewVertexError::RPCError(e))
-            };
-            cell.header = header;
-            Ok(vertex::cell_to_vertex(cell))
-        }
+        let mut cell = vertex_to_cell_for_write(&self.schemas, vertex)?;
+        let header = match self.neb_client.write_cell(cell.clone()).await {
+            Ok(Ok(header)) => header,
+            Ok(Err(e)) => return Err(NewVertexError::WriteError(e)),
+            Err(e) => return Err(NewVertexError::RPCError(e))
+        };
+        cell.header = header;
+        Ok(vertex::cell_to_vertex(cell))
     }
-    pub fn remove_vertex<V>(&self, vertex: V)
+    pub async fn remove_vertex<V>(&self, vertex: V)
         -> impl Future<Output = Result<(), TxnError>> where V: ToVertexId
     {
         let id = vertex.to_id();
-        self.graph_transaction(move |txn| txn.remove_vertex(id)?
+        self.graph_transaction(move |txn| txn.remove_vertex(id).await?
             .map_err(|_| TxnError::Aborted(None)))
     }
     pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
         -> impl Future<Output = Result<(), TxnError>>
         where K: ToValue, S: ToSchemaId
     {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.remove_vertex(id)
     }
     pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> impl Future<Output = Result<(), TxnError>>
@@ -197,12 +192,12 @@ impl Graph {
         -> impl Future<Output = Result<(), TxnError>>
         where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>, U: 'static
     {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.update_vertex(id, update)
     }
 
-    pub fn vertex_by<'a, V>(&self, vertex: V)
-        -> impl Future<Output = Result<Option<Vertex<'a>>, ReadVertexError>> where V: ToVertexId
+    pub fn vertex_by<V>(&self, vertex: V)
+        -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>> where V: ToVertexId
     {
         self.neb_client.read_cell(vertex.to_id())
             .then(|result| {
@@ -215,11 +210,11 @@ impl Graph {
             })
     }
 
-    pub fn vertex_by_key<'a, K, S>(&self, schema: S, key: K)
-        -> impl Future<Output = Result<Option<Vertex<'a>>, ReadVertexError>>
+    pub fn vertex_by_key<K, S>(&self, schema: S, key: K)
+        -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>>
         where K: ToValue, S: ToSchemaId
     {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.vertex_by(id)
     }
 
@@ -227,7 +222,7 @@ impl Graph {
         where TFN: Fn(&GraphTransaction) -> Result<TR, TxnError>, TR: 'static, TFN: 'static
     {
         let schemas = self.schemas.clone();
-        let wrapper = move |neb_txn: &Transaction| {
+        let wrapper = move |neb_txn: Transaction| {
             func(&GraphTransaction {
                 neb_txn,
                 schemas: schemas.clone()
@@ -235,7 +230,7 @@ impl Graph {
         };
         self.neb_client.transaction(wrapper)
     }
-    pub fn link<'a, V, S>(&self, from: V, schema: S, to: V, body: Option<SharedMap<'a>>)
+    pub fn link<V, S>(&self, from: V, schema: S, to: V, body: Option<OwnedMap>)
         -> impl Future<Output = Result<Result<edge::Edge, LinkVerticesError>, TxnError>>
         where V: ToVertexId, S: ToSchemaId
     {
@@ -292,42 +287,42 @@ impl Graph {
     }
 }
 
-pub struct GraphTransaction<'a> {
-    pub neb_txn: &'a Transaction,
+pub struct GraphTransaction {
+    pub neb_txn: Transaction,
     schemas: Arc<SchemaContainer>
 }
 
-impl <'a>GraphTransaction<'a> {
-    pub fn new_vertex<'b, S>(&self, schema: S, data: SharedMap<'b>)
-        -> Result<Result<Vertex<'b>, NewVertexError>, TxnError>
+impl GraphTransaction {
+    pub async fn new_vertex<S>(&self, schema: S, data: OwnedMap)
+        -> Result<Result<Vertex, NewVertexError>, TxnError>
         where S: ToSchemaId
     {
         let vertex = Vertex::new(schema.to_id(&self.schemas), data);
-        let mut cell = match vertex_to_cell_for_write(&self.schemas, vertex) {
+        let cell = match vertex_to_cell_for_write(&self.schemas, vertex) {
             Ok(cell) => cell, Err(e) => return Ok(Err(e))
         };
-        self.neb_txn.write(&cell)?;
+        self.neb_txn.write(cell.clone()).await?;
         Ok(Ok(vertex::cell_to_vertex(cell)))
     }
-    pub fn remove_vertex<V>(&self, vertex: V)
+    pub async fn remove_vertex<V>(&self, vertex: V)
         -> Result<Result<(), vertex::RemoveError>, TxnError> where V: ToVertexId
     {
-        vertex::txn_remove(self.neb_txn, &self.schemas, vertex)
+        vertex::txn_remove(&self.neb_txn, &self.schemas, vertex).await
     }
-    pub fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
+    pub async fn remove_vertex_by_key<K, S>(&self, schema: S, key: K)
         -> Result<Result<(), vertex::RemoveError>, TxnError>
         where K: ToValue, S: ToSchemaId
     {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
-        self.remove_vertex(&id)
+        let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        self.remove_vertex(id).await
     }
 
-    pub fn link<'b, V, S>(&self, from: V, schema: S, to: V, body: Option<SharedMap<'b>>)
+    pub async fn link<'b, V, S>(&self, from: V, schema: S, to: V, body: &Option<OwnedMap>)
         -> Result<Result<edge::Edge, LinkVerticesError>, TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
-        let from_id = &from.to_id();
-        let to_id = &to.to_id();
+        let from_id = from.to_id();
+        let to_id = to.to_id();
         let schema_id = schema.to_id(&self.schemas);
         let edge_attr = match self.schemas.schema_type(schema_id) {
             Some(SchemaType::Edge(ea)) => ea,
@@ -336,58 +331,58 @@ impl <'a>GraphTransaction<'a> {
         };
         match edge_attr.edge_type {
             edge::EdgeType::Directed =>
-                Ok(edge::directed::DirectedEdge::link(from_id, to_id, body, &self.neb_txn, schema_id, &self.schemas)?
+                Ok(edge::directed::DirectedEdge::link(from_id, to_id, body, &self.neb_txn, schema_id, &self.schemas).await?
                     .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Directed)),
 
             edge::EdgeType::Undirected =>
-                Ok(edge::undirectd::UndirectedEdge::link(from_id, to_id, body, &self.neb_txn, schema_id, &self.schemas)?
+                Ok(edge::undirectd::UndirectedEdge::link(from_id, to_id, body, &self.neb_txn, schema_id, &self.schemas).await?
                     .map_err(LinkVerticesError::EdgeError).map(edge::Edge::Undirected))
         }
     }
 
-    pub fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
+    pub async fn update_vertex<V, U>(&self, vertex: V, update: U) -> Result<(), TxnError>
         where V: ToVertexId, U: Fn(Vertex) -> Option<Vertex>
     {
-        vertex::txn_update(self.neb_txn, vertex, &update)
+        vertex::txn_update(&self.neb_txn, vertex, &update).await
     }
-    pub fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
+    pub async fn update_vertex_by_key<K, U, S>(&self, schema: S, key: K, update: U)
         -> Result<(), TxnError>
         where K: ToValue, S: ToSchemaId, U: Fn(Vertex) -> Option<Vertex>
     {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
-        self.update_vertex(&id, update)
+        let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        self.update_vertex(&id, update).await
     }
 
-    pub fn read_vertex<V>(&self, vertex: V)
+    pub async fn read_vertex<V>(&self, vertex: V)
         -> Result<Option<Vertex>, TxnError> where V: ToVertexId
     {
-        self.neb_txn.read(&vertex.to_id()).map(|c| c.map(vertex::cell_to_vertex))
+        self.neb_txn.read(vertex.to_id()).await.map(|c| c.map(vertex::cell_to_vertex))
     }
 
-    pub fn get_vertex<K, S>(&self, schema: u32, key: K) -> Result<Option<Vertex>, TxnError>
+    pub async fn get_vertex<K, S>(&self, schema: u32, key: K) -> Result<Option<Vertex>, TxnError>
         where K: ToValue, S: ToSchemaId
     {
-        let id = Cell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
-        self.read_vertex(&id)
+        let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
+        self.read_vertex(&id).await
     }
 
-    pub fn edges<V, S>(
-        &self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
+    pub async fn edges<'a, V, S>(
+        &self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr<'a>>>
     ) -> Result<Result<Vec<edge::Edge>, edge::EdgeError>, TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
         let vertex_field = ed.as_field();
         let schema_id = schema.to_id(&self.schemas);
-        let vertex_id = &vertex.to_id();
+        let vertex_id = vertex.to_id();
         match id_list::IdList::from_txn_and_container
-            (self.neb_txn, vertex_id, vertex_field, schema_id).iter()? {
+            (&self.neb_txn, vertex_id, vertex_field, schema_id).iter().await? {
             Err(e) => Ok(Err(edge::EdgeError::IdListError(e))),
-            Ok(ids) => Ok(Ok({
+            Ok(mut ids) => Ok(Ok({
                 let mut edges = Vec::new();
-                for id in ids {
+                while let Some(id) = ids.next().await {
                     match edge::from_id(
-                        vertex_id, vertex_field, schema_id, &self.schemas, self.neb_txn, &id
-                    )? {
+                        vertex_id, vertex_field, schema_id, &self.schemas, &self.neb_txn, id
+                    ).await? {
                         Ok(e) => {
                             match Tester::eval_with_edge(filter, &e) {
                                 Ok(true) => {edges.push(e);},
@@ -403,8 +398,8 @@ impl <'a>GraphTransaction<'a> {
         }
     }
 
-    pub fn neighbourhoods<V, S>(
-        &self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr>>
+    pub async fn neighbourhoods<'a, V, S>(
+        &self, vertex: V, schema: S, ed: EdgeDirection, filter: &Option<Vec<SExpr<'a>>>
     )
         -> Result<Result<Vec<(Vertex, edge::Edge)>, NeighbourhoodError>, TxnError>
         where V: ToVertexId, S: ToSchemaId
@@ -413,17 +408,17 @@ impl <'a>GraphTransaction<'a> {
         let schema_id = schema.to_id(&self.schemas);
         let vertex_id = &vertex.to_id();
         match id_list::IdList::from_txn_and_container
-            (self.neb_txn, vertex_id, vertex_field, schema_id).iter()? {
+            (&self.neb_txn, *vertex_id, vertex_field, schema_id).iter().await? {
             Err(e) => Ok(Err(NeighbourhoodError::EdgeError(EdgeError::IdListError(e)))),
-            Ok(ids) => {
+            Ok(mut ids) => {
                 let mut result: Vec<(Vertex, edge::Edge)> = Vec::new();
-                for id in ids {
+                while let Some(id) = ids.next().await {
                     match edge::from_id(
-                        vertex_id, vertex_field, schema_id, &self.schemas, self.neb_txn, &id
-                    )? {
+                        *vertex_id, vertex_field, schema_id, &self.schemas, &self.neb_txn, id
+                    ).await? {
                         Ok(edge) => {
-                            let vertex = if let Some(opposite_id) = edge.one_opposite_id_vertex_id(vertex_id) {
-                                if let Some(v) = self.read_vertex(opposite_id)? { v } else {
+                            let vertex = if let Some(opposite_id) = edge.one_opposite_id_vertex_id(vertex_id).await {
+                                if let Some(v) = self.read_vertex(opposite_id).await? { v } else {
                                     return Ok(Err(NeighbourhoodError::VertexNotFound(*opposite_id)))
                                 }
                             } else { return Ok(Err(NeighbourhoodError::CannotFindOppositeId(*vertex_id))) };
@@ -441,7 +436,7 @@ impl <'a>GraphTransaction<'a> {
         }
     }
 
-    pub fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
+    pub async fn degree<V, S>(&self, vertex: V, schema: S, ed: EdgeDirection)
         -> Result<Result<usize, edge::EdgeError>, TxnError>
         where V: ToVertexId, S: ToSchemaId
     {
@@ -449,9 +444,9 @@ impl <'a>GraphTransaction<'a> {
             Err(e) => return Ok(Err(e)), Ok(t) => t
         };
         let vertex_field = ed.as_field();
-        let vertex_id = &vertex.to_id();
+        let vertex_id = vertex.to_id();
         match id_list::IdList::from_txn_and_container
-            (self.neb_txn, vertex_id, vertex_field, schema_id).count()? {
+            (&self.neb_txn, vertex_id, vertex_field, schema_id).count().await? {
             Err(e) => Ok(Err(edge::EdgeError::IdListError(e))),
             Ok(count) => Ok(Ok(count))
         }
