@@ -2,10 +2,8 @@ use dovahkiin::types::{Map, OwnedMap, OwnedValue};
 use futures::future::BoxFuture;
 use futures::FutureExt;
 use neb::client::transaction::{Transaction, TxnError};
-use neb::dovahkiin::types::Value;
 use neb::ram::cell::{Cell, OwnedCell};
 use neb::ram::types::Id;
-use std::process::Output;
 use std::sync::Arc;
 
 use super::super::id_list::IdList;
@@ -14,7 +12,7 @@ use crate::server::schema::{SchemaContainer, SchemaType};
 
 use rand::prelude::*;
 
-pub trait BilateralEdge: TEdge {
+pub trait BilateralEdge: TEdge + Sync + Send {
     fn vertex_a_field() -> u64;
     fn vertex_b_field() -> u64;
 
@@ -173,7 +171,7 @@ pub trait BilateralEdge: TEdge {
     fn remove<'a>(
         &mut self,
         txn: &Transaction,
-    ) -> BoxFuture<'a, Result<Result<(), EdgeError>, TxnError>> {
+    ) -> BoxFuture<'a, Result<Result<(), EdgeError>, TxnError>>  {
         async move {
             let (v_a_removal, v_b_removal) = match self.edge_cell() {
                 &Some(ref cell) => {

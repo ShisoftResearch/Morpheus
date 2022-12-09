@@ -1,5 +1,7 @@
 use crate::graph::edge::Edge;
 use crate::graph::vertex::Vertex;
+use dovahkiin::expr;
+use dovahkiin::types::OwnedValue;
 use neb::dovahkiin::expr::interpreter::Interpreter;
 use neb::dovahkiin::expr::symbols::bindings::bind;
 use neb::dovahkiin::expr::symbols::utils::is_true;
@@ -49,9 +51,7 @@ pub struct Tester<'a> {
 }
 
 fn prep_interp<'a>() -> Interpreter<'a> {
-    let inter = Interpreter::new();
-    inter.set_env();
-    return inter;
+    Interpreter::new()
 }
 
 pub fn parse_optional_expr<E>(expr: &Option<E>) -> Result<Option<Vec<SExpr>>, String>
@@ -68,8 +68,8 @@ where
 }
 
 impl<'a> Tester<'a> {
-    pub fn eval_with_edge_and_vertex(
-        sexpr: &Option<Vec<SExpr>>,
+    pub async fn eval_with_edge_and_vertex(
+        sexpr: &Option<Vec<SExpr<'a>>>,
         vertex: &Vertex,
         edge: &Edge,
     ) -> Result<bool, String> {
@@ -83,15 +83,15 @@ impl<'a> Tester<'a> {
         bind(
             interp.get_env(),
             VERTEX_SYMBOL,
-            SExpr::Value(vertex.cell.data.clone()),
+            SExpr::Value(expr::Value::Owned(vertex.cell.data.clone())),
         );
         bind(
             interp.get_env(),
             EDGE_SYMBOL,
-            SExpr::Value(if let &Some(ref e) = edge.get_data() {
-                e.data.clone()
+            SExpr::Value(if let &Some(ref e) = edge.get_data().await {
+                expr::Value::Owned(e.data.clone())
             } else {
-                Value::Null
+                expr::Value::Owned(OwnedValue::Null)
             }),
         );
         Ok(is_true(&interp.eval(sexpr)?))
@@ -108,26 +108,26 @@ impl<'a> Tester<'a> {
         bind(
             interp.get_env(),
             VERTEX_SYMBOL,
-            SExpr::Value(vertex.cell.data.clone()),
+            SExpr::Value(expr::Value::Owned(vertex.cell.data.clone())),
         );
         Ok(is_true(&interp.eval(sexpr)?))
     }
 
-    pub fn eval_with_edge(sexpr: &Option<Vec<SExpr>>, edge: &Edge) -> Result<bool, String> {
+    pub async fn eval_with_edge(sexpr: &Option<Vec<SExpr<'a>>>, edge: &Edge) -> Result<bool, String> {
         let sexpr = sexpr.clone(); // TODO: Memory management
         let sexpr = if let Some(expr) = sexpr {
             expr
         } else {
             return Ok(true);
         };
-        let interp = prep_interp();
+        let mut interp = prep_interp();
         bind(
             interp.get_env(),
             EDGE_SYMBOL,
-            SExpr::Value(if let &Some(ref e) = edge.get_data() {
-                e.data.clone()
+            SExpr::Value(if let &Some(ref e) = edge.get_data().await {
+                expr::Value::Owned(e.data.clone())
             } else {
-                Value::Null
+                expr::Value::Owned(OwnedValue::Null)
             }),
         );
         Ok(is_true(&interp.eval(sexpr)?))

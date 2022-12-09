@@ -205,13 +205,12 @@ impl Graph {
         V: ToVertexId,
     {
         let id = vertex.to_id();
-        self.graph_transaction(move |txn| {
-            async move {
-                txn.remove_vertex(id)
+        self.graph_transaction(move |txn| async move {
+            txn.remove_vertex(id)
                 .await?
                 .map_err(|_| TxnError::Aborted(None))
-            }
-        }).await
+        })
+        .await
     }
     pub async fn remove_vertex_by_key<K, S>(&self, schema: S, key: K) -> Result<(), TxnError>
     where
@@ -221,62 +220,57 @@ impl Graph {
         let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.remove_vertex(id).await
     }
-    pub async fn update_vertex<V, U>(
-        &self,
-        vertex: V,
-        update: U,
-    ) -> Result<(), TxnError>
+    pub fn update_vertex<'a, V, U>(&'a self, vertex: V, update: U) -> impl Future<Output = Result<(), TxnError>> + 'a
     where
         V: ToVertexId,
-        U: Fn(Vertex) -> Option<Vertex>,
-        U: 'static,
+        U: Fn(Vertex) -> Option<Vertex> + Clone,
+        U: 'a,
     {
         let id = vertex.to_id();
         self.neb_client
             .transaction(move |txn| {
+                let update = update.clone();
+                let txn = txn.clone();
                 async move {
-                    vertex::txn_update(&txn, id, &update).await
+                    vertex::txn_update(&txn, id, update).await
                 }
-            }).await
+            })
     }
     pub fn update_vertex_by_key<K, U, S>(
         &self,
         schema: S,
         key: K,
         update: U,
-    ) -> impl Future<Output = Result<(), TxnError>>
+    ) -> impl Future<Output = Result<(), TxnError>> + '_
     where
         K: ToValue,
         S: ToSchemaId,
-        U: Fn(Vertex) -> Option<Vertex>,
-        U: 'static,
+        U: Fn(Vertex) -> Option<Vertex> + Clone + 'static,
     {
         let id = OwnedCell::encode_cell_key(schema.to_id(&self.schemas), &key.value());
         self.update_vertex(id, update)
     }
 
-    pub fn vertex_by<V>(
+    pub async fn vertex_by<V>(
         &self,
         vertex: V,
-    ) -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>>
+    ) -> Result<Option<Vertex>, ReadVertexError>
     where
         V: ToVertexId,
     {
-        self.neb_client
-            .read_cell(vertex.to_id())
-            .then(|result| match result {
-                Err(e) => Err(ReadVertexError::RPCError(e)),
-                Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
-                Ok(Err(e)) => Err(ReadVertexError::ReadError(e)),
-                Ok(Ok(cell)) => Ok(Some(vertex::cell_to_vertex(cell))),
-            })
+        match self.neb_client.read_cell(vertex.to_id()).await {
+            Err(e) => Err(ReadVertexError::RPCError(e)),
+            Ok(Err(ReadError::CellDoesNotExisted)) => Ok(None),
+            Ok(Err(e)) => Err(ReadVertexError::ReadError(e)),
+            Ok(Ok(cell)) => Ok(Some(vertex::cell_to_vertex(cell))),
+        }
     }
 
     pub fn vertex_by_key<K, S>(
         &self,
         schema: S,
         key: K,
-    ) -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>>
+    ) -> impl Future<Output = Result<Option<Vertex>, ReadVertexError>> + '_
     where
         K: ToValue,
         S: ToSchemaId,
@@ -355,20 +349,21 @@ impl Graph {
                 self.graph_transaction(move |txn| {
                     let filter_sexpr = filter_sexpr.clone();
                     async move {
-                        txn.neighbourhoods(vertex_id, schema_id, ed, &filter_sexpr).await
+                        txn.neighbourhoods(vertex_id, schema_id, ed, &filter_sexpr)
+                            .await
                     }
                 })
                 .await
             }
         }
     }
-    pub fn edges<V, S, F>(
+    pub async fn edges<V, S, F>(
         &self,
         vertex: V,
         schema: S,
         ed: EdgeDirection,
         filter: &Option<F>,
-    ) -> impl Future<Output = Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>>
+    ) -> Result<Result<Vec<edge::Edge>, EdgeError>, TxnError>
     where
         V: ToVertexId,
         S: ToSchemaId,
@@ -376,14 +371,14 @@ impl Graph {
     {
         let vertex_id = vertex.to_id();
         let schema_id = schema.to_id(&self.schemas);
-        async {
-            match parse_optional_expr(filter) {
-                Err(e) => EdgeError::FilterEvalError(e),
-                Ok(Ok(filter)) => {
-                    self.graph_transaction(move |txn| txn.edges(vertex_id, schema_id, ed, &filter))
-                        .await
-                }
-                Err(e) => Ok(Err(e)),
+        match parse_optional_expr(filter) {
+            Err(e) => Ok(Err(EdgeError::FilterEvalError(e))),
+            Ok(filter) => {
+                self.graph_transaction(move |txn| {
+                    let filter = filter.clone();
+                    async move { txn.edges(vertex_id, schema_id, ed, &filter).await }
+                })
+                .await
             }
         }
     }
@@ -557,7 +552,7 @@ impl GraphTransaction {
                     )
                     .await?
                     {
-                        Ok(e) => match Tester::eval_with_edge(filter, &e) {
+                        Ok(e) => match Tester::eval_with_edge(filter, &e).await {
                             Ok(true) => {
                                 edges.push(e);
                             }
@@ -627,7 +622,7 @@ impl GraphTransaction {
                                     *vertex_id,
                                 )));
                             };
-                            match Tester::eval_with_edge_and_vertex(filter, &vertex, &edge) {
+                            match Tester::eval_with_edge_and_vertex(filter, &vertex, &edge).await {
                                 Ok(true) => {
                                     result.push((vertex, edge));
                                 }

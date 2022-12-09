@@ -59,8 +59,8 @@ impl BilateralEdge for DirectedEdge {
         DirectedEdge {
             inbound_id: a_field,
             outbound_id: b_field,
-            schema_id: schema_id,
-            cell: cell,
+            schema_id,
+            cell,
         }
     }
 

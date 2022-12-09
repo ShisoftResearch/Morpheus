@@ -100,7 +100,8 @@ where
                     Ok(Ok(()))
                 }
             };
-            match remove_field_lists(*id, txn.clone(), EdgeDirection::Undirected.as_field()).await? {
+            match remove_field_lists(*id, txn.clone(), EdgeDirection::Undirected.as_field()).await?
+            {
                 Ok(()) => {}
                 Err(e) => return Ok(Err(e)),
             }
@@ -118,7 +119,7 @@ where
     }
 }
 
-pub async fn txn_update<U, V>(txn: &Transaction, vertex: V, update: &U) -> Result<(), TxnError>
+pub async fn txn_update<U, V>(txn: &Transaction, vertex: V, update: U) -> Result<(), TxnError>
 where
     V: ToVertexId,
     U: Fn(Vertex) -> Option<Vertex>,
