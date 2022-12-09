@@ -5,14 +5,16 @@ use crate::graph::vertex::*;
 use crate::graph::*;
 use crate::server::schema::{MorpheusSchema, SchemaError, EMPTY_FIELDS};
 use dovahkiin::data_map;
+use dovahkiin::types::Map;
+use dovahkiin::types::OwnedMap;
+use dovahkiin::types::OwnedValue;
 use env_logger;
-use neb::ram::cell::Cell;
 use neb::ram::schema::Field;
-use neb::ram::types::{SharedMap, Type, Value};
+use neb::ram::types::Type;
 
-#[test]
-pub fn schemas() {
-    let server = start_server(4001, "schemas");
+#[tokio::test]
+pub async fn schemas() {
+    let server = start_server(4001, "schemas").await.unwrap();
     let graph = &server.graph;
     let edge_schema = MorpheusSchema::new(
         "test_edge_schema",
@@ -33,40 +35,40 @@ pub fn schemas() {
             edge_schema.clone(),
             graph::edge::EdgeAttributes::new(graph::edge::EdgeType::Directed, false)
         )
-        .wait()
+        .await
         .is_err());
     let edge_schema_id = graph
         .new_edge_group(
             edge_schema.clone(),
             graph::edge::EdgeAttributes::new(graph::edge::EdgeType::Directed, true),
         )
-        .wait()
+        .await
         .unwrap();
     let mut vertex_schema = edge_schema.clone();
     vertex_schema.name = "test_vertex_schema".to_string();
     let vertex_schema_id = graph
         .new_vertex_group(vertex_schema.clone())
-        .wait()
+        .await
         .unwrap();
     assert_eq!(edge_schema_id, 1);
     assert_eq!(vertex_schema_id, 2);
-    let mut test_data = SharedMap::new();
+    let mut test_data = OwnedMap::new();
     vertex_schema.id = vertex_schema_id;
-    test_data.insert("test_field", Value::U32(1));
+    test_data.insert("test_field", OwnedValue::U32(1));
     graph
         .new_vertex(vertex_schema, test_data.clone())
-        .wait()
+        .await
         .unwrap();
     graph
         .new_vertex("test_edge_schema", test_data.clone())
-        .wait()
+        .await
         .is_err();
 }
 
-#[test]
-pub fn relationship() {
+#[tokio::test]
+pub async fn relationship() {
     env_logger::init();
-    let server = start_server(4002, "relationship");
+    let server = start_server(4002, "relationship").await.unwrap();
     let graph = &server.graph;
     let mut people_schema = MorpheusSchema::new(
         "people",
@@ -90,21 +92,21 @@ pub fn relationship() {
         true,
     );
     let mut spouse_schema = MorpheusSchema::new("spouse", None, &EMPTY_FIELDS, false);
-    let people_schema_id = graph.new_vertex_group(people_schema).wait().unwrap();
-    let movie_schema_id = graph.new_vertex_group(movie_schema).wait().unwrap();
+    let people_schema_id = graph.new_vertex_group(people_schema).await.unwrap();
+    let movie_schema_id = graph.new_vertex_group(movie_schema).await.unwrap();
     let acted_in_schema_id = graph
         .new_edge_group(
             acted_in_schema,
             EdgeAttributes::new(EdgeType::Directed, true),
         )
-        .wait()
+        .await
         .unwrap();
     let spouse_schema_id = graph
         .new_edge_group(
             spouse_schema,
             EdgeAttributes::new(EdgeType::Undirected, false),
         )
-        .wait()
+        .await
         .unwrap();
     assert_eq!(people_schema_id, 1);
     assert_eq!(movie_schema_id, 2);
@@ -123,7 +125,7 @@ pub fn relationship() {
                 name: morgan_freeman_name, age: 80 as u8
             },
         )
-        .wait()
+        .await
         .unwrap();
     graph
         .new_vertex(
@@ -132,7 +134,7 @@ pub fn relationship() {
                 name: batman_begins_name, year: 2005 as u32
             },
         )
-        .wait()
+        .await
         .unwrap();
     graph
         .new_vertex(
@@ -141,7 +143,7 @@ pub fn relationship() {
                 name: the_dark_knight_name, year: 2008 as u32
             },
         )
-        .wait()
+        .await
         .unwrap();
     graph
         .new_vertex(
@@ -150,7 +152,7 @@ pub fn relationship() {
                 name: the_dark_knight_rises_name, year: 2012 as u32
             },
         )
-        .wait()
+        .await
         .unwrap();
     graph
         .new_vertex(
@@ -159,7 +161,7 @@ pub fn relationship() {
                 name: oblivion_name, year: 2010 as u32
             },
         )
-        .wait()
+        .await
         .unwrap();
     graph
         .new_vertex(
@@ -168,119 +170,119 @@ pub fn relationship() {
                 name: jeanette_name
             },
         )
-        .wait()
+        .await
         .unwrap();
 
     assert_eq!(
         graph
             .vertex_by_key("people", morgan_freeman_name)
-            .wait()
+            .await
             .unwrap()
             .unwrap()["name"]
-            .String()
+            .string()
             .unwrap(),
         morgan_freeman_name
     );
     assert_eq!(
         graph
             .vertex_by_key("movie", batman_begins_name)
-            .wait()
+            .await
             .unwrap()
             .unwrap()["name"]
-            .String()
+            .string()
             .unwrap(),
         batman_begins_name
     );
     assert_eq!(
         graph
             .vertex_by_key("movie", the_dark_knight_name)
-            .wait()
+            .await
             .unwrap()
             .unwrap()["name"]
-            .String()
+            .string()
             .unwrap(),
         the_dark_knight_name
     );
     assert_eq!(
         graph
             .vertex_by_key("movie", the_dark_knight_rises_name)
-            .wait()
+            .await
             .unwrap()
             .unwrap()["name"]
-            .String()
+            .string()
             .unwrap(),
         the_dark_knight_rises_name
     );
     assert_eq!(
         graph
             .vertex_by_key("movie", oblivion_name)
-            .wait()
+            .await
             .unwrap()
             .unwrap()["name"]
-            .String()
+            .string()
             .unwrap(),
         oblivion_name
     );
     assert_eq!(
         graph
             .vertex_by_key("people", jeanette_name)
-            .wait()
+            .await
             .unwrap()
             .unwrap()["name"]
-            .String()
+            .string()
             .unwrap(),
         jeanette_name
     );
     assert_eq!(
         graph
             .vertex_by_key("people", morgan_freeman_name)
-            .wait()
+            .await
             .unwrap()
             .unwrap()["age"]
-            .U8()
+            .u8()
             .unwrap(),
-        80u8
+        &80u8
     );
 
     let morgan_freeman = graph
         .vertex_by_key("people", morgan_freeman_name)
-        .wait()
+        .await
         .unwrap()
         .unwrap();
 
     let batman_begins = graph
         .vertex_by_key("movie", batman_begins_name)
-        .wait()
+        .await
         .unwrap()
         .unwrap();
 
     let the_dark_knight = graph
         .vertex_by_key("movie", the_dark_knight_name)
-        .wait()
+        .await
         .unwrap()
         .unwrap();
 
     let the_dark_knight_rises = graph
         .vertex_by_key("movie", the_dark_knight_rises_name)
-        .wait()
+        .await
         .unwrap()
         .unwrap();
 
     let oblivion = graph
         .vertex_by_key("movie", oblivion_name)
-        .wait()
+        .await
         .unwrap()
         .unwrap();
     let jeanette = graph
         .vertex_by_key("people", jeanette_name)
-        .wait()
+        .await
         .unwrap()
         .unwrap();
 
     assert_eq!(
         graph
             .degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         0
@@ -291,11 +293,11 @@ pub fn relationship() {
             &morgan_freeman,
             "acted-in",
             &batman_begins,
-            Some(data_map! {
+            &Some(data_map! {
                 role: "Lucius Fox", works_for: "Bruce Wayne"
             }),
         )
-        .wait()
+        .await
         .unwrap()
         .unwrap();
     graph
@@ -303,11 +305,11 @@ pub fn relationship() {
             &morgan_freeman,
             "acted-in",
             &the_dark_knight,
-            Some(data_map! {
+            &Some(data_map! {
                 role: "Lucius Fox"
             }),
         )
-        .wait()
+        .await
         .unwrap()
         .unwrap();
     graph
@@ -315,18 +317,18 @@ pub fn relationship() {
             &morgan_freeman,
             "acted-in",
             &the_dark_knight_rises,
-            Some(data_map! {
+            &Some(data_map! {
                 role: "Lucius Fox"
             }),
         )
-        .wait()
+        .await
         .unwrap()
         .unwrap();
 
     assert_eq!(
         graph
             .degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         3
@@ -337,11 +339,11 @@ pub fn relationship() {
             &morgan_freeman,
             "acted-in",
             &oblivion,
-            Some(data_map! {
+            &Some(data_map! {
                 // missing required field should fail
             }),
         )
-        .wait()
+        .await
         .err()
         .unwrap();
     {
@@ -353,7 +355,7 @@ pub fn relationship() {
                 EdgeDirection::Outbound,
                 &None,
             )
-            .wait()
+            .await
             .unwrap()
             .unwrap();
         if morgan_acted_in.len() != neighbourhoods_should_have {
@@ -365,7 +367,7 @@ pub fn relationship() {
         assert_eq!(
             graph
                 .degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound)
-                .wait()
+                .await
                 .unwrap()
                 .unwrap(),
             neighbourhoods_should_have
@@ -377,17 +379,17 @@ pub fn relationship() {
             &morgan_freeman,
             "acted-in",
             &oblivion,
-            Some(data_map! {
+            &Some(data_map! {
                 role: "Beech"
             }),
         )
-        .wait()
+        .await
         .unwrap()
         .unwrap();
     assert_eq!(
         graph
             .degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         4
@@ -395,7 +397,7 @@ pub fn relationship() {
     assert_eq!(
         graph
             .degree(&morgan_freeman, "spouse", EdgeDirection::Undirected)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         0
@@ -405,18 +407,18 @@ pub fn relationship() {
             &morgan_freeman,
             "spouse",
             &jeanette,
-            Some(data_map! {
+            &Some(data_map! {
                 role: "Sister"
             }),
         )
-        .wait()
+        .await
         .unwrap()
         .err()
         .unwrap();
     assert_eq!(
         graph
             .degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         4
@@ -424,7 +426,7 @@ pub fn relationship() {
     assert_eq!(
         graph
             .degree(&morgan_freeman, "spouse", EdgeDirection::Undirected)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         0
@@ -432,14 +434,14 @@ pub fn relationship() {
     println!(
         "MF Link Jeanette {:?}",
         graph
-            .link(&morgan_freeman, "spouse", &jeanette, None)
-            .wait()
+            .link(&morgan_freeman, "spouse", &jeanette, &None)
+            .await
     );
     assert_eq!(
         // must use the right edge direction
         graph
             .degree(&morgan_freeman, "spouse", EdgeDirection::Outbound)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         0
@@ -447,7 +449,7 @@ pub fn relationship() {
     assert_eq!(
         graph
             .degree(&morgan_freeman, "acted-in", EdgeDirection::Outbound)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         4
@@ -455,7 +457,7 @@ pub fn relationship() {
     assert_eq!(
         graph
             .degree(&morgan_freeman, "spouse", EdgeDirection::Undirected)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         1
@@ -463,7 +465,7 @@ pub fn relationship() {
     assert_eq!(
         graph
             .degree(&jeanette, "spouse", EdgeDirection::Undirected)
-            .wait()
+            .await
             .unwrap()
             .unwrap(),
         1
@@ -472,7 +474,7 @@ pub fn relationship() {
         "Edge sample {:?}",
         graph
             .neighbourhoods::<_, _, String>(&jeanette, "spouse", EdgeDirection::Undirected, &None)
-            .wait()
+            .await
             .unwrap()
             .unwrap()
     );
