@@ -12,7 +12,7 @@ use crate::graph::edge::bilateral::BilateralEdge;
 use crate::graph::edge::{EdgeAttributes, EdgeError};
 use crate::graph::vertex::{ToVertexId, Vertex};
 use crate::query::{parse_optional_expr, Expr, Tester};
-use crate::server::schema::{MorpheusSchema, SchemaContainer, SchemaError, SchemaType, ToSchemaId};
+use crate::server::schema::{MorpheusSchema, SchemaContainer, SchemaError, GraphSchema, ToSchemaId};
 
 use std::future::Future;
 
@@ -28,7 +28,7 @@ pub mod vertex;
 #[derive(Debug)]
 pub enum NewVertexError {
     SchemaNotFound,
-    SchemaNotVertex(SchemaType),
+    SchemaNotVertex(GraphSchema),
     CannotGenerateCellByData,
     DataNotMap,
     RPCError(RPCError),
@@ -87,7 +87,7 @@ fn vertex_to_cell_for_write(
 ) -> Result<OwnedCell, NewVertexError> {
     let schema_id = vertex.schema();
     if let Some(stype) = schemas.schema_type(schema_id) {
-        if stype != SchemaType::Vertex {
+        if stype != GraphSchema::Vertex {
             return Err(NewVertexError::SchemaNotVertex(stype));
         }
     } else {
@@ -175,7 +175,7 @@ impl Graph {
         &self,
         mut schema: MorpheusSchema,
     ) -> impl Future<Output = Result<u32, SchemaError>> {
-        schema.schema_type = SchemaType::Vertex;
+        schema.schema_type = GraphSchema::Vertex;
         self.schemas.new_schema(schema)
     }
     pub fn new_edge_group(
@@ -183,7 +183,7 @@ impl Graph {
         mut schema: MorpheusSchema,
         edge_attrs: edge::EdgeAttributes,
     ) -> impl Future<Output = Result<u32, SchemaError>> {
-        schema.schema_type = SchemaType::Edge(edge_attrs);
+        schema.schema_type = GraphSchema::Edge(edge_attrs);
         self.schemas.new_schema(schema)
     }
     pub async fn new_vertex<S>(&self, schema: S, data: OwnedMap) -> Result<Vertex, NewVertexError>
@@ -443,7 +443,7 @@ impl GraphTransaction {
         let to_id = to.to_id();
         let schema_id = schema.to_id(&self.schemas);
         let edge_attr = match self.schemas.schema_type(schema_id) {
-            Some(SchemaType::Edge(ea)) => ea,
+            Some(GraphSchema::Edge(ea)) => ea,
             Some(_) => return Ok(Err(LinkVerticesError::SchemaNotEdge)),
             None => return Ok(Err(LinkVerticesError::EdgeSchemaNotFound)),
         };
@@ -684,7 +684,7 @@ where
     Ok((
         schema_id,
         match schemas.schema_type(schema_id) {
-            Some(SchemaType::Edge(ea)) => ea,
+            Some(GraphSchema::Edge(ea)) => ea,
             Some(_) => return Err(EdgeError::WrongSchema),
             None => return Err(EdgeError::CannotFindSchema),
         },

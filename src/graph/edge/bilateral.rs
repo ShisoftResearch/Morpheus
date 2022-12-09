@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use super::super::id_list::IdList;
 use super::{EdgeError, TEdge};
-use crate::server::schema::{SchemaContainer, SchemaType};
+use crate::server::schema::{SchemaContainer, GraphSchema};
 
 use rand::prelude::*;
 
@@ -46,7 +46,7 @@ pub trait BilateralEdge: TEdge + Sync + Send {
             let mut a_id = Id::unit_id();
             let mut b_id = Id::unit_id();
             let edge_cell = match cell_schema_type {
-                SchemaType::Vertex => {
+                GraphSchema::Vertex => {
                     if vertex_field == Self::vertex_a_field() {
                         a_id = vertex_id;
                         b_id = id;
@@ -58,7 +58,7 @@ pub trait BilateralEdge: TEdge + Sync + Send {
                     }
                     None
                 }
-                SchemaType::Edge(edge_attrs) => {
+                GraphSchema::Edge(edge_attrs) => {
                     if edge_attrs.edge_type == Self::edge_type() {
                         if let (&OwnedValue::Id(e_a_id), &OwnedValue::Id(e_b_id)) = (
                             &trace_cell.data[Self::edge_a_field()],
@@ -92,7 +92,7 @@ pub trait BilateralEdge: TEdge + Sync + Send {
             let mut vertex_b_pointer = Id::unit_id();
             let edge_cell = {
                 match schemas.schema_type(schema_id) {
-                    Some(SchemaType::Edge(ea)) => {
+                    Some(GraphSchema::Edge(ea)) => {
                         if ea.edge_type != Self::edge_type() {
                             return Ok(Err(EdgeError::WrongEdgeType));
                         }

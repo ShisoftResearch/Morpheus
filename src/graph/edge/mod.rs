@@ -8,7 +8,7 @@ pub mod undirectd;
 
 use super::id_list::IdListError;
 use crate::graph::edge::bilateral::BilateralEdge;
-use crate::server::schema::{SchemaContainer, SchemaType};
+use crate::server::schema::{SchemaContainer, GraphSchema};
 use dovahkiin::types::{OwnedValue, SharedValue, Value};
 use neb::client::transaction::{Transaction, TxnError};
 use neb::ram::cell::{Cell, OwnedCell, SharedCell};
@@ -129,7 +129,7 @@ pub async fn from_id(
     id: Id,
 ) -> Result<Result<Edge, EdgeError>, TxnError> {
     match schemas.schema_type(schema_id) {
-        Some(SchemaType::Edge(ea)) => match ea.edge_type {
+        Some(GraphSchema::Edge(ea)) => match ea.edge_type {
             EdgeType::Directed => directed::DirectedEdge::from_id(
                 vertex_id,
                 vertex_field,
