@@ -12,7 +12,9 @@ impl Symbol for Insert {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug)]
@@ -25,7 +27,9 @@ impl Symbol for Select {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug)]
@@ -38,7 +42,9 @@ impl Symbol for Update {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug)]
@@ -51,5 +57,7 @@ impl Symbol for Delete {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }

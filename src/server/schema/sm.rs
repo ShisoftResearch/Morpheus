@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use super::SchemaType;
+use std::collections::HashMap;
 
 pub static DEFAULT_RAFT_PREFIX: &'static str = "MORPHEUS_SCHEMA_RAFT_SM";
 

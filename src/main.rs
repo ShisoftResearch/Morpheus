@@ -15,20 +15,20 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
-extern crate log4rs;
 extern crate env_logger;
-extern crate yaml_rust;
+extern crate log4rs;
 extern crate serde_yaml;
+extern crate yaml_rust;
 
 use futures::Future;
 
-mod graph;
-mod server;
-mod utils;
 mod config;
+mod graph;
 mod query;
+mod server;
 #[cfg(test)]
 mod tests;
+mod utils;
 
 use std::thread;
 

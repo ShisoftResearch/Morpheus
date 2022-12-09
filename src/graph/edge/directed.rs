@@ -1,18 +1,18 @@
 use dovahkiin::types::Type;
+use neb::ram::cell::OwnedCell;
 use neb::ram::schema::Field;
 use neb::ram::types::Id;
-use neb::ram::cell::OwnedCell;
 use neb::ram::types::OwnedValue;
 
-use super::{TEdge, EdgeType};
 use super::bilateral::BilateralEdge;
+use super::{EdgeType, TEdge};
 use crate::graph::fields::*;
 
 lazy_static! {
     pub static ref EDGE_TEMPLATE: Vec<Field> = vec![
-            Field::new(&*INBOUND_NAME, Type::Id, false, false, None, vec![]),
-            Field::new(&*OUTBOUND_NAME, Type::Id, false, false, None, vec![]),
-        ];
+        Field::new(&*INBOUND_NAME, Type::Id, false, false, None, vec![]),
+        Field::new(&*OUTBOUND_NAME, Type::Id, false, false, None, vec![]),
+    ];
 }
 
 #[derive(Debug)]
@@ -31,7 +31,6 @@ impl TEdge for DirectedEdge {
 }
 
 impl BilateralEdge for DirectedEdge {
-
     fn vertex_a_field() -> u64 {
         *OUTBOUND_KEY_ID
     }
@@ -61,7 +60,7 @@ impl BilateralEdge for DirectedEdge {
             inbound_id: a_field,
             outbound_id: b_field,
             schema_id: schema_id,
-            cell: cell
+            cell: cell,
         }
     }
 
@@ -80,5 +79,3 @@ pub struct DirectedHyperEdge {
 }
 
 edge_index!(DirectedEdge);
-
-

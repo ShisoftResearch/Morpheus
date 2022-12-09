@@ -13,7 +13,9 @@ impl Symbol for Insert {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }
 
 // (select-cell "<schema>" <cell-id>)
@@ -28,7 +30,9 @@ impl Symbol for Select {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }
 
 // (update-cell "<schema>" <cell-id> (hashmap ...))
@@ -43,7 +47,9 @@ impl Symbol for Update {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }
 
 // (delete-cell "<schema>" <cell-id>)
@@ -58,5 +64,7 @@ impl Symbol for Delete {
     ) -> Result<SExpr<'a>, String> {
         unimplemented!();
     }
-    fn is_macro(&self) -> bool { true }
+    fn is_macro(&self) -> bool {
+        true
+    }
 }

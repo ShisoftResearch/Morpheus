@@ -1,38 +1,38 @@
 #[macro_use]
 mod macros;
 
-pub mod directed;
-pub mod undirectd;
-pub mod hyper;
 pub mod bilateral;
+pub mod directed;
+pub mod hyper;
+pub mod undirectd;
 
-use std::ops::{Index, IndexMut};
-use dovahkiin::types::{Value, SharedValue, OwnedValue};
-use neb::ram::types::Id;
-use neb::ram::cell::{Cell, SharedCell, OwnedCell};
-use neb::client::transaction::{Transaction, TxnError};
+use super::id_list::IdListError;
 use crate::graph::edge::bilateral::BilateralEdge;
 use crate::server::schema::{SchemaContainer, SchemaType};
-use super::id_list::IdListError;
+use dovahkiin::types::{OwnedValue, SharedValue, Value};
+use neb::client::transaction::{Transaction, TxnError};
+use neb::ram::cell::{Cell, OwnedCell, SharedCell};
+use neb::ram::types::Id;
+use std::ops::{Index, IndexMut};
 use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub enum EdgeType {
     Directed,
-    Undirected
+    Undirected,
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub struct EdgeAttributes {
     pub edge_type: EdgeType,
-    pub has_body: bool
+    pub has_body: bool,
 }
 
 impl EdgeAttributes {
     pub fn new(edge_type: EdgeType, has_body: bool) -> EdgeAttributes {
         EdgeAttributes {
             edge_type: edge_type,
-            has_body: has_body
+            has_body: has_body,
         }
     }
 }
@@ -47,23 +47,22 @@ pub enum EdgeError {
     IdListError(IdListError),
     SimpleEdgeShouldNotHaveBody,
     NormalEdgeShouldHaveBody,
-    FilterEvalError(String)
+    FilterEvalError(String),
 }
 
 pub trait TEdge {
-    type Edge : TEdge;
+    type Edge: TEdge;
     fn edge_type() -> EdgeType;
 }
 
 #[derive(Debug)]
 pub enum Edge {
     Directed(directed::DirectedEdge),
-    Undirected(undirectd::UndirectedEdge)
+    Undirected(undirectd::UndirectedEdge),
 }
 
 impl Edge {
-    pub async fn remove (self, txn: &Transaction)
-        -> Result<Result<(), EdgeError>, TxnError> {
+    pub async fn remove(self, txn: &Transaction) -> Result<Result<(), EdgeError>, TxnError> {
         match self {
             Edge::Directed(mut e) => e.remove(txn).await,
             Edge::Undirected(mut e) => e.remove(txn).await,
@@ -93,7 +92,7 @@ impl Index<u64> for Edge {
     }
 }
 
-impl <'a> Index<&'a str> for Edge {
+impl<'a> Index<&'a str> for Edge {
     type Output = OwnedValue;
     fn index(&self, index: &'a str) -> &Self::Output {
         match self {
@@ -103,7 +102,7 @@ impl <'a> Index<&'a str> for Edge {
     }
 }
 
-impl <'a> IndexMut <&'a str> for Edge {
+impl<'a> IndexMut<&'a str> for Edge {
     fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
         match self {
             &mut Edge::Directed(ref mut e) => &mut e[index],
@@ -122,21 +121,37 @@ impl IndexMut<u64> for Edge {
 }
 
 pub async fn from_id(
-    vertex_id: Id, vertex_field: u64, schema_id: u32,
-    schemas: &Arc<SchemaContainer>, txn: &Transaction, id: Id
+    vertex_id: Id,
+    vertex_field: u64,
+    schema_id: u32,
+    schemas: &Arc<SchemaContainer>,
+    txn: &Transaction,
+    id: Id,
 ) -> Result<Result<Edge, EdgeError>, TxnError> {
     match schemas.schema_type(schema_id) {
-        Some(SchemaType::Edge(ea)) => {
-            match ea.edge_type {
-                EdgeType::Directed => directed::DirectedEdge::from_id(
-                    vertex_id, vertex_field, schema_id, schemas, txn, id
-                ).await.map(|r| r.map(Edge::Directed)),
-                EdgeType::Undirected => undirectd::UndirectedEdge::from_id(
-                    vertex_id, vertex_field, schema_id, schemas, txn, id
-                ).await.map(|r| r.map(Edge::Undirected))
-            }
+        Some(SchemaType::Edge(ea)) => match ea.edge_type {
+            EdgeType::Directed => directed::DirectedEdge::from_id(
+                vertex_id,
+                vertex_field,
+                schema_id,
+                schemas,
+                txn,
+                id,
+            )
+            .await
+            .map(|r| r.map(Edge::Directed)),
+            EdgeType::Undirected => undirectd::UndirectedEdge::from_id(
+                vertex_id,
+                vertex_field,
+                schema_id,
+                schemas,
+                txn,
+                id,
+            )
+            .await
+            .map(|r| r.map(Edge::Undirected)),
         },
         Some(_) => return Ok(Err(EdgeError::WrongSchema)),
-        None => return Ok(Err(EdgeError::CannotFindSchema))
+        None => return Ok(Err(EdgeError::CannotFindSchema)),
     }
 }

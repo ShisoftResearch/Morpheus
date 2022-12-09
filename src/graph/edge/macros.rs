@@ -13,7 +13,7 @@ macro_rules! edge_index {
             }
         }
 
-        impl <'a> Index<&'a str> for $struc {
+        impl<'a> Index<&'a str> for $struc {
             type Output = OwnedValue;
             fn index(&self, index: &'a str) -> &Self::Output {
                 if let Some(ref cell) = self.cell {
@@ -24,7 +24,7 @@ macro_rules! edge_index {
             }
         }
 
-        impl <'a> IndexMut <&'a str> for $struc {
+        impl<'a> IndexMut<&'a str> for $struc {
             fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
                 if let &mut Some(ref mut cell) = &mut self.cell {
                     &mut cell[index]

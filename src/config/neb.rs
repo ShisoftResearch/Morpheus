@@ -1,7 +1,7 @@
-use neb::server::*;
 use crate::utils::file::slurp;
+use neb::server::*;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_yaml;
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
 
 pub fn options_from_file<'a>(file: &'a str) -> ServerOptions {
     let file_text = slurp(file).unwrap();
