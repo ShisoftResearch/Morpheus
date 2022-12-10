@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
 
 pub fn slurp<'a>(file: &'a str) -> io::Result<String> {
     let mut file = File::open(file)?;
