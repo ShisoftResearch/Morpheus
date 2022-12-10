@@ -1,0 +1,15 @@
+server_addr: 127.0.0.1:5400
+group_name: Morpheus
+meta_members:
+  - 127.0.0.1:5400
+storage: 
+  chunk_count: 8
+  memory_size: 8192 # 8GB
+  backup_storage: null
+  wal_storage: null
+  services:
+    - Cell
+    - Transaction
+    - RangedIndexer
+    - Query
+  index_enabled: true

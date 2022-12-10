@@ -50,6 +50,8 @@ impl MorpheusServer {
             .await
             .unwrap(),
         );
+        debug!("Initializing schemas");
+        schema::SchemaContainer::new_meta_service(group_name, &neb_server.raft_service).await;
         let schema_container = schema::SchemaContainer::new_client(
             group_name,
             &neb_client.raft_client,
@@ -58,6 +60,7 @@ impl MorpheusServer {
         )
         .await
         .map_err(MorpheusServerError::InitSchemaError)?;
+        debug!("Schema container initialized");
         let graph = Arc::new(
             Graph::new(&schema_container, &neb_client)
                 .map_err(MorpheusServerError::InitSchemaError)

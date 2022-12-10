@@ -14,6 +14,7 @@ use neb::ram::types::Type;
 
 #[tokio::test]
 pub async fn schemas() {
+    let _ = env_logger::try_init();
     let server = start_server(4001, "schemas").await.unwrap();
     let graph = &server.graph;
     let edge_schema = MorpheusSchema::new(
