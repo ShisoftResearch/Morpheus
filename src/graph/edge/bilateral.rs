@@ -2,7 +2,7 @@ use dovahkiin::types::{Map, OwnedMap, OwnedValue};
 use futures::future::BoxFuture;
 use futures::{FutureExt, TryFutureExt};
 use neb::client::transaction::{Transaction, TxnError};
-use neb::ram::cell::{Cell, OwnedCell};
+use neb::ram::cell::OwnedCell;
 use neb::ram::types::Id;
 use std::sync::Arc;
 
@@ -89,8 +89,8 @@ pub trait BilateralEdge: TEdge + Sync + Send {
         schemas: &'a Arc<SchemaContainer>,
     ) -> BoxFuture<'a, Result<Result<Self::Edge, EdgeError>, TxnError>> {
         async move {
-            let mut vertex_a_pointer = Id::unit_id();
-            let mut vertex_b_pointer = Id::unit_id();
+            let vertex_a_pointer;
+            let vertex_b_pointer;
             let edge_cell = {
                 match schemas.schema_type(schema_id) {
                     Some(GraphSchema::Edge(ea)) => {

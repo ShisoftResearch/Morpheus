@@ -1,6 +1,6 @@
 use dovahkiin::types::Type;
 use neb::ram::schema::Field;
-use neb::ram::types::{key_hash, Id};
+use neb::ram::types::key_hash;
 
 pub const INBOUND_KEY: &'static str = "_inbound";
 pub const OUTBOUND_KEY: &'static str = "_outbound";

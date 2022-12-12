@@ -3,10 +3,10 @@ use bifrost::rpc::RPCError;
 use neb::client::transaction::{Transaction, TxnError};
 use neb::client::AsyncClient as NebClient;
 use neb::dovahkiin::expr::SExpr;
-use neb::dovahkiin::types::{ToValue, Value};
-use neb::ram::cell::{Cell, OwnedCell, ReadError, SharedCell, WriteError};
+use neb::dovahkiin::types::ToValue;
+use neb::ram::cell::{OwnedCell, ReadError, WriteError};
 use neb::ram::schema::{Field, Schema};
-use neb::ram::types::{key_hash, Id};
+use neb::ram::types::Id;
 
 use crate::graph::edge::bilateral::BilateralEdge;
 use crate::graph::edge::{EdgeAttributes, EdgeError};
@@ -149,7 +149,8 @@ impl Graph {
                         false,
                         false,
                     ))
-                    .await?;
+                    .await?
+                    .unwrap();
             }
             _ => {}
         }

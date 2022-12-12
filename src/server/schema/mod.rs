@@ -10,7 +10,7 @@ use dovahkiin::types::Type;
 use futures::{future, Future, FutureExt, TryFutureExt};
 use lightning::map::{Map, PtrHashMap as LFHashMap};
 use neb::client::AsyncClient as NebClient;
-use neb::ram::schema::{Field, Schema, NewSchemaError, DelSchemaError};
+use neb::ram::schema::{DelSchemaError, Field, NewSchemaError, Schema};
 use neb::server::ServerMeta as NebServerMeta;
 use std::sync::Arc;
 
@@ -103,7 +103,9 @@ pub fn generate_sm_id<'a>(group: &'a str) -> u64 {
 impl SchemaContainer {
     pub async fn new_meta_service<'a>(group: &'a str, raft_service: &Arc<RaftService>) {
         let container_sm = sm::GraphSchemasSM::new(generate_sm_id(group), raft_service).await;
-        raft_service.register_state_machine(Box::new(container_sm)).await;
+        raft_service
+            .register_state_machine(Box::new(container_sm))
+            .await;
     }
 
     pub async fn new_client<'a>(
@@ -132,13 +134,15 @@ impl SchemaContainer {
                 container_ref1.map.insert(id, schema_type);
                 future::ready(()).boxed()
             })
-            .await?.unwrap();
+            .await?
+            .unwrap();
         let _r2 = sm_client
             .on_schema_deleted(move |id| {
                 container_ref2.map.remove(&id);
                 future::ready(()).boxed()
             })
-            .await?.unwrap();
+            .await?
+            .unwrap();
         return Ok(container_ref);
     }
 
@@ -173,7 +177,9 @@ impl SchemaContainer {
     }
 
     pub async fn del_schema(&self, schema_name: &String) -> Result<(), SchemaError> {
-        self.neb_client.del_schema(schema_name.clone()).await
+        self.neb_client
+            .del_schema(schema_name.clone())
+            .await
             .map_err(|e| SchemaError::NebSchemaExecError(e))?
             .map_err(|e| SchemaError::DelNebSchemaVerificationError(e))
     }

@@ -1,16 +1,11 @@
-use dovahkiin::types::{Map, OwnedMap, OwnedValue, SharedValue, Value};
-use futures::{stream, Stream};
+use dovahkiin::types::{Map, OwnedMap, OwnedPrimArray, OwnedValue};
 use neb::client::transaction::{Transaction, TxnError};
-use neb::ram::cell::{Cell, OwnedCell, SharedCell, MAX_CELL_SIZE};
-use neb::ram::schema::{Field, Schema};
-use neb::ram::types::{key_hash, Id, SharedMap, Type};
-
+use neb::ram::cell::{Cell, OwnedCell, MAX_CELL_SIZE};
+use neb::ram::schema::Field;
+use neb::ram::types::{key_hash, Id, Type};
 use std::collections::BTreeSet;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 use crate::utils::transaction::set_map_by_key_id;
-
 pub const NEXT_KEY: &'static str = "_next";
 pub const LIST_KEY: &'static str = "_list";
 
@@ -126,13 +121,19 @@ fn empty_type_list(container_id: &Id, field_id: u64) -> (Id, OwnedValue) {
 }
 
 fn count_cell_list(seg: &OwnedCell) -> Result<usize, IdListError> {
-    if let &OwnedValue::Map(ref map) = &seg.data {
-        if let &OwnedValue::Array(ref array) = map.get_by_key_id(*LIST_KEY_ID) {
+    let seg_data = &seg.data;
+    if let &OwnedValue::Map(ref map) = seg_data {
+        let list_key = map.get_by_key_id(*LIST_KEY_ID);
+        if let &OwnedValue::Array(ref array) = list_key {
+            Ok(array.len())
+        } else if let &OwnedValue::PrimArray(ref array) = list_key {
             Ok(array.len())
         } else {
+            error!("Count failed, list_key is not array, {:?}", list_key);
             Err(IdListError::FormatError)
         }
     } else {
+        error!("Count failed, segment is not map, {:?}", seg_data);
         Err(IdListError::FormatError)
     }
 }
@@ -173,7 +174,7 @@ impl<'a> IdList<'a> {
         field_id: u64,
     ) -> Result<Option<(Id, Vec<u32>)>, TxnError> {
         if let Some(fields) = txn.read_selected(container_id, vec![field_id]).await? {
-            if let OwnedValue::Id(id) = fields[0] {
+            if let OwnedValue::Id(id) = fields[field_id] {
                 if !id.is_unit_id() {
                     if let Some(cell) = txn.read(id).await? {
                         if let OwnedValue::Array(ref type_list) = cell.data[*ID_TYPES_MAP_ID] {
@@ -204,7 +205,8 @@ impl<'a> IdList<'a> {
             .await?
         {
             Some(fields) => {
-                if let OwnedValue::Id(id) = fields[0] {
+                let first_field = &fields[0usize];
+                if let OwnedValue::Id(id) = first_field {
                     let type_list_id = {
                         if id.is_unit_id() && ensure_container {
                             let (type_list_id, type_list) =
@@ -224,7 +226,7 @@ impl<'a> IdList<'a> {
                             .await?;
                             type_list_id
                         } else {
-                            id
+                            *id
                         }
                     };
                     if type_list_id.is_unit_id() {
@@ -234,7 +236,8 @@ impl<'a> IdList<'a> {
                             if let Some(cell) = self.txn.read(type_list_id).await? {
                                 cell
                             } else {
-                                return Ok(Err(IdListError::Unexpected));
+                                error!("Cannot find type list with id {:?}", type_list_id);
+                                return Ok(Err(IdListError::FormatError));
                             }; // in this time type list should existed
                         if let OwnedValue::Array(ref type_list) =
                             type_list_cell.data[*ID_TYPES_MAP_ID]
@@ -250,11 +253,19 @@ impl<'a> IdList<'a> {
                                 if let OwnedValue::Id(list_id) = id_list_pair[*ID_TYPES_LIST_ID] {
                                     return Ok(Ok(list_id));
                                 } else {
-                                    return Ok(Err(IdListError::Unexpected));
+                                    error!(
+                                        "Cannot find id type list {:?}, list id {}",
+                                        id_list_pair, *ID_TYPES_LIST_ID
+                                    );
+                                    return Ok(Err(IdListError::FormatError));
                                 }
                             }
                         } else {
-                            return Ok(Err(IdListError::Unexpected));
+                            error!(
+                                "Id types map is not array {:?}, id {}",
+                                type_list_cell.data, *ID_TYPES_MAP_ID
+                            );
+                            return Ok(Err(IdListError::FormatError));
                         }
                         if ensure_container {
                             // if not, create the id list and add it into schema list
@@ -280,7 +291,11 @@ impl<'a> IdList<'a> {
                             {
                                 type_list.push(OwnedValue::Map(id_list_pair_map));
                             } else {
-                                return Ok(Err(IdListError::Unexpected));
+                                error!(
+                                    "id pair is not array {:?}, id {}",
+                                    type_list_cell.data, *ID_TYPES_MAP_ID
+                                );
+                                return Ok(Err(IdListError::FormatError));
                             }
                             self.txn.update(type_list_cell).await?; // update type list               |
                             return Ok(Ok(list_id));
@@ -289,6 +304,11 @@ impl<'a> IdList<'a> {
                         }
                     }
                 } else {
+                    error!(
+                        "First field is not id. Got {:?}, cell data {:?}",
+                        first_field,
+                        fields.data()
+                    );
                     Ok(Err(IdListError::FormatError))
                 }
             }
@@ -344,6 +364,10 @@ impl<'a> IdList<'a> {
             if let Some(seg) = last_seg {
                 seg
             } else {
+                error!(
+                    "Last segment cell doesn not existed, id {:?}, root {:?}",
+                    last_seg_id, list_root_id
+                );
                 return Ok(Err(IdListError::Unexpected));
             }
         };
@@ -372,13 +396,19 @@ impl<'a> IdList<'a> {
             .await?;
             last_seg = next_seg_cell;
         }
-        if let &mut OwnedValue::Map(ref mut map) = &mut last_seg.data {
-            if let &mut OwnedValue::Array(ref mut array) = map.get_mut_by_key_id(*LIST_KEY_ID) {
+        let seg_data = &mut last_seg.data;
+        if let &mut OwnedValue::Map(ref mut map) = seg_data {
+            let list = map.get_mut_by_key_id(*LIST_KEY_ID);
+            if let &mut OwnedValue::PrimArray(OwnedPrimArray::Id(ref mut array)) = list {
+                array.push(*id);
+            } else if let &mut OwnedValue::Array(ref mut array) = list {
                 array.push(OwnedValue::Id(*id));
             } else {
+                error!("Last segment data list is not array {:?}", list);
                 return Ok(Err(IdListError::FormatError));
             }
         } else {
+            error!("Last segment data is not map {:?}", seg_data);
             return Ok(Err(IdListError::FormatError));
         }
         Ok(Ok(self.txn.update(last_seg).await?))
@@ -389,7 +419,6 @@ impl<'a> IdList<'a> {
         id: &Id,
         all: bool,
     ) -> Result<Result<(), IdListError>, TxnError> {
-        let id_value = OwnedValue::Id(*id);
         let contained_segs = {
             // collect affected segment cell ids
             let mut iter = match self.iter().await? {
@@ -434,7 +463,7 @@ impl<'a> IdList<'a> {
                     } else {
                         return Ok(Err(IdListError::FormatError));
                     }
-                    self.txn.update(seg);
+                    self.txn.update(seg).await.unwrap();
                     if !all {
                         break;
                     }
@@ -477,20 +506,27 @@ impl<'a> IdListSegmentIdIterator<'a> {
 
     pub async fn next(&mut self) -> Option<Id> {
         if !self.next.is_unit_id() {
-            match self
+            let cell = self
                 .txn
                 .read_selected(self.next, NEXT_KEY_ID_VEC.clone())
-                .await
-            {
+                .await;
+            match &cell {
                 Ok(Some(fields)) => {
                     let current_id = self.next;
-                    if let OwnedValue::Id(ref id) = fields[0] {
+                    if let OwnedValue::Id(ref id) = fields[0usize] {
                         self.next = *id;
                         self.level += 1;
                         return Some(current_id);
+                    } else {
+                        error!(
+                            "Cell does not have next key, got {:?}, key id {}",
+                            fields, *NEXT_KEY_ID
+                        );
                     }
                 }
-                _ => {}
+                _ => {
+                    error!("Cannot find next key, got cell {:?}", cell)
+                }
             }
         }
         None

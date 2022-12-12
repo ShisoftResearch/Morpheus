@@ -3,13 +3,11 @@ use crate::graph::id_list::{IdList, IdListError};
 use crate::server::schema::SchemaContainer;
 use dovahkiin::types::{OwnedMap, OwnedValue};
 use neb::client::transaction::{Transaction, TxnError};
-use neb::dovahkiin::types::Value;
-use neb::ram::cell::{OwnedCell, SharedCell};
-use neb::ram::types::{key_hash, Id};
+use neb::ram::cell::OwnedCell;
+use neb::ram::types::Id;
 
 use super::EdgeDirection;
 use std::ops::{Index, IndexMut};
-use std::process::Output;
 use std::sync::Arc;
 
 #[derive(Debug)]

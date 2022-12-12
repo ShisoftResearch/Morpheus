@@ -65,16 +65,16 @@ pub async fn schemas() {
 
 #[tokio::test]
 pub async fn relationship() {
-    env_logger::init();
+    let _ = env_logger::try_init();
     let server = start_server(4002, "relationship").await.unwrap();
     let graph = &server.graph;
-    let mut people_schema = MorpheusSchema::new(
+    let people_schema = MorpheusSchema::new(
         "people",
         Some(&vec!["name".to_string()]),
         &vec![Field::new("name", Type::String, false, false, None, vec![])],
         true,
     );
-    let mut movie_schema = MorpheusSchema::new(
+    let movie_schema = MorpheusSchema::new(
         "movie",
         Some(&vec!["name".to_string()]),
         &vec![
@@ -83,13 +83,13 @@ pub async fn relationship() {
         ],
         true,
     );
-    let mut acted_in_schema = MorpheusSchema::new(
+    let acted_in_schema = MorpheusSchema::new(
         "acted-in",
         None,
         &vec![Field::new("role", Type::String, false, false, None, vec![])],
         true,
     );
-    let mut spouse_schema = MorpheusSchema::new("spouse", None, &EMPTY_FIELDS, false);
+    let spouse_schema = MorpheusSchema::new("spouse", None, &EMPTY_FIELDS, false);
     let people_schema_id = graph.new_vertex_group(people_schema).await.unwrap();
     let movie_schema_id = graph.new_vertex_group(movie_schema).await.unwrap();
     let acted_in_schema_id = graph
@@ -322,6 +322,16 @@ pub async fn relationship() {
         .await
         .unwrap()
         .unwrap();
+
+    assert_eq!(
+        graph
+            .edges(&morgan_freeman, "acted-in", EdgeDirection::Outbound, &None)
+            .await
+            .unwrap()
+            .unwrap()
+            .len(),
+        3
+    );
 
     assert_eq!(
         graph
