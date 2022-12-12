@@ -105,7 +105,10 @@ fn empty_list_segment(
     let list_id = Id::new(container_id.higher, key_hash(&str_id));
     let mut list_map = OwnedMap::new();
     list_map.insert_key_id(*NEXT_KEY_ID, OwnedValue::Id(Id::unit_id()));
-    list_map.insert_key_id(*LIST_KEY_ID, OwnedValue::Array(Vec::new()));
+    list_map.insert_key_id(
+        *LIST_KEY_ID,
+        OwnedValue::PrimArray(OwnedPrimArray::Id(vec![])),
+    );
     return (list_id, OwnedValue::Map(list_map));
 }
 
@@ -124,9 +127,7 @@ fn count_cell_list(seg: &OwnedCell) -> Result<usize, IdListError> {
     let seg_data = &seg.data;
     if let &OwnedValue::Map(ref map) = seg_data {
         let list_key = map.get_by_key_id(*LIST_KEY_ID);
-        if let &OwnedValue::Array(ref array) = list_key {
-            Ok(array.len())
-        } else if let &OwnedValue::PrimArray(ref array) = list_key {
+        if let &OwnedValue::PrimArray(ref array) = list_key {
             Ok(array.len())
         } else {
             error!("Count failed, list_key is not array, {:?}", list_key);
@@ -174,10 +175,10 @@ impl<'a> IdList<'a> {
         field_id: u64,
     ) -> Result<Option<(Id, Vec<u32>)>, TxnError> {
         if let Some(fields) = txn.read_selected(container_id, vec![field_id]).await? {
-            if let OwnedValue::Id(id) = fields[field_id] {
+            if let OwnedValue::Id(id) = fields[0usize] {
                 if !id.is_unit_id() {
                     if let Some(cell) = txn.read(id).await? {
-                        if let OwnedValue::Array(ref type_list) = cell.data[*ID_TYPES_MAP_ID] {
+                        if let OwnedValue::Array(ref type_list) = cell[*ID_TYPES_MAP_ID] {
                             let mut res = Vec::new();
                             for value in type_list {
                                 if let OwnedValue::U32(ref schema_id) =
@@ -239,9 +240,7 @@ impl<'a> IdList<'a> {
                                 error!("Cannot find type list with id {:?}", type_list_id);
                                 return Ok(Err(IdListError::FormatError));
                             }; // in this time type list should existed
-                        if let OwnedValue::Array(ref type_list) =
-                            type_list_cell.data[*ID_TYPES_MAP_ID]
-                        {
+                        if let OwnedValue::Array(ref type_list) = type_list_cell[*ID_TYPES_MAP_ID] {
                             if let Some(id_list_pair) = type_list.iter().find(|val| {
                                 // trying to find schema list in the type list
                                 match val[*ID_TYPES_SCHEMA_ID_ID] {
@@ -287,7 +286,7 @@ impl<'a> IdList<'a> {
                             id_list_pair_map
                                 .insert_key_id(*ID_TYPES_LIST_ID, OwnedValue::Id(list_id));
                             if let &mut OwnedValue::Array(ref mut type_list) =
-                                &mut type_list_cell.data[*ID_TYPES_MAP_ID]
+                                &mut type_list_cell[*ID_TYPES_MAP_ID]
                             {
                                 type_list.push(OwnedValue::Map(id_list_pair_map));
                             } else {
@@ -401,8 +400,6 @@ impl<'a> IdList<'a> {
             let list = map.get_mut_by_key_id(*LIST_KEY_ID);
             if let &mut OwnedValue::PrimArray(OwnedPrimArray::Id(ref mut array)) = list {
                 array.push(*id);
-            } else if let &mut OwnedValue::Array(ref mut array) = list {
-                array.push(OwnedValue::Id(*id));
             } else {
                 error!("Last segment data list is not array {:?}", list);
                 return Ok(Err(IdListError::FormatError));
@@ -445,18 +442,14 @@ impl<'a> IdList<'a> {
             match self.txn.read(seg_id).await? {
                 Some(mut seg) => {
                     if let &mut OwnedValue::Map(ref mut map) = &mut seg.data {
-                        if let &mut OwnedValue::Array(ref mut array) =
+                        if let &mut OwnedValue::PrimArray(OwnedPrimArray::Id(ref mut array)) =
                             map.get_mut_by_key_id(*LIST_KEY_ID)
                         {
-                            if all {
-                                array.retain(|v| !val_is_id(v, id));
-                            } else {
-                                let index = match array.iter().position(|v| val_is_id(v, id)) {
-                                    Some(pos) => pos,
-                                    None => return Ok(Err(IdListError::Unexpected)),
-                                };
-                                array.remove(index);
-                            }
+                            let index = match array.iter().position(|v| id == v) {
+                                Some(pos) => pos,
+                                None => return Ok(Err(IdListError::Unexpected)),
+                            };
+                            array.remove(index);
                         } else {
                             return Ok(Err(IdListError::FormatError));
                         }
@@ -584,12 +577,14 @@ impl<'a> IdListIterator<'a> {
         self.current_pos = 0;
     }
 
-    pub fn get_curr_seg_list(&self) -> Option<&Vec<OwnedValue>> {
+    pub fn get_curr_seg_list(&self) -> Option<&Vec<Id>> {
         if let Some(ref cell) = self.current_seg {
-            let pos = self.current_pos;
             if let &OwnedValue::Map(ref map) = &cell.data {
-                if let &OwnedValue::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
+                let list_val = map.get_by_key_id(*LIST_KEY_ID);
+                if let &OwnedValue::PrimArray(OwnedPrimArray::Id(ref list)) = list_val {
                     return Some(&list);
+                } else {
+                    error!("Expecting primitive array got: {:?}", list_val);
                 }
             }
         }
@@ -600,12 +595,11 @@ impl<'a> IdListIterator<'a> {
         loop {
             let mut need_next_seg = false;
             let item = if let Some(list) = self.get_curr_seg_list() {
-                if let Some(&OwnedValue::Id(id)) = list.get(self.current_pos as usize) {
-                    Some(id)
-                } else {
+                let id = list.get(self.current_pos as usize);
+                if id.is_none() {
                     need_next_seg = true;
-                    None
                 }
+                id
             } else {
                 None
             };
@@ -613,10 +607,11 @@ impl<'a> IdListIterator<'a> {
                 self.next_seg().await;
                 continue;
             } else {
+                let res = item.cloned();
                 if item.is_some() {
                     self.current_pos += 1;
                 }
-                return item;
+                return res;
             }
         }
     }
@@ -632,18 +627,17 @@ impl<'a> IdListIterator<'a> {
             .cloned();
         if let Some(last_seg) = self.segments.last().await {
             if let &OwnedValue::Map(ref map) = &last_seg.data {
-                if let &OwnedValue::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
-                    if let Some(&OwnedValue::Id(id)) = list.last() {
-                        return Some(id);
+                let list_val = map.get_by_key_id(*LIST_KEY_ID);
+                if let &OwnedValue::PrimArray(OwnedPrimArray::Id(ref list)) = list_val {
+                    if let Some(id) = list.last() {
+                        return Some(*id);
                     }
+                } else {
+                    error!("Expecting primitive array but got {:?}", list_val);
                 }
             }
         }
-        return if let Some(OwnedValue::Id(id)) = last_value {
-            Some(id)
-        } else {
-            None
-        };
+        return last_value;
     }
 
     pub async fn count(mut self) -> usize
@@ -653,7 +647,9 @@ impl<'a> IdListIterator<'a> {
         let mut count = self.get_curr_seg_list().map(|l| l.len()).unwrap_or(0);
         while let Some(seg) = self.segments.next().await {
             if let &OwnedValue::Map(ref map) = &seg.data {
-                if let &OwnedValue::Array(ref list) = map.get_by_key_id(*LIST_KEY_ID) {
+                if let &OwnedValue::PrimArray(OwnedPrimArray::Id(ref list)) =
+                    map.get_by_key_id(*LIST_KEY_ID)
+                {
                     count += list.len();
                 }
             }

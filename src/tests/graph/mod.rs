@@ -325,7 +325,7 @@ pub async fn relationship() {
 
     assert_eq!(
         graph
-            .edges(&morgan_freeman, "acted-in", EdgeDirection::Outbound, &None)
+            .edges::<_, _, String>(&morgan_freeman, "acted-in", EdgeDirection::Outbound, &None)
             .await
             .unwrap()
             .unwrap()
